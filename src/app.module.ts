@@ -6,6 +6,7 @@ import { DatabaseModule } from './common/database/database.module';
 import { ConfigModule } from './config/config.module';
 import { MiddlewareModule } from './common/middleware/middleware.module';
 import { TemplateModule } from './template/template.module';
+import { EmailModule } from './email/email.module';
 
 @Module({
   imports: [
@@ -14,6 +15,7 @@ import { TemplateModule } from './template/template.module';
     AuthModule,
     MiddlewareModule,
     TemplateModule,
+    EmailModule,
   ],
   controllers: [AppController],
   providers: [AppService],

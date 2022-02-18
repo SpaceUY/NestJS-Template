@@ -28,6 +28,7 @@
     "@nestjs/passport": "^8.1.0",
     "@nestjs/platform-express": "^8.2.6",
     "@nestjs/typeorm": "^8.0.3",
+    "@sendgrid/mail": "^7.6.1",
     "class-transformer": "^0.4.0",
     "class-validator": "^0.13.1",
     "google-auth-library": "^7.11.0",

@@ -44,5 +44,5 @@ export function registerTemplate<TLocals extends TemplateLocals>(
   });
 
   return templateRegistration as TemplateRegistration<TLocals> &
-  TemplateLocalsKeyHost;
+    TemplateLocalsKeyHost;
 }
