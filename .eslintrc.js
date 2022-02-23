@@ -26,7 +26,7 @@ module.exports = {
     "no-useless-constructor": "off",
     "class-methods-use-this": "off",
     "import/prefer-default-export": "off",
-    "@typescript-eslint/indent": ["error", 2],
+    // "@typescript-eslint/indent": ["error", 2],
     '@typescript-eslint/no-explicit-any': 'off',
     "comma-dangle": ["error", "always-multiline"],
     'import/extensions': ['error', 'ignorePackages', { 'ts': 'never' }],
