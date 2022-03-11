@@ -22,7 +22,7 @@ export class EmailCoreModule {
         sender: SendgridSender,
       ) => ({
         send: (to: string, locals: TemplateLocals, options?: SenderOptions) => {
-          const opts = email.defaultOptions;
+          const opts = email.defaultOptions || {};
           if (options) {
             for (const key of Object.keys(options)) {
               opts[key] = options[key];

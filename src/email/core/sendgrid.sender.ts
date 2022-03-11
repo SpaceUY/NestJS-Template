@@ -16,7 +16,7 @@ export class SendgridSender {
   async sendHTML(
     to: string,
     html: string,
-    options?: SenderOptions,
+    options: SenderOptions,
   ): Promise<ClientResponse> {
     options.from = options.from || this.emailConf.from;
     options.subject = options.subject || '';

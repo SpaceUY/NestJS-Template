@@ -6,9 +6,9 @@ export default registerWithValidation(
   () => ({
     oauth: {
       enabled: process.env.GOOGLE_OAUTH_ENABLED == 'true',
-      clientId: process.env.GOOGLE_OAUTH_CLIENT_ID,
-      secret: process.env.GOOGLE_OAUTH_CLIENT_SECRET,
-      audience: process.env.GOOGLE_OAUTH_AUDIENCE,
+      clientId: process.env.GOOGLE_OAUTH_CLIENT_ID || '',
+      secret: process.env.GOOGLE_OAUTH_CLIENT_SECRET || '',
+      audience: process.env.GOOGLE_OAUTH_AUDIENCE || '',
       callbackURL:
         process.env.GOOGLE_OAUTH_CALLBACK_URL ||
         `${

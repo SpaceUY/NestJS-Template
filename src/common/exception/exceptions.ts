@@ -11,6 +11,11 @@ interface NestedExceptionRecord {
 
 export const Exceptions = {
   auth: {
+    invalidPayload: {
+      httpStatus: HttpStatus.INTERNAL_SERVER_ERROR,
+      errorCode: 'INVALID_PAYLOAD',
+      errorMsg: 'Could not load auth payload',
+    },
     alreadyExists: {
       httpStatus: HttpStatus.CONFLICT,
       errorCode: 'AUTH_EXISTING',

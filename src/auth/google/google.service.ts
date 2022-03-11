@@ -35,7 +35,10 @@ export class GoogleService {
         ],
       });
       const payload = ticket.getPayload();
-      const { name, email } = payload;
+      if (payload === undefined) {
+        throw new RequestException(Exceptions.auth.invalidPayload);
+      }
+      const { name, email } = payload as { name: string; email: string };
 
       const existingUser = await this.userRepo.findOne({
         email,
@@ -74,7 +77,10 @@ export class GoogleService {
         ],
       });
       const payload = ticket.getPayload();
-      const { email } = payload;
+      if (payload === undefined) {
+        throw new RequestException(Exceptions.auth.invalidPayload);
+      }
+      const { email } = payload as { email: string };
 
       const existingUser = await this.userRepo.findOne({
         email,

@@ -8,11 +8,13 @@ import jwtConfig from '../config/jwt.config';
 import { InjectRepository } from '@nestjs/typeorm';
 import { Repository } from 'typeorm';
 import { AuthTokenPayload } from './core/auth-token/auth-token.service';
+import { RequestException } from 'src/common/exception/core/ExceptionBase';
+import { Exceptions } from 'src/common/exception/exceptions';
 
 @Injectable()
 export class JwtStrategy extends PassportStrategy(Strategy) {
   constructor(
-  @Inject(jwtConfig.KEY)
+    @Inject(jwtConfig.KEY)
     jwtConf: ConfigType<typeof jwtConfig>,
     @InjectRepository(User) private readonly userRepo: Repository<User>,
   ) {
@@ -23,7 +25,7 @@ export class JwtStrategy extends PassportStrategy(Strategy) {
     } as StrategyOptions);
   }
 
-  async validate({ userId, type }: AuthTokenPayload): Promise<User> {
+  async validate({ userId, type }: AuthTokenPayload): Promise<User | null> {
     if (type !== 'auth') {
       return null;
     }
@@ -31,7 +33,7 @@ export class JwtStrategy extends PassportStrategy(Strategy) {
     const user = await this.userRepo.findOne(userId);
 
     if (!user) {
-      throw Error('User not found');
+      throw new RequestException(Exceptions.auth.invalidCredentials);
     }
 
     return user;

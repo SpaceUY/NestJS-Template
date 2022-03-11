@@ -19,7 +19,7 @@ export function registerTemplate<TLocals extends TemplateLocals>(
 ): TemplateRegistration<TLocals> & TemplateLocalsKeyHost {
   // I'm sorry if this drains your sanity
   const callerDir = path.dirname(
-    new Error().stack
+    (new Error().stack as string)
       .split('\n')[2]
       .split('(')[1]
       .split(':')
