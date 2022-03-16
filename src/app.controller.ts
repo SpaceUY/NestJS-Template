@@ -33,7 +33,7 @@ export class AppController {
 
   @Get('email')
   async sendEmail(): Promise<void> {
-    await this.test2Mail.send('contact@spacedev.uy', {
+    await this.test2Mail.send('nestjstemplate@mailinator.com', {
       name: 'Test',
       amount: 300,
     });

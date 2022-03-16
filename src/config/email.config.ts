@@ -4,7 +4,7 @@ import registerWithValidation from './core/register-with-validation.util';
 export default registerWithValidation(
   'email',
   () => ({
-    from: process.env.EMAIL_FROM || 'info@spacedev.uy',
+    from: process.env.EMAIL_FROM || 'fake@example.com',
     sendgrid: { apiKey: process.env.SENDGRID_API_KEY as string },
   }),
   {
