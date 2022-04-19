@@ -14,24 +14,53 @@ export const EMAIL_SENDER_KEY = 'SENDER';
 @Module({})
 export class EmailCoreModule {
   static forRoot(emails: Array<EmailRegistration>): DynamicModule {
-    const providers = emails.map((email) => ({
-      provide: email['KEY'],
-      inject: [email.templateRegistration['KEY'], EMAIL_SENDER_KEY],
-      useFactory: (
-        template: TemplateType<TemplateRegistration>,
-        sender: SendgridSender,
-      ) => ({
-        send: (to: string, locals: TemplateLocals, options?: SenderOptions) => {
-          const opts = email.defaultOptions || {};
-          if (options) {
-            for (const key of Object.keys(options)) {
-              opts[key] = options[key];
-            }
-          }
-          return sender.sendHTML(to, template.compileHTML(locals), opts);
-        },
-      }),
-    }));
+    const providers = emails.map((email) => {
+      switch (email.type) {
+        case 'TEMPLATE':
+          return {
+            provide: email['KEY'],
+            inject: [email.templateRegistration['KEY'], EMAIL_SENDER_KEY],
+            useFactory: (
+              template: TemplateType<TemplateRegistration>,
+              sender: SendgridSender,
+            ) => ({
+              send: (
+                to: string,
+                locals: TemplateLocals,
+                options?: SenderOptions,
+              ) => {
+                const opts = email.defaultOptions || {};
+                if (options) {
+                  for (const key of Object.keys(options)) {
+                    opts[key] = options[key];
+                  }
+                }
+                return sender.sendHTML(to, template.compileHTML(locals), opts);
+              },
+            }),
+          };
+        case 'DYNAMIC':
+          return {
+            provide: email['KEY'],
+            inject: [EMAIL_SENDER_KEY],
+            useFactory: (sender: SendgridSender) => ({
+              send: (
+                to: string,
+                locals: TemplateLocals,
+                options?: SenderOptions,
+              ) => {
+                const opts = email.defaultOptions || {};
+                if (options) {
+                  for (const key of Object.keys(options)) {
+                    opts[key] = options[key];
+                  }
+                }
+                return sender.sendTemplate(to, email.templateId, locals, opts);
+              },
+            }),
+          };
+      }
+    });
 
     return {
       module: EmailCoreModule,
