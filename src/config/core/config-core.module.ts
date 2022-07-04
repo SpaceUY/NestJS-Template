@@ -2,7 +2,6 @@ import { DynamicModule, Module } from '@nestjs/common';
 import { ConfigModule, ConfigFactory } from '@nestjs/config';
 import Joi = require('joi');
 
-
 @Module({})
 export class ConfigCoreModule {
   static forRoot(configs: Array<ConfigFactory>): DynamicModule {
