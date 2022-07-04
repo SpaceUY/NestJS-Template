@@ -33,7 +33,7 @@
     "@nestjsx/crud-request": "^5.0.0-alpha.3",
     "@nestjsx/crud-typeorm": "^5.0.0-alpha.3",
     "@sendgrid/mail": "^7.6.1",
-    "class-transformer": "^0.4.0",
+    "class-transformer": "0.4.0",
     "class-validator": "^0.13.1",
     "google-auth-library": "^7.11.0",
     "joi": "^17.4.2",
