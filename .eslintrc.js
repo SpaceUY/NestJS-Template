@@ -8,6 +8,7 @@ module.exports = {
   extends: [
     'plugin:@typescript-eslint/recommended',
     'plugin:prettier/recommended',
+    'plugin:import/recommended'
   ],
   root: true,
   env: {
@@ -16,6 +17,7 @@ module.exports = {
   },
   ignorePatterns: ['.eslintrc.js'],
   rules: {
+    "import/no-unresolved": "off",
     "indent": "off",
     "arrow-parens": "off",
     "no-await-in-loop": "off",
