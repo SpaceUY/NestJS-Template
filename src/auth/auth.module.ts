@@ -11,7 +11,7 @@ import { EmailModule } from './email/email.module';
 @Module({
   imports: [
     PassportModule.register({ defaultStrategy: 'jwt' }),
-    GoogleModule,
+    // GoogleModule,
     TypeOrmModule.forFeature([User]),
     AuthTokenModule,
     EmailModule,

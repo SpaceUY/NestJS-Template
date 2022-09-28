@@ -12,7 +12,7 @@ interface EmailRegistrationPug<T extends TemplateLocals = TemplateLocals> {
   defaultOptions?: SenderOptions;
 }
 
-interface EmailRegistrationDynamic<T extends TemplateLocals = TemplateLocals> {
+interface EmailRegistrationDynamic {
   type: 'DYNAMIC';
   templateId: string;
   defaultOptions?: SenderOptions;
@@ -20,7 +20,7 @@ interface EmailRegistrationDynamic<T extends TemplateLocals = TemplateLocals> {
 
 export type EmailRegistration<T extends TemplateLocals = TemplateLocals> =
   | EmailRegistrationPug<T>
-  | EmailRegistrationDynamic<T>;
+  | EmailRegistrationDynamic;
 
 export interface EmailKeyHost {
   KEY: string;

@@ -13,7 +13,7 @@ export class Spaceship extends BaseModel {
   @ApiProperty()
   fleet: string;
 
-  @OneToOne(() => User)
+  @OneToOne(() => User, (user) => user.ship)
   @JoinColumn()
   @ApiProperty({ type: User })
   captain: User;

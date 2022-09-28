@@ -1,4 +1,6 @@
 import { DynamicModule, Module, Provider } from '@nestjs/common';
+import { ConfigType } from '@nestjs/config';
+import emailConfig from 'src/config/email.config';
 import {
   TemplateLocals,
   TemplateRegistration,
@@ -42,8 +44,11 @@ export class EmailCoreModule {
         case 'DYNAMIC':
           return {
             provide: email['KEY'],
-            inject: [EMAIL_SENDER_KEY],
-            useFactory: (sender: SendgridSender) => ({
+            inject: [EMAIL_SENDER_KEY, emailConfig.KEY],
+            useFactory: (
+              sender: SendgridSender,
+              emailConf: ConfigType<typeof emailConfig>,
+            ) => ({
               send: (
                 to: string,
                 locals: TemplateLocals,
@@ -55,6 +60,7 @@ export class EmailCoreModule {
                     opts[key] = options[key];
                   }
                 }
+                // locals['ctaURL'] = emailConf.ctaURL;
                 return sender.sendTemplate(to, email.templateId, locals, opts);
               },
             }),

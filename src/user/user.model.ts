@@ -1,7 +1,8 @@
 import { AuthType } from 'src/auth/auth-types.enum';
 import { BaseModel } from 'src/common/base.model';
-import { Column, Entity } from 'typeorm';
+import { Column, Entity, OneToOne } from 'typeorm';
 import { ApiProperty } from '@nestjs/swagger';
+import { Spaceship } from 'src/spaceship/spaceship.entity';
 
 @Entity()
 export class User extends BaseModel {
@@ -24,4 +25,7 @@ export class User extends BaseModel {
   })
   @ApiProperty({ enum: AuthType })
   authType: AuthType;
+
+  @OneToOne(() => Spaceship, (ship) => ship.captain)
+  ship: Spaceship;
 }
