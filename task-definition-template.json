@@ -1,0 +1,47 @@
+{
+  "family": "${TASK_FAMILY}",
+  "networkMode": "awsvpc",
+  "executionRoleArn": "${EXECUTION_ROLE_ARN}",
+  "containerDefinitions": [
+    {
+      "name": "${TASK_FAMILY}",
+      "image": "${IMAGE_NAME}",
+      "portMappings": [
+        {
+          "containerPort": 5000,
+          "hostPort": 5000,
+          "protocol": "tcp"
+        }
+      ],
+      "essential": true,
+      "secrets": [
+        { "name": "DB_HOST", "valueFrom": "${SECRETS_MANAGER_ARN}:DB_HOST::" },
+        { "name": "DB_USERNAME", "valueFrom": "${SECRETS_MANAGER_ARN}:DB_USERNAME::" },
+        { "name": "DB_DATABASE", "valueFrom": "${SECRETS_MANAGER_ARN}:DB_DATABASE::" },
+        { "name": "DB_PASSWORD", "valueFrom": "${SECRETS_MANAGER_ARN}:DB_PASSWORD::" },
+        { "name": "DB_PORT", "valueFrom": "${SECRETS_MANAGER_ARN}:DB_PORT::" },
+        { "name": "PORT", "valueFrom": "${SECRETS_MANAGER_ARN}:PORT::" },
+        { "name": "SENDGRID_API_KEY", "valueFrom": "${SECRETS_MANAGER_ARN}:SENDGRID_API_KEY::" }
+      ],
+      "environment": [
+        {
+            "name": "NO_COLOR",
+            "value": "true"
+        }
+      ],
+      "logConfiguration": { 
+          "logDriver": "awslogs",
+          "options": { 
+            "awslogs-group" : "/ecs/${NAME_PREFIX}--backend",
+            "awslogs-region": "${AWS_DEFAULT_REGION}",
+            "awslogs-stream-prefix": "ecs"
+        }
+      }
+    }
+  ],
+  "requiresCompatibilities": [
+    "FARGATE"
+  ],
+  "cpu": "256",
+  "memory": "512"
+}

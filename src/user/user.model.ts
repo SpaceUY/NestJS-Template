@@ -7,15 +7,12 @@ import { Spaceship } from 'src/spaceship/spaceship.entity';
 @Entity()
 export class User extends BaseModel {
   @Column()
-  @ApiProperty()
   name: string;
 
   @Column()
-  @ApiProperty()
   email: string;
 
   @Column({ default: false })
-  @ApiProperty()
   verified: boolean;
 
   @Column({

@@ -41,7 +41,7 @@ export class GoogleService {
       const { name, email } = payload as { name: string; email: string };
 
       const existingUser = await this.userRepo.findOne({
-        email,
+        where: { email },
       });
 
       if (existingUser) {
@@ -83,7 +83,7 @@ export class GoogleService {
       const { email } = payload as { email: string };
 
       const existingUser = await this.userRepo.findOne({
-        email,
+        where: { email },
       });
 
       if (!existingUser || existingUser.authType !== AuthType.GOOGLE) {

@@ -15,7 +15,7 @@ module.exports = {
     node: true,
     jest: true,
   },
-  ignorePatterns: ['.eslintrc.js'],
+  ignorePatterns: ['.eslintrc.js', 'migrations/*.ts'],
   rules: {
     "import/no-unresolved": "off",
     "indent": "off",

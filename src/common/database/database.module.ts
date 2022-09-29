@@ -16,7 +16,7 @@ import { PostgresConnectionOptions } from 'typeorm/driver/postgres/PostgresConne
           password: dbConf.password,
           database: dbConf.database,
           entities: ['dist/**/*.{model,entity}{.ts,.js}'],
-          synchronize: true,
+          synchronize: false,
         } as PostgresConnectionOptions),
       inject: [databaseConfig.KEY],
     }),
