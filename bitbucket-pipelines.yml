@@ -52,13 +52,6 @@ definitions:
               SERVICE_NAME: $SERVICE_NAME
               TASK_DEFINITION: 'task-definition.json'
               FORCE_NEW_DEPLOYMENT: 'true'
-          # Configure credentials for serverless
-          - npm ci
-          - npx serverless config credentials --provider aws --key $AWS_ACCESS_KEY_ID --secret $AWS_SECRET_ACCESS_KEY --profile $PROJECT_NAME
-          # Build all lambda apps
-          - sh scripts/lambda/build-lambdas.sh
-          # Deploy lambda
-          - npx serverless deploy
 
 pipelines:
   pull-requests:
