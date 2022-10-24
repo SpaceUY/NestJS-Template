@@ -7,29 +7,58 @@ definitions:
         caches:
           - node
         script:
-          - npm install
+          - npm ci
           - npm run lint
-          - npm run build:prod
+          - npm run build
         artifacts:
           - dist/**
-    - step: &deploy-staging
-        name: Deploy
+    - step: &build_publish_and_deploy
+        image: node:alpine
+        name: Backend build/publish docker to ECR, deploy to ECS, and lambda build/deploy.
+        services:
+          # Enable Docker for your repository
+          - docker 
         script:
-          - scp -r dist/ ubuntu@$SERVER_IP_STAGING:~/software
-          - scp package.json ubuntu@$SERVER_IP_STAGING:~/software
-          - scp package-lock.json ubuntu@$SERVER_IP_STAGING:~/software
-          - scp pm2-deploy.sh ubuntu@$SERVER_IP_STAGING:~/software
-          - ssh ubuntu@$SERVER_IP_STAGING 'chmod +x ~/software/pm2-deploy.sh && ~/software/pm2-deploy.sh'
-    - step: &deploy
-        name: Deploy
-        script:
-          - scp -r dist/ ubuntu@$SERVER_IP:~/software
-          - scp package.json ubuntu@$SERVER_IP:~/software
-          - scp package-lock.json ubuntu@$SERVER_IP:~/software
-          - scp pm2-deploy.sh ubuntu@$SERVER_IP:~/software
-          - scp ormconfig.ts ubuntu@$SERVER_IP:~/software
-          - scp -r migrations/ ubuntu@$SERVER_IP:~/software
-          - ssh ubuntu@$SERVER_IP 'chmod +x ~/software/pm2-deploy.sh && ~/software/pm2-deploy.sh'
+          # Creating environment variables
+          - export NAME_PREFIX="${PROJECT_NAME}--${WORKSPACE_NAME}"
+          - export NAME_PREFIX_SINGLE="${PROJECT_NAME}-${WORKSPACE_NAME}"
+          - export CLUSTER_NAME="${NAME_PREFIX}--ecs-cluster"
+          - export SERVICE_NAME="${NAME_PREFIX}--ecs-service"
+          - export TASK_FAMILY="${NAME_PREFIX}--task-definition"
+          - export ECR_NAME="${NAME_PREFIX_SINGLE}-ecr-repository"
+          - export AWS_ECR_REPO="${AWS_ACCOUNT_ID}.dkr.ecr.${AWS_DEFAULT_REGION}.amazonaws.com/${ECR_NAME}"
+          - export EXECUTION_ROLE_ARN="arn:aws:iam::${AWS_ACCOUNT_ID}:role/${NAME_PREFIX}--ecs-task-exec-role"
+          # Install envsubst
+          - apk update && apk add gettext
+          # Set the name of the docker image we will be building.
+          - export IMAGE_NAME="${ECR_NAME}"
+          # Build the docker image
+          - docker build -t "${IMAGE_NAME}" .
+          # Push to ECR
+          - pipe: atlassian/aws-ecr-push-image:1.5.0
+            variables:
+              IMAGE_NAME: $IMAGE_NAME
+              TAGS: $BITBUCKET_BUILD_NUMBER
+          # Replace the docker image name in the task definition with the newly pushed image.
+          - export IMAGE_NAME="${AWS_ECR_REPO}:${BITBUCKET_BUILD_NUMBER}"
+          - envsubst < task-definition-template.json > task-definition.json
+          # Update the task definition.
+          - pipe: atlassian/aws-ecs-deploy:1.6.2
+            variables:
+              AWS_ACCESS_KEY_ID: $AWS_ACCESS_KEY_ID
+              AWS_SECRET_ACCESS_KEY: $AWS_SECRET_ACCESS_KEY
+              AWS_DEFAULT_REGION: $AWS_DEFAULT_REGION
+              CLUSTER_NAME: $CLUSTER_NAME
+              SERVICE_NAME: $SERVICE_NAME
+              TASK_DEFINITION: 'task-definition.json'
+              FORCE_NEW_DEPLOYMENT: 'true'
+          # Configure credentials for serverless
+          - npm ci
+          - npx serverless config credentials --provider aws --key $AWS_ACCESS_KEY_ID --secret $AWS_SECRET_ACCESS_KEY --profile $PROJECT_NAME
+          # Build all lambda apps
+          - sh scripts/lambda/build-lambdas.sh
+          # Deploy lambda
+          - npx serverless deploy
 
 pipelines:
   pull-requests:
@@ -37,8 +66,11 @@ pipelines:
       - step: *test-build
   branches:
     staging:
-      - step: *test-build
-      - step: *deploy-staging
+      - step: 
+          <<: *build_publish_and_deploy
+          deployment: Staging
     master:
-      - step: *test-build
-      - step: *deploy
+      - step: 
+          <<: *build_publish_and_deploy
+          deployment: Production
+      
