@@ -22,7 +22,6 @@ export class AppController {
   ) {}
 
   @Get()
-  @UseGuards(AuthGuard('jwt'))
   getHello(): string {
     return this.appService.getHello() + ' ' + this.baseConf.nodeEnv;
   }
