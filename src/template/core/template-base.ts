@@ -18,10 +18,11 @@ export function registerTemplate<TLocals extends TemplateLocals>(
   templateName: string,
 ): TemplateRegistration<TLocals> & TemplateLocalsKeyHost {
   // I'm sorry if this drains your sanity
+  const errorStackLine = (new Error().stack as string).split('\n')[2];
+  const indexOfFirstParens = errorStackLine.indexOf('(');
   const callerDir = path.dirname(
-    (new Error().stack as string)
-      .split('\n')[2]
-      .split('(')[1]
+    errorStackLine
+      .substring(indexOfFirstParens + 1)
       .split(':')
       .slice(0, -2)
       .join(':'),
