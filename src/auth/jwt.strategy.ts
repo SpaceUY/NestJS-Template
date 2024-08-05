@@ -1,22 +1,21 @@
-import { Injectable, Inject } from '@nestjs/common';
-import { PassportStrategy } from '@nestjs/passport';
-import { Strategy, StrategyOptions, ExtractJwt } from 'passport-jwt';
+import { Inject, Injectable } from '@nestjs/common';
 import { ConfigType } from '@nestjs/config';
+import { PassportStrategy } from '@nestjs/passport';
+import { ExtractJwt, Strategy, StrategyOptions } from 'passport-jwt';
 
-import { User } from '../user/user.model';
-import jwtConfig from '../config/jwt.config';
-import { InjectRepository } from '@nestjs/typeorm';
-import { Repository } from 'typeorm';
-import { AuthTokenPayload } from './core/auth-token/auth-token.service';
+import { User } from '@prisma/client';
 import { RequestException } from 'src/common/exception/core/ExceptionBase';
 import { Exceptions } from 'src/common/exception/exceptions';
+import jwtConfig from '../config/jwt.config';
+import { PrismaService } from '../prisma/prisma.service';
+import { AuthTokenPayload } from './core/auth-token/auth-token.service';
 
 @Injectable()
 export class JwtStrategy extends PassportStrategy(Strategy) {
   constructor(
     @Inject(jwtConfig.KEY)
     jwtConf: ConfigType<typeof jwtConfig>,
-    @InjectRepository(User) private readonly userRepo: Repository<User>,
+    private readonly prisma: PrismaService,
   ) {
     super({
       jwtFromRequest: ExtractJwt.fromAuthHeaderAsBearerToken(),
@@ -30,7 +29,9 @@ export class JwtStrategy extends PassportStrategy(Strategy) {
       return null;
     }
 
-    const user = await this.userRepo.findOne({ where: { id: userId } });
+    const user = await this.prisma.user.findUnique({
+      where: { id: userId },
+    });
 
     if (!user) {
       throw new RequestException(Exceptions.auth.invalidCredentials);

@@ -1,13 +1,11 @@
 import { Inject, Injectable, Logger } from '@nestjs/common';
 import { ConfigType } from '@nestjs/config';
-import { InjectRepository } from '@nestjs/typeorm';
+import { AuthType } from '@prisma/client';
 import { OAuth2Client } from 'google-auth-library';
 import { RequestException } from 'src/common/exception/core/ExceptionBase';
 import { Exceptions } from 'src/common/exception/exceptions';
 import googleConfig from 'src/config/google.config';
-import { User } from 'src/user/user.model';
-import { Repository } from 'typeorm';
-import { AuthType } from '../auth-types.enum';
+import { PrismaService } from '../../prisma/prisma.service';
 import { AuthTokenService } from '../core/auth-token/auth-token.service';
 
 @Injectable()
@@ -20,8 +18,7 @@ export class GoogleService {
     private oauthClient: OAuth2Client,
     @Inject(googleConfig.KEY)
     private googleConf: ConfigType<typeof googleConfig>,
-    @InjectRepository(User)
-    private userRepo: Repository<User>,
+    private prisma: PrismaService,
     private authTokenService: AuthTokenService,
   ) {}
 
@@ -40,7 +37,7 @@ export class GoogleService {
       }
       const { name, email } = payload as { name: string; email: string };
 
-      const existingUser = await this.userRepo.findOne({
+      const existingUser = await this.prisma.user.findFirst({
         where: { email },
       });
 
@@ -48,14 +45,13 @@ export class GoogleService {
         throw new RequestException(Exceptions.auth.alreadyExists);
       }
 
-      const user = this.userRepo.create({});
-
-      user.email = email;
-      user.name = name;
-      user.verified = true;
-      user.authType = AuthType.GOOGLE;
-
-      await this.userRepo.save(user);
+      const user = await this.prisma.user.create({
+        data: {
+          email,
+          name,
+          authType: AuthType.GOOGLE,
+        },
+      });
 
       return this.authTokenService.generateAuthToken(user, AuthType.GOOGLE);
     } catch (e) {
@@ -82,7 +78,7 @@ export class GoogleService {
       }
       const { email } = payload as { email: string };
 
-      const existingUser = await this.userRepo.findOne({
+      const existingUser = await this.prisma.user.findFirst({
         where: { email },
       });
 

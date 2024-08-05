@@ -1,18 +1,16 @@
 import { Inject } from '@nestjs/common';
 import { ConfigType } from '@nestjs/config';
 import { PassportStrategy } from '@nestjs/passport';
-import { InjectRepository } from '@nestjs/typeorm';
+import { AuthType } from '@prisma/client';
 import { Strategy, VerifyCallback } from 'passport-google-oauth20';
 import googleConfig from 'src/config/google.config';
-import { User } from 'src/user/user.model';
-import { Repository } from 'typeorm';
-import { AuthType } from '../auth-types.enum';
+import { PrismaService } from '../../prisma/prisma.service';
 
 export class GoogleStrategy extends PassportStrategy(Strategy, 'google') {
   constructor(
     @Inject(googleConfig.KEY)
     private readonly googleConf: ConfigType<typeof googleConfig>,
-    @InjectRepository(User) private readonly userRepo: Repository<User>,
+    private readonly prisma: PrismaService,
   ) {
     super({
       clientID: googleConf.oauth.clientId,
@@ -30,19 +28,24 @@ export class GoogleStrategy extends PassportStrategy(Strategy, 'google') {
   ): Promise<void> {
     try {
       const email = profile.emails[0].value;
-      const existingUser = await this.UserModel.findOne({ email });
+      const existingUser = await this.prisma.user.findFirst({
+        where: { email },
+      });
+
       if (existingUser) {
         return done(null, existingUser);
       }
 
-      const user = this.userRepo.create();
+      const user = await this.prisma.user.create({
+        data: {
+          email,
+          name: `${profile.name.givenName} ${profile.name.familyName}`,
+          verified: true,
+          authType: AuthType.GOOGLE,
+        },
+      });
 
-      user.email = email;
-      user.name = `${profile.name.givenName} ${profile.name.familyName}`;
-      user.verified = true;
-      user.authType = AuthType.GOOGLE;
-
-      return done(null, await this.userRepo.save(user));
+      return done(null, user);
     } catch (e) {
       return done(e);
     }

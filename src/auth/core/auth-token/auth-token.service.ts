@@ -1,7 +1,6 @@
 import { Injectable } from '@nestjs/common';
 import { JwtService } from '@nestjs/jwt';
-import { AuthType } from 'src/auth/auth-types.enum';
-import { User } from 'src/user/user.model';
+import { AuthType, User } from '@prisma/client';
 
 export interface AuthTokenPayload {
   userId: string;

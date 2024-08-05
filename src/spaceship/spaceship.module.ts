@@ -1,12 +1,11 @@
 import { Module } from '@nestjs/common';
-import { SpaceshipService } from './spaceship.service';
-import { SpaceshipController } from './spaceship.controller';
-import { TypeOrmModule } from '@nestjs/typeorm';
-import { Spaceship } from './spaceship.entity';
 import { AuthModule } from 'src/auth/auth.module';
+import { PrismaModule } from '../prisma/prisma.module';
+import { SpaceshipController } from './spaceship.controller';
+import { SpaceshipService } from './spaceship.service';
 
 @Module({
-  imports: [TypeOrmModule.forFeature([Spaceship]), AuthModule],
+  imports: [PrismaModule, AuthModule],
   providers: [SpaceshipService],
   controllers: [SpaceshipController],
 })
