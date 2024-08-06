@@ -15,11 +15,7 @@
       ],
       "essential": true,
       "secrets": [
-        { "name": "DB_HOST", "valueFrom": "${SECRETS_MANAGER_ARN}:DB_HOST::" },
-        { "name": "DB_USERNAME", "valueFrom": "${SECRETS_MANAGER_ARN}:DB_USERNAME::" },
-        { "name": "DB_DATABASE", "valueFrom": "${SECRETS_MANAGER_ARN}:DB_DATABASE::" },
-        { "name": "DB_PASSWORD", "valueFrom": "${SECRETS_MANAGER_ARN}:DB_PASSWORD::" },
-        { "name": "DB_PORT", "valueFrom": "${SECRETS_MANAGER_ARN}:DB_PORT::" },
+        { "name": "DATABASE_URL", "valueFrom": "${SECRETS_MANAGER_ARN}:DATABASE_URL::" },
         { "name": "PORT", "valueFrom": "${SECRETS_MANAGER_ARN}:PORT::" },
         { "name": "SENDGRID_API_KEY", "valueFrom": "${SECRETS_MANAGER_ARN}:SENDGRID_API_KEY::" }
       ],
