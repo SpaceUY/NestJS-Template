@@ -16,6 +16,8 @@ RUN npm ci
 COPY --chown=node:node . .
 
 # Run the build command which creates the production bundle
+RUN npx prisma generate
+
 RUN npm run build
 
 RUN chmod 777 ./docker-script.sh

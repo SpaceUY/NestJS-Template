@@ -1,9 +1,7 @@
-import { Body, Controller, Get, Post, UseGuards } from '@nestjs/common';
+import { Body, Controller, Get, Post, Req, UseGuards } from '@nestjs/common';
 import { AuthGuard } from '@nestjs/passport';
-import { string } from 'joi';
+import { AuthType, User } from '@prisma/client';
 import { CurrentUser } from 'src/user/current-user.decorator';
-import { User } from 'src/user/user.model';
-import { AuthType } from '../auth-types.enum';
 import { AuthTokenService } from '../core/auth-token/auth-token.service';
 import { GoogleService } from './google.service';
 
@@ -19,9 +17,9 @@ export class GoogleController {
   // eslint-disable-next-line @typescript-eslint/no-empty-function
   web(): void {}
 
-  @Get('web/callback')
+  @Get('callback')
   @UseGuards(AuthGuard('google'))
-  webCallback(@CurrentUser() user: User): Promise<string> {
+  webCallback(@CurrentUser() user: User, @Req() req: Request): Promise<string> {
     return this.authTokenService.generateAuthToken(user, AuthType.GOOGLE);
   }
 

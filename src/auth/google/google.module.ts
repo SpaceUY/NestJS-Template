@@ -1,21 +1,16 @@
 import { Inject, Logger, Module } from '@nestjs/common';
 import { ConfigType } from '@nestjs/config';
 import { PassportModule } from '@nestjs/passport';
-import { TypeOrmModule } from '@nestjs/typeorm';
+import { OAuth2Client } from 'google-auth-library';
 import googleConfig from 'src/config/google.config';
-import { User } from 'src/user/user.model';
+import { PrismaModule } from '../../prisma/prisma.module';
 import { AuthTokenModule } from '../core/auth-token/auth-token.module';
 import { GoogleController } from './google.controller';
-import { GoogleStrategy } from './google.strategy';
 import { GoogleService } from './google.service';
-import { OAuth2Client } from 'google-auth-library';
+import { GoogleStrategy } from './google.strategy';
 
 @Module({
-  imports: [
-    PassportModule.register({}),
-    TypeOrmModule.forFeature([User]),
-    AuthTokenModule,
-  ],
+  imports: [PassportModule.register({}), PrismaModule, AuthTokenModule],
   controllers: [GoogleController],
   providers: [
     GoogleStrategy,
