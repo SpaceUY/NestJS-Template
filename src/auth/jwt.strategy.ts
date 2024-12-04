@@ -9,12 +9,14 @@ import { Exceptions } from 'src/common/exception/exceptions';
 import jwtConfig from '../config/jwt.config';
 import { PrismaService } from '../prisma/prisma.service';
 import { AuthTokenPayload } from './core/auth-token/auth-token.service';
+import { AuthService } from './auth.service';
 
 @Injectable()
 export class JwtStrategy extends PassportStrategy(Strategy) {
   constructor(
     @Inject(jwtConfig.KEY)
     jwtConf: ConfigType<typeof jwtConfig>,
+    private readonly authService: AuthService,
     private readonly prisma: PrismaService,
   ) {
     super({
@@ -25,18 +27,10 @@ export class JwtStrategy extends PassportStrategy(Strategy) {
   }
 
   async validate({ userId, type }: AuthTokenPayload): Promise<User | null> {
-    if (type !== 'auth') {
-      return null;
-    }
-
-    const user = await this.prisma.user.findUnique({
-      where: { id: userId },
-    });
-
+    const user = await this.authService.validateUser(userId, type);
     if (!user) {
       throw new RequestException(Exceptions.auth.invalidCredentials);
     }
-
     return user;
   }
 }
