@@ -11,7 +11,7 @@ export interface IEmailDeliveryIntegrator {
     template: EmailType<EmailRegistration & EmailKeyHost>,
     emailRegistration: EmailRegistration,
     to: string,
-    locals: any,
+    locals: Record<string, string>,
     options?: SenderOptions,
     subject?: string,
   ): Promise<void>;

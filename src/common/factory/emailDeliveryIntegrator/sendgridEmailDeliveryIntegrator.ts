@@ -12,12 +12,12 @@ export class SendgridEmailDeliveryIntegrator
     template: EmailType<EmailRegistration & EmailKeyHost>,
     emailRegistration: EmailRegistration,
     to: string,
-    locals: any,
+    locals: Record<string, string>,
     options?: SenderOptions,
   ): Promise<void> {
     try {
       await template.send(to, locals, options);
-    } catch (error: any) {
+    } catch (error) {
       throw new Error(error);
     }
   }
