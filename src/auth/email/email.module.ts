@@ -1,7 +1,11 @@
 import { Module } from '@nestjs/common';
-import { EmailController } from './email.controller';
+import { EmailAuthController } from './email.controller';
+import { EmailAuthService } from './email.service';
+import { AuthTokenModule } from '../core/auth-token/auth-token.module';
 
 @Module({
-  controllers: [EmailController],
+  imports: [AuthTokenModule],
+  controllers: [EmailAuthController],
+  providers: [EmailAuthService],
 })
 export class EmailModule {}

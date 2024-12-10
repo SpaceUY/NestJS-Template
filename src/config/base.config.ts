@@ -7,6 +7,7 @@ export default registerWithValidation(
     nodeEnv: process.env.NODE_ENV || 'DEV',
     port: process.env.PORT || 5000,
     selfUrl: process.env.SELF_URL || 'http://localhost:5000',
+    lengthPassword: 8,
   }),
   {
     NODE_ENV: Joi.string().allow('DEV', 'TEST', 'PROD'),
