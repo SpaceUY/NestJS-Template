@@ -2,7 +2,7 @@ import { Inject, Injectable, Logger } from '@nestjs/common';
 import { LoginDto } from './dto/login.dto';
 import { LoginResponseDto } from './dto/login-response.dto';
 import { AuthTokenService } from '../core/auth-token/auth-token.service';
-import { AuthTypeEnum, User } from '@prisma/client';
+import { AuthType, User } from '@prisma/client';
 import { RequestException } from 'src/common/exception/core/ExceptionBase';
 import { Exceptions } from 'src/common/exception/exceptions';
 import { RegisterDto } from './dto/register.dto';
@@ -31,20 +31,24 @@ export class EmailAuthService {
   async login(login: LoginDto): Promise<LoginResponseDto> {
     try {
       const user = await this.prisma.user.findUnique({
-        email: login.email,
-        deleted: false,
+        where: {
+          email: login.email,
+        },
       });
+      if (!user) {
+        throw new RequestException(Exceptions.auth.invalidCredentials);
+      }
       const isPasswordValid = await this.encryptService.validatePassword(
         login.password,
         user.password,
       );
-      if (!user || !isPasswordValid) {
+      if (!isPasswordValid) {
         throw new RequestException(Exceptions.auth.invalidCredentials);
       }
 
       const jwt = await this.authTokenService.generateAuthToken(
-        user.id,
-        AuthTypeEnum.EMAIL,
+        user,
+        AuthType.EMAIL,
       );
 
       return {
@@ -69,12 +73,14 @@ export class EmailAuthService {
       );
       registerData.password = hashedPassword;
       const user = await this.prisma.user.create({
-        ...registerData,
-        authType: AuthTypeEnum.EMAIL,
+        data: {
+          ...registerData,
+          authType: AuthType.EMAIL,
+        },
       });
       const jwt = await this.authTokenService.generateAuthToken(
-        user.id,
-        AuthTypeEnum.EMAIL,
+        user,
+        AuthType.EMAIL,
       );
       return { token: jwt };
     } catch (error) {
@@ -89,8 +95,7 @@ export class EmailAuthService {
   async forgotPassword(email: string): Promise<void> {
     try {
       const user = await this.prisma.user.findUnique({
-        email,
-        deleted: false,
+        where: { email },
       });
       if (!user) {
         throw new RequestException(Exceptions.auth.invalidCredentials);
@@ -98,7 +103,7 @@ export class EmailAuthService {
       const resetToken =
         await this.authTokenService.generateResetPasswordAuthToken(
           user.id,
-          AuthTypeEnum.EMAIL,
+          AuthType.EMAIL,
         );
 
       const resetLink = `${process.env.FRONTEND_URL}/auth/reset-password?token=${resetToken}`;
@@ -132,14 +137,11 @@ export class EmailAuthService {
     try {
       const { userId } =
         this.authTokenService.validateAuthResetPasswordToken(resetToken);
-      const user = await this.prisma.user.findUnique({
-        id: userId,
-        deleted: false,
-      });
+      const user = await this.prisma.user.findUnique({ where: { id: userId } });
       if (!user) {
         throw new RequestException(Exceptions.auth.invalidCredentials);
       }
-      if (user.authType !== AuthTypeEnum.EMAIL) {
+      if (user.authType !== AuthType.EMAIL) {
         throw new RequestException(Exceptions.auth.invalidPayload);
       }
       await this.changePassword(user, newPassword);
@@ -156,7 +158,7 @@ export class EmailAuthService {
     currentPassword?: string,
   ): Promise<void> {
     try {
-      if (user.authType !== AuthTypeEnum.EMAIL) {
+      if (user.authType !== AuthType.EMAIL) {
         throw new RequestException(Exceptions.auth.invalidNotLoggedEmail);
       }
       if (!user.password) {
@@ -172,8 +174,11 @@ export class EmailAuthService {
         throw new RequestException(Exceptions.auth.invalidCredentials);
       }
       const hashPassword = await this.encryptService.hashPassword(newPassword);
-      await this.prisma.user.update(user.id, {
-        password: hashPassword,
+      await this.prisma.user.update({
+        where: { id: user.id },
+        data: {
+          password: hashPassword,
+        },
       });
     } catch (error) {
       this.logger.error('EmailAuthService - changePassword: ', error);

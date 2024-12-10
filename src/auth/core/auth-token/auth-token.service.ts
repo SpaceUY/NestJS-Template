@@ -30,7 +30,7 @@ export class AuthTokenService {
 
   generateResetPasswordAuthToken(
     userId: string,
-    authType: AuthTypeEnum,
+    authType: AuthType,
   ): Promise<string> {
     return this.jwtService.signAsync(
       {

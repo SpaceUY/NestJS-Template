@@ -24,8 +24,8 @@ model User {
   updatedAt DateTime  @updatedAt
   deletedAt DateTime?
   password  String?
-  name      String
-  email     String
+  name      String?
+  email     String    @unique
   verified  Boolean   @default(false)
   authType  AuthType  @default(EMAIL)
 

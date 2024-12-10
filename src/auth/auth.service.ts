@@ -10,7 +10,7 @@ export class AuthService {
     if (type !== 'auth') {
       return null;
     }
-    const user = await this.prisma.user.findUnique({ id: userId });
+    const user = await this.prisma.user.findUnique({ where: { id: userId } });
     if (!user) {
       return null;
     }
