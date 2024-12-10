@@ -21,9 +21,9 @@ export class EmailAuthService {
   });
 
   constructor(
-    private authTokenService: AuthTokenService,
-    private prisma: PrismaService,
-    private encryptService: EncryptService,
+    private readonly authTokenService: AuthTokenService,
+    private readonly prisma: PrismaService,
+    private readonly encryptService: EncryptService,
     @Inject(forgotPasswordEmail.KEY)
     private readonly forgotPasswordMail: EmailType<typeof forgotPasswordEmail>,
   ) {}

@@ -4,7 +4,7 @@ import { User } from '@prisma/client';
 
 @Injectable()
 export class AuthService {
-  constructor(private prisma: PrismaService) {}
+  constructor(private readonly prisma: PrismaService) {}
 
   async validateUser(userId: string, type: string): Promise<User | null> {
     if (type !== 'auth') {

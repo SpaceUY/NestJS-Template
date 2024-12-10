@@ -26,7 +26,7 @@ export class EmailAuthController {
     timestamp: true,
   });
 
-  constructor(private emailAuthService: EmailAuthService) {}
+  constructor(private readonly emailAuthService: EmailAuthService) {}
 
   @Post('login')
   @ApiOperation({ summary: 'Login user by email and password' })

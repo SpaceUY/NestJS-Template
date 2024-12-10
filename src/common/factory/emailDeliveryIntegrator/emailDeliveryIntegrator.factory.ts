@@ -25,7 +25,7 @@ export default class EmailDeliveryIntegratorFactory {
       case EmailDeliveryIntegratorName.SENDGRID:
         return new SendgridEmailDeliveryIntegrator();
       default:
-        return new SendgridEmailDeliveryIntegrator();
+        throw new Error('Unsupported email delivery integrator');
     }
   }
 }
