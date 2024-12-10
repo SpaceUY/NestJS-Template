@@ -5,6 +5,8 @@ import {
   EmailRegistration,
 } from '../../../email/core/register-email';
 import { SenderOptions } from 'src/email/core/sender-options';
+import { RequestException } from 'src/common/exception/core/ExceptionBase';
+import { Exceptions } from 'src/common/exception/exceptions';
 
 export interface IEmailDeliveryIntegrator {
   sendEmail(
@@ -25,7 +27,11 @@ export default class EmailDeliveryIntegratorFactory {
       case EmailDeliveryIntegratorName.SENDGRID:
         return new SendgridEmailDeliveryIntegrator();
       default:
-        throw new Error('Unsupported email delivery integrator');
+        throw new RequestException(
+          Exceptions.generic.internalServer({
+            msg: 'Unsupported email delivery integrator',
+          }),
+        );
     }
   }
 }
