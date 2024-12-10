@@ -23,11 +23,11 @@ model User {
   createdAt DateTime  @default(now())
   updatedAt DateTime  @updatedAt
   deletedAt DateTime?
-
-  name     String
-  email    String
-  verified Boolean  @default(false)
-  authType AuthType @default(EMAIL)
+  password  String?
+  name      String
+  email     String
+  verified  Boolean   @default(false)
+  authType  AuthType  @default(EMAIL)
 
   ship Spaceship?
 }

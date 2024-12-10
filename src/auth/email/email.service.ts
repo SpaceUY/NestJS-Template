@@ -34,13 +34,11 @@ export class EmailAuthService {
         email: login.email,
         deleted: false,
       });
-      if (
-        !user ||
-        !(await this.encryptService.validPassword(
-          login.password,
-          user.password,
-        ))
-      ) {
+      const isPasswordValid = await this.encryptService.validatePassword(
+        login.password,
+        user.password,
+      );
+      if (!user || !isPasswordValid) {
         throw new RequestException(Exceptions.auth.invalidCredentials);
       }
 
@@ -166,7 +164,7 @@ export class EmailAuthService {
       }
       if (
         currentPassword &&
-        !(await this.encryptService.validPassword(
+        !(await this.encryptService.validatePassword(
           currentPassword,
           user.password,
         ))

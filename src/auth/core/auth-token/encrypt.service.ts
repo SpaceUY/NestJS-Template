@@ -30,7 +30,7 @@ export class EncryptService {
     }
   }
 
-  async validPassword(
+  async validatePassword(
     password: string,
     savedPassword: string | null,
   ): Promise<boolean> {
@@ -40,7 +40,7 @@ export class EncryptService {
       }
       return await bcrypt.compare(password, savedPassword);
     } catch (error) {
-      this.logger.error('EncryptService - validPassword: ', error);
+      this.logger.error('EncryptService - validatePassword: ', error);
       if (error instanceof RequestException) {
         throw error;
       }
