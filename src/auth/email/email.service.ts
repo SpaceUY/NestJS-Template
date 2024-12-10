@@ -133,7 +133,7 @@ export class EmailAuthService {
   async resetPassword(resetToken: string, newPassword: string): Promise<void> {
     try {
       const { userId } =
-        await this.authTokenService.validateAuthResetPasswordToken(resetToken);
+        this.authTokenService.validateAuthResetPasswordToken(resetToken);
       const user = await this.prisma.user.findUnique({
         id: userId,
         deleted: false,
