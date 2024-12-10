@@ -49,11 +49,9 @@ export class AuthTokenService {
     return this.jwtService.verifyAsync<AuthTokenPayload>(token);
   }
 
-  async validateAuthResetPasswordToken(
-    token: string,
-  ): Promise<AuthTokenPayload> {
+  validateAuthResetPasswordToken(token: string): AuthTokenPayload {
     try {
-      return await this.jwtService.verify<AuthTokenPayload>(token, {
+      return this.jwtService.verify<AuthTokenPayload>(token, {
         secret: this.jwtConf.secretResetPassword,
       });
     } catch (error) {

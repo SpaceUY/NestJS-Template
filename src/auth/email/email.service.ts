@@ -66,10 +66,10 @@ export class EmailAuthService {
       if (!registerData.password) {
         throw new RequestException(Exceptions.auth.invalidPayload);
       }
-      const hashPassword = await this.encryptService.hashPassword(
+      const hashedPassword = await this.encryptService.hashPassword(
         registerData.password,
       );
-      registerData.password = hashPassword;
+      registerData.password = hashedPassword;
       const user = await this.prisma.user.create({
         ...registerData,
         authType: AuthTypeEnum.EMAIL,

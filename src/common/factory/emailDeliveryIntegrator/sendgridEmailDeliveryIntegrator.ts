@@ -5,6 +5,8 @@ import {
   EmailRegistration,
 } from '../../../email/core/register-email';
 import { SenderOptions } from 'src/email/core/sender-options';
+import { RequestException } from 'src/common/exception/core/ExceptionBase';
+import { Exceptions } from 'src/common/exception/exceptions';
 export class SendgridEmailDeliveryIntegrator
   implements IEmailDeliveryIntegrator
 {
@@ -18,7 +20,9 @@ export class SendgridEmailDeliveryIntegrator
     try {
       await template.send(to, locals, options);
     } catch (error) {
-      throw new Error(error);
+      throw new RequestException(
+        Exceptions.generic.internalServer({ msg: error.message }),
+      );
     }
   }
 }
