@@ -1,4 +1,4 @@
-import { Injectable } from "@nestjs/common";
+import { Inject, Injectable } from "@nestjs/common";
 
 // ===== Types & Abstract classes =====
 import type { BaseTaskService } from "../interfaces/task.base.service";
@@ -6,13 +6,14 @@ import type { TaskDefinition } from "../task-sequence.module";
 
 // ===== Common =====
 import { ERROR_CODES } from "../constants/error-codes";
+import { TASK_LOGGER } from "../constants/tokens";
+import { TaskLogger } from "../interfaces/logger.interface";
 
 @Injectable()
 export class TaskRegistry {
   private readonly _tasks: Map<string, TaskDefinition> = new Map();
 
-  // TODO: Use a different injection token.
-  constructor(private readonly logger: PinoLogger) {
+  constructor(@Inject(TASK_LOGGER) private readonly logger: TaskLogger) {
     this.logger.setContext(TaskRegistry.name);
   }
 

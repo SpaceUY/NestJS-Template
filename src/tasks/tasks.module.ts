@@ -2,7 +2,8 @@ import type { DynamicModule } from "@nestjs/common";
 import type { BaseErrorHandlerService } from "./interfaces/error-handler.base.service";
 import type { BaseSuccessHandlerService } from "./interfaces/success-handler.base.service";
 import type { SequenceDefinition } from "./task-sequence.module";
-import { Module } from "@nestjs/common";
+import { Module, Provider, Logger } from "@nestjs/common";
+
 
 // ===== Constants =====
 import {
@@ -10,20 +11,24 @@ import {
   createSequenceErrorHandlerToken,
   createSequenceSuccessHandlerToken,
 } from "./constants/injection-tokens";
+import { TASK_LOGGER } from './constants/tokens';
 
 // ===== Providers =====
 import { SequenceRegistry } from "./providers/sequence.registry";
 import { TaskExecutor } from "./providers/task.executor";
 import { TaskRegistry } from "./providers/task.registry";
 import { TaskStatusManager } from "./providers/task.status-manager";
-// import { TasksRepository } from "./providers/tasks.repository";
+import { DefaultTaskLogger } from './providers/default.logger';
+import { TaskLogger } from './interfaces/logger.interface';
 
 /**
  * Options for the TasksModule.
  * @property {DynamicModule[]} taskSequences - The TaskSequenceModules to be regist
+ * @property {Provider<TaskLogger>} logger ? - The logger to be used for the tasks.
  */
 interface TasksModuleOptions {
   taskSequences: DynamicModule[];
+  logger?: Provider<TaskLogger>
 }
 
 /**
@@ -39,11 +44,16 @@ export class TasksModule {
    * @returns {DynamicModule} - A dynamic module with the TasksRegistry and TaskExecutor.
    */
   static forRoot(options: TasksModuleOptions): DynamicModule {
-    const { taskSequences } = options;
+    const { taskSequences, logger } = options;
 
     if (taskSequences.length === 0) {
       throw new Error("At least one task sequence module must be provided.");
     }
+
+    const loggerProvider: Provider<TaskLogger> = {
+      provide: TASK_LOGGER,
+      useValue: logger ?? new DefaultTaskLogger(new Logger()),
+    };
 
     // Extract sequence names from the modules, and build the necessary injection tokens.
     const sequenceNames = taskSequences.map(module => (module as any).sequenceName);
@@ -63,7 +73,6 @@ export class TasksModule {
     const sequenceRegistryProvider = {
       provide: SequenceRegistry,
       useFactory: (
-        logger: PinoLogger, // TODO: Replace by custom logger
         ...seqDefinitionsAndHandlers: (
           | SequenceDefinition
           | BaseErrorHandlerService
@@ -102,7 +111,7 @@ export class TasksModule {
         return registry;
       },
       inject: [
-        PinoLogger, // TODO: Replace by custom logger
+        TASK_LOGGER,
         ...sequenceDefinitionTokens,
         ...sequenceErrorHandlerTokens,
         ...sequenceSuccessHandlerTokens,
@@ -112,7 +121,7 @@ export class TasksModule {
     const taskRegistryProvider = {
       provide: TaskRegistry,
       useFactory: (
-        logger: PinoLogger,
+        logger: TaskLogger,
         ...seqDefinitions: SequenceDefinition[]
       ) => {
         const registry = new TaskRegistry(logger);
@@ -127,7 +136,7 @@ export class TasksModule {
         return registry;
       },
       inject: [
-        PinoLogger, // TODO: Replace by custom logger
+        TASK_LOGGER,
         ...sequenceDefinitionTokens,
       ],
     };
@@ -136,12 +145,14 @@ export class TasksModule {
       module: TasksModule,
       imports: [...taskSequences],
       providers: [
+        loggerProvider,
         sequenceRegistryProvider,
         taskRegistryProvider,
         TaskExecutor,
         TaskStatusManager,
       ],
       exports: [
+        TASK_LOGGER,
         TaskExecutor,
         TaskStatusManager,
       ],

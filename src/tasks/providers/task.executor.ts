@@ -1,16 +1,17 @@
 /* eslint-disable ts/no-explicit-any */
-import { Injectable } from "@nestjs/common";
+import { Inject, Injectable } from "@nestjs/common";
 import { createHash } from "node:crypto";
 
 import { TaskStatusManager } from "./task.status-manager";
 import { SequenceRegistry } from "./sequence.registry";
 import { TaskRegistry } from "./task.registry";
-import { TasksRepository } from "./tasks.repository";
 import type { BaseTaskService } from "../interfaces/task.base.service";
 import { ERROR_CODES } from "../constants/error-codes";
 import { JOB_STATUSES } from "../constants/job-statuses";
 import { EMPTY_PAYLOAD } from "../constants/payloads";
 import { getStableStringFromPayload } from "../helpers/get-stable-string";
+import { TaskLogger } from "../interfaces/logger.interface";
+import { TASK_LOGGER } from "../constants/tokens";
 
 /**
  * The TaskExecutor is responsible for executing tasks in a pipe-and-filter pattern.
@@ -23,8 +24,7 @@ export class TaskExecutor {
     private readonly taskStatusManager: TaskStatusManager,
     private readonly sequenceRegistry: SequenceRegistry,
     private readonly taskRegistry: TaskRegistry,
-    private readonly tasksRepository: TasksRepository,
-    private readonly logger: PinoLogger, // TODO: Use a different injection token.
+    @Inject(TASK_LOGGER) private readonly logger: TaskLogger 
   ) {
     this.logger.setContext(TaskExecutor.name);
   }
@@ -50,14 +50,8 @@ export class TaskExecutor {
     // This enables caching startegies to work.
     const jobId = this._generateDeterministicId(sequence, initialPayload);
 
-    // Check if the job has been completed in DynamoDB.
-    await this.tasksRepository.checkJobCompleted(jobId);
-
     // TODO: Implement "start task" strategy.
     // await this.tasksQueue.queueTask(jobId, taskId, initialPayload);
-
-    // Persist job in DynamoDB.
-    await this.tasksRepository.createJob(jobId, sequence);
 
     this.logger.debug({
       message: "Setting job status as pending...",
@@ -205,7 +199,6 @@ export class TaskExecutor {
 
       // Mark job as finished and return
       await this.taskStatusManager.setJobStatus(jobId, JOB_STATUSES.COMPLETED);
-      await this.tasksRepository.completeJob(jobId);
 
       return;
     }

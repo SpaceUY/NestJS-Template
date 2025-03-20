@@ -1,4 +1,4 @@
-import { Injectable } from "@nestjs/common";
+import { Inject, Injectable } from "@nestjs/common";
 import type { JobStatus } from "../constants/job-statuses";
 import { type EmptyPayload, EMPTY_PAYLOAD } from "../constants/payloads";
 
@@ -8,6 +8,8 @@ import {
   getJobTaskResultKey,
   getJobTypeKey,
 } from "../helpers/job-status-keys";
+import { TASK_LOGGER } from "../constants/tokens";
+import { TaskLogger } from "../interfaces/logger.interface";
 
 /**
  * Manages the status of jobs.
@@ -15,8 +17,7 @@ import {
 @Injectable()
 export class TaskStatusManager {
   constructor(
-    // TODO: Use a different injection token.
-    private readonly logger: PinoLogger,
+    @Inject(TASK_LOGGER) private readonly logger: TaskLogger,
     // private readonly cacheService: CacheService,
   ) {
     this.logger.setContext(TaskStatusManager.name);
