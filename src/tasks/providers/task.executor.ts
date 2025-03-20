@@ -1,24 +1,16 @@
 /* eslint-disable ts/no-explicit-any */
-import type { BaseTaskService } from "@/modules/core/tasks/background/interfaces/task.base.service";
-import type { TasksQueue } from "@/modules/infrastructure/queues/ports/tasks.queue";
-
+import { Injectable } from "@nestjs/common";
 import { createHash } from "node:crypto";
-import { EMPTY_PAYLOAD } from "@/common/constants/defaults";
-import { ERROR_CODES } from "@/common/enums/error-codes.enum";
 
-import { JOB_STATUSES } from "@/common/enums/job-status.enum";
-import { ApiException } from "@/common/expections/api.exception";
-import { getStableStringFromPayload } from "@/common/helpers/get-stable-string";
-
-import { TaskStatusManager } from "@/modules/core/tasks/shared/services/task.status-manager.service";
-import { Inject, Injectable } from "@nestjs/common";
-import { PinoLogger } from "nestjs-pino";
+import { TaskStatusManager } from "./task.status-manager";
 import { SequenceRegistry } from "./sequence.registry";
 import { TaskRegistry } from "./task.registry";
 import { TasksRepository } from "./tasks.repository";
-
-// TODO: Ideally define elsewhere, but beware of circular dependency issues that make this be `undefined` upon import.
-export const TASKS_QUEUE_ADAPTER_TOKEN = "TASKS_SENDER";
+import type { BaseTaskService } from "../interfaces/task.base.service";
+import { ERROR_CODES } from "../constants/error-codes";
+import { JOB_STATUSES } from "../constants/job-statuses";
+import { EMPTY_PAYLOAD } from "../constants/payloads";
+import { getStableStringFromPayload } from "../helpers/get-stable-string";
 
 /**
  * The TaskExecutor is responsible for executing tasks in a pipe-and-filter pattern.
@@ -28,13 +20,11 @@ export const TASKS_QUEUE_ADAPTER_TOKEN = "TASKS_SENDER";
 @Injectable()
 export class TaskExecutor {
   constructor(
-    @Inject(TASKS_QUEUE_ADAPTER_TOKEN)
-    private readonly tasksQueue: TasksQueue,
     private readonly taskStatusManager: TaskStatusManager,
     private readonly sequenceRegistry: SequenceRegistry,
     private readonly taskRegistry: TaskRegistry,
     private readonly tasksRepository: TasksRepository,
-    private readonly logger: PinoLogger,
+    private readonly logger: PinoLogger, // TODO: Use a different injection token.
   ) {
     this.logger.setContext(TaskExecutor.name);
   }
@@ -44,6 +34,7 @@ export class TaskExecutor {
    * @param {string} sequence - Name of the sequence to start.
    * @param {object} initialPayload - Initial data for the first task.
    * @returns {Promise<string>} - The ID of the onboarding process, for tracking purposes.
+   * @throws {Error} - If the sequence is not found.
    */
   async startSequence(
     sequence: string,
@@ -62,7 +53,8 @@ export class TaskExecutor {
     // Check if the job has been completed in DynamoDB.
     await this.tasksRepository.checkJobCompleted(jobId);
 
-    await this.tasksQueue.queueTask(jobId, taskId, initialPayload);
+    // TODO: Implement "start task" strategy.
+    // await this.tasksQueue.queueTask(jobId, taskId, initialPayload);
 
     // Persist job in DynamoDB.
     await this.tasksRepository.createJob(jobId, sequence);
@@ -84,15 +76,16 @@ export class TaskExecutor {
    * @param {string} taskId - The ID of the task to execute.
    * @param {object} payload - The input payload for the task.
    * @returns {Promise<void>} - The result of the task execution.
+   * @throws {Error} - If the task is not found.
    */
   async execute(jobId: string, taskId: string, payload: object): Promise<void> {
     const task = this.taskRegistry.getTask(taskId);
 
     if (!task) {
-      throw new ApiException({
-        message: `Task with ID ${taskId} not found in registry`,
+      throw new Error(JSON.stringify({
         code: ERROR_CODES.TASK_NOT_FOUND,
-      });
+        data: { taskId },
+      }));
     }
 
     // Check if the job has already ran, by checking for a cache hit on the result.
@@ -222,7 +215,8 @@ export class TaskExecutor {
       data: { taskId: nextTaskId, payload },
     });
 
-    await this.tasksQueue.queueTask(jobId, nextTaskId, payload);
+    // TODO: Implement "start task" strategy.
+    // await this.tasksQueue.queueTask(jobId, nextTaskId, payload);
 
     this.logger.info({
       message: `Task queued successfully`,

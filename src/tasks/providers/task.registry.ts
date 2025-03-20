@@ -1,18 +1,17 @@
-import type { BaseTaskService } from "@/modules/core/tasks/background/interfaces/task.base.service";
+import { Injectable } from "@nestjs/common";
+
 // ===== Types & Abstract classes =====
-import type { TaskDefinition } from "@/modules/core/tasks/background/task-sequence.module";
+import type { BaseTaskService } from "../interfaces/task.base.service";
+import type { TaskDefinition } from "../task-sequence.module";
 
 // ===== Common =====
-import { ERROR_CODES } from "@/common/enums/error-codes.enum";
-import { ApiException } from "@/common/expections/api.exception";
-
-import { Injectable } from "@nestjs/common";
-import { PinoLogger } from "nestjs-pino";
+import { ERROR_CODES } from "../constants/error-codes";
 
 @Injectable()
 export class TaskRegistry {
   private readonly _tasks: Map<string, TaskDefinition> = new Map();
 
+  // TODO: Use a different injection token.
   constructor(private readonly logger: PinoLogger) {
     this.logger.setContext(TaskRegistry.name);
   }
@@ -38,6 +37,7 @@ export class TaskRegistry {
    * Get a task from the registry by its ID.
    * @param {string} taskId - The ID of the task to retrieve.
    * @returns {BaseTaskService} - The task implementation.
+   * @throws {Error} - If the task is not found.
    */
   getTask(taskId: string): BaseTaskService {
     const task = this._getTaskDefinition(taskId);
@@ -48,6 +48,7 @@ export class TaskRegistry {
    * Get the parent sequence ID of a task
    * @param {string} taskId - The ID of the task to retrieve.
    * @returns {string} - The ID of the parent sequence.
+   * @throws {Error} - If the task is not found.
    */
   getParentSequenceId(taskId: string): string {
     const task = this._getTaskDefinition(taskId);
@@ -58,6 +59,7 @@ export class TaskRegistry {
    * Get the ID of the next task in the sequence
    * @param {string} taskId - The ID of the current task
    * @returns {string | undefined} - The ID of the next task, or undefined if there is no next task
+   * @throws {Error} - If the task is not found.
    */
   getNextTaskId(taskId: string): string | undefined {
     const task = this._getTaskDefinition(taskId);
@@ -77,15 +79,16 @@ export class TaskRegistry {
    * Get a task definition the registry by its ID.
    * @param {string} taskId - The ID of the task to retrieve.
    * @returns {TaskDefinition} - The task definition, including the task implementation and next task ID.
+   * @throws {Error} - If the task is not found.
    */
   private _getTaskDefinition(taskId: string): TaskDefinition {
     const taskDef = this._tasks.get(taskId);
 
     if (!taskDef) {
-      throw new ApiException({
+      throw new Error(JSON.stringify({
         code: ERROR_CODES.TASK_NOT_FOUND,
         data: { taskId },
-      });
+      }));
     }
 
     return taskDef;

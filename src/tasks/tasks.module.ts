@@ -1,18 +1,8 @@
-// ===== Types =====
 import type { DynamicModule } from "@nestjs/common";
 import type { BaseErrorHandlerService } from "./interfaces/error-handler.base.service";
 import type { BaseSuccessHandlerService } from "./interfaces/success-handler.base.service";
 import type { SequenceDefinition } from "./task-sequence.module";
-
-import { TaskStatusManager } from "@/modules/core/tasks/shared/services/task.status-manager.service";
-import { DynamoDBModule } from "@/modules/infrastructure/aws/dynamodb/dynamodb.module";
-
-import { CacheModule } from "@/modules/infrastructure/cache/cache.module";
-import { Global, Module } from "@nestjs/common";
-import { PinoLogger } from "nestjs-pino";
-
-// ===== Modules =====
-import { BullQueuesModule } from "./adapters/bull/tasks.bull.module";
+import { Module } from "@nestjs/common";
 
 // ===== Constants =====
 import {
@@ -20,31 +10,43 @@ import {
   createSequenceErrorHandlerToken,
   createSequenceSuccessHandlerToken,
 } from "./constants/injection-tokens";
+
 // ===== Providers =====
 import { SequenceRegistry } from "./providers/sequence.registry";
 import { TaskExecutor } from "./providers/task.executor";
 import { TaskRegistry } from "./providers/task.registry";
-import { TasksRepository } from "./providers/tasks.repository";
+import { TaskStatusManager } from "./providers/task.status-manager";
+// import { TasksRepository } from "./providers/tasks.repository";
 
 /**
- * The TasksModule is a global module that registers all task definitions and provides a TaskRegistry and TaskExecutor.
+ * Options for the TasksModule.
+ * @property {DynamicModule[]} taskSequences - The TaskSequenceModules to be regist
+ */
+interface TasksModuleOptions {
+  taskSequences: DynamicModule[];
+}
+
+/**
+ * The TasksModule is a module that registers all task definitions and provides a `TaskExecutor` export
+ * that allows consumers to execute tasks sequences, which are called "jobs" once instantiated..
  * It essentially acts as a single thread of execution for all registered tasks.
  */
-@Global()
 @Module({})
 export class TasksModule {
   /**
    * Initialize the Tasks module with task sequence modules.
-   * @param {DynamicModule} modules - TaskSequenceModules to be registered.
+   * @param {TasksModuleOptions} modules - 
    * @returns {DynamicModule} - A dynamic module with the TasksRegistry and TaskExecutor.
    */
-  static forRoot(modules: DynamicModule[]): DynamicModule {
-    if (modules.length === 0) {
+  static forRoot(options: TasksModuleOptions): DynamicModule {
+    const { taskSequences } = options;
+
+    if (taskSequences.length === 0) {
       throw new Error("At least one task sequence module must be provided.");
     }
 
     // Extract sequence names from the modules, and build the necessary injection tokens.
-    const sequenceNames = modules.map(module => (module as any).sequenceName);
+    const sequenceNames = taskSequences.map(module => (module as any).sequenceName);
     const totalSequences = sequenceNames.length;
 
     const sequenceDefinitionTokens = sequenceNames.map(name =>
@@ -61,7 +63,7 @@ export class TasksModule {
     const sequenceRegistryProvider = {
       provide: SequenceRegistry,
       useFactory: (
-        logger: PinoLogger,
+        logger: PinoLogger, // TODO: Replace by custom logger
         ...seqDefinitionsAndHandlers: (
           | SequenceDefinition
           | BaseErrorHandlerService
@@ -100,7 +102,7 @@ export class TasksModule {
         return registry;
       },
       inject: [
-        PinoLogger,
+        PinoLogger, // TODO: Replace by custom logger
         ...sequenceDefinitionTokens,
         ...sequenceErrorHandlerTokens,
         ...sequenceSuccessHandlerTokens,
@@ -124,22 +126,22 @@ export class TasksModule {
 
         return registry;
       },
-      inject: [PinoLogger, ...sequenceDefinitionTokens],
+      inject: [
+        PinoLogger, // TODO: Replace by custom logger
+        ...sequenceDefinitionTokens,
+      ],
     };
 
     return {
       module: TasksModule,
-      imports: [DynamoDBModule, BullQueuesModule, CacheModule, ...modules],
+      imports: [...taskSequences],
       providers: [
         sequenceRegistryProvider,
         taskRegistryProvider,
-        TasksRepository,
         TaskExecutor,
         TaskStatusManager,
       ],
       exports: [
-        SequenceRegistry,
-        TaskRegistry,
         TaskExecutor,
         TaskStatusManager,
       ],

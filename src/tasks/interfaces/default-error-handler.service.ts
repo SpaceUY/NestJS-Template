@@ -1,9 +1,9 @@
 import { Injectable } from "@nestjs/common";
-import { PinoLogger } from "nestjs-pino";
 import { BaseErrorHandlerService } from "./error-handler.base.service";
 
 @Injectable()
 export class DefaultErrorHandlerService extends BaseErrorHandlerService {
+  // TODO: Use a different injection token.
   constructor(private readonly logger: PinoLogger) {
     super();
   }

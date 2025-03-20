@@ -1,12 +1,6 @@
-// ===== Types =====
-import type { SequenceDefinition as FullSequenceDefinition } from "@/modules/core/tasks/background/task-sequence.module";
-import type { PinoLogger } from "nestjs-pino";
-
-// ===== Common =====
-import { ERROR_CODES } from "@/common/enums/error-codes.enum";
-
-import { ApiException } from "@/common/expections/api.exception";
 import { Injectable } from "@nestjs/common";
+import type { SequenceDefinition as FullSequenceDefinition } from "../task-sequence.module";
+import { ERROR_CODES } from "../constants/error-codes";
 
 type SequenceDefinition = Omit<FullSequenceDefinition, "tasks">;
 
@@ -14,6 +8,7 @@ type SequenceDefinition = Omit<FullSequenceDefinition, "tasks">;
 export class SequenceRegistry {
   private _sequences: Map<string, SequenceDefinition> = new Map();
 
+  // TODO: User a different injection token.
   constructor(private readonly logger: PinoLogger) {
     this.logger.setContext(SequenceRegistry.name);
   }
@@ -47,6 +42,7 @@ export class SequenceRegistry {
    * Get a sequence from the registry by its name.
    * @param {string} sequenceName - The name of the sequence to retrieve.
    * @returns {SequenceDefinition} - The sequence definition.
+   * @throws {Error} - If the sequence is not found.
    */
   getSequence(sequenceName: string): SequenceDefinition {
     return this._getSequenceDefinition(sequenceName);
@@ -65,15 +61,16 @@ export class SequenceRegistry {
    * Get a sequence definition the registry by its name.
    * @param {string} sequenceName - The name of the sequence to retrieve.
    * @returns {SequenceDefinition} - The sequence definition.
+   * @throws {Error} - If the sequence is not found.
    */
   private _getSequenceDefinition(sequenceName: string): SequenceDefinition {
     const sequenceDef = this._sequences.get(sequenceName);
 
     if (!sequenceDef) {
-      throw new ApiException({
+      throw new Error(JSON.stringify({
         code: ERROR_CODES.SEQUENCE_NOT_FOUND,
         data: { sequenceId: sequenceName },
-      });
+      }));
     }
 
     return sequenceDef;

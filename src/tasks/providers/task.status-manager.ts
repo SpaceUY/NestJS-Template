@@ -1,23 +1,13 @@
-import type {
-  EmptyPayload,
-} from "@/common/constants/defaults";
-// ==== Enums & Constants & Helpers ====
-import type { JobStatus } from "@/common/enums/job-status.enum";
+import { Injectable } from "@nestjs/common";
+import type { JobStatus } from "../constants/job-statuses";
+import { type EmptyPayload, EMPTY_PAYLOAD } from "../constants/payloads";
 
-import {
-  EMPTY_PAYLOAD,
-} from "@/common/constants/defaults";
 import {
   getJobCurrentTaskKey,
   getJobStatusKey,
   getJobTaskResultKey,
   getJobTypeKey,
-} from "@/common/helpers/job-status-keys";
-// ==== Services ====
-import { CacheService } from "@/modules/infrastructure/cache/cache.service";
-import { Injectable } from "@nestjs/common";
-
-import { PinoLogger } from "nestjs-pino";
+} from "../helpers/job-status-keys";
 
 /**
  * Manages the status of jobs.
@@ -25,8 +15,9 @@ import { PinoLogger } from "nestjs-pino";
 @Injectable()
 export class TaskStatusManager {
   constructor(
+    // TODO: Use a different injection token.
     private readonly logger: PinoLogger,
-    private readonly cacheService: CacheService,
+    // private readonly cacheService: CacheService,
   ) {
     this.logger.setContext(TaskStatusManager.name);
   }
@@ -44,7 +35,8 @@ export class TaskStatusManager {
     });
 
     const key = getJobTypeKey(jobId);
-    await this.cacheService.set(key, sequenceName);
+    // TODO: Implement cache set.
+    // await this.cacheService.set(key, sequenceName);
   }
 
   /**
@@ -59,7 +51,9 @@ export class TaskStatusManager {
     });
 
     const key = getJobTypeKey(jobId);
-    return this.cacheService.get(key) as Promise<string | undefined>;
+    // TODO: Implement cache get.
+    // return this.cacheService.get(key) as Promise<string | undefined>;
+    return 'todo!';
   }
 
   // ===== Job Status =====
@@ -75,7 +69,8 @@ export class TaskStatusManager {
     });
 
     const key = getJobStatusKey(jobId);
-    await this.cacheService.set(key, status);
+    // TODO: Implement cache set.
+    // await this.cacheService.set(key, status);
   }
 
   /**
@@ -90,7 +85,9 @@ export class TaskStatusManager {
     });
 
     const key = getJobStatusKey(jobId);
-    return this.cacheService.get(key) as Promise<JobStatus | undefined>;
+    // TODO: Implement cache get.
+    // return this.cacheService.get(key) as Promise<JobStatus | undefined>;
+    return;
   }
 
   // ===== Current Task =====
@@ -106,7 +103,8 @@ export class TaskStatusManager {
     });
 
     const key = getJobCurrentTaskKey(jobId);
-    await this.cacheService.set(key, taskId);
+    // TODO: Implement cache set.
+    // await this.cacheService.set(key, taskId);
   }
 
   /**
@@ -121,7 +119,9 @@ export class TaskStatusManager {
     });
 
     const key = getJobCurrentTaskKey(jobId);
-    return this.cacheService.get(key) as Promise<string | undefined>;
+    // TODO: Implement cache get.
+    // return this.cacheService.get(key) as Promise<string | undefined>;
+    return 'todo!';
   }
 
   // ===== Job task result =====
@@ -143,7 +143,8 @@ export class TaskStatusManager {
 
     const key = getJobTaskResultKey(jobId, taskId);
     const data = result ? JSON.stringify(result) : EMPTY_PAYLOAD;
-    await this.cacheService.set(key, data);
+    // TODO: Implement cache set.
+    // await this.cacheService.set(key, data);
   }
 
   /**
@@ -162,7 +163,9 @@ export class TaskStatusManager {
     });
 
     const key = getJobTaskResultKey(jobId, taskId);
-    const data = await this.cacheService.get(key);
+    // TODO: Implement cache get.
+    // const data = await this.cacheService.get(key);
+    const data: string = 'todo!';
 
     if (data === EMPTY_PAYLOAD)
       return EMPTY_PAYLOAD;

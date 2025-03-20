@@ -1,24 +1,21 @@
 /* eslint-disable ts/no-explicit-any */
 import type { DynamicModule, Provider, Type } from "@nestjs/common";
-// ===== Service interfaces =====
-import type { BaseTaskService } from "./interfaces/task.base.service";
-
-import { GuardianModule } from "@/modules/infrastructure/guardian/guardian.module";
 import { Module } from "@nestjs/common";
-// ===== Modules =====
-import { BullQueuesModule } from "./adapters/bull/tasks.bull.module";
+
+// ===== Services & Interfaces =====
+import type { BaseTaskService } from "./interfaces/task.base.service";
+import { DefaultErrorHandlerService } from "./interfaces/default-error-handler.service";
+import { DefaultSuccessHandlerService } from "./interfaces/default-success-handler.service";
+import { BaseErrorHandlerService } from "./interfaces/error-handler.base.service";
+import { BaseSuccessHandlerService } from "./interfaces/success-handler.base.service";
+
 // ===== Helpers =====
 import {
   createSequenceDefinitionToken,
   createSequenceErrorHandlerToken,
   createSequenceSuccessHandlerToken,
 } from "./constants/injection-tokens";
-import { DefaultErrorHandlerService } from "./interfaces/default-error-handler.service";
 
-import { DefaultSuccessHandlerService } from "./interfaces/default-success-handler.service";
-
-import { BaseErrorHandlerService } from "./interfaces/error-handler.base.service";
-import { BaseSuccessHandlerService } from "./interfaces/success-handler.base.service";
 
 /**
  * Interface for task registration
@@ -84,8 +81,15 @@ export class TaskSequenceModule {
    * @returns {TaskSequenceModule} - A dynamic module with task definitions and their dependencies
    */
   static register(options: TaskSequenceModuleOptions): DynamicModule {
-    const { sequenceName, tasks, errorHandler, successHandler, imports, providers, exports }
-      = options;
+    const { 
+      sequenceName,
+      tasks,
+      errorHandler,
+      successHandler,
+      imports = [],
+      providers = [],
+      exports = []
+    } = options;
 
     if (!sequenceName) {
       throw new Error("TaskSequenceModule requires a unique name");
@@ -132,7 +136,7 @@ export class TaskSequenceModule {
 
     const module = {
       module: TaskSequenceModule,
-      imports: [...(imports ?? []), BullQueuesModule, GuardianModule], // 💡 We could choose the queue provider here (Bull, SQS, etc.)
+      imports: [...imports],
       providers: [
         ...(providers ?? []),
         ...taskClassProviders,

@@ -1,9 +1,9 @@
 import { Injectable } from "@nestjs/common";
-import { PinoLogger } from "nestjs-pino";
 import { BaseSuccessHandlerService } from "./success-handler.base.service";
 
 @Injectable()
 export class DefaultSuccessHandlerService extends BaseSuccessHandlerService {
+  // TODO: Use a different injection token.
   constructor(private readonly logger: PinoLogger) {
     super();
   }
