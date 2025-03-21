@@ -1,23 +1,24 @@
-import type { DynamicModule } from "@nestjs/common";
-import type { BaseErrorHandlerService } from "./interfaces/error-handler.base.service";
-import type { BaseSuccessHandlerService } from "./interfaces/success-handler.base.service";
-import type { SequenceDefinition } from "./task-sequence.module";
-import { Module, Provider, Logger } from "@nestjs/common";
-
+import type { DynamicModule } from '@nestjs/common';
+import type { BaseErrorHandlerService } from './interfaces/error-handler.base.service';
+import type { BaseSuccessHandlerService } from './interfaces/success-handler.base.service';
+import type { BaseStartTaskHandlerService } from './interfaces/start-task-handler.base.service';
+import type { SequenceDefinition } from './task-sequence.module';
+import { Module, Provider, Logger } from '@nestjs/common';
 
 // ===== Constants =====
 import {
   createSequenceDefinitionToken,
   createSequenceErrorHandlerToken,
+  createSequenceStartTaskHandlerToken,
   createSequenceSuccessHandlerToken,
-} from "./constants/injection-tokens";
+} from './constants/injection-tokens';
 import { TASK_LOGGER } from './constants/tokens';
 
 // ===== Providers =====
-import { SequenceRegistry } from "./providers/sequence.registry";
-import { TaskExecutor } from "./providers/task.executor";
-import { TaskRegistry } from "./providers/task.registry";
-import { TaskStatusManager } from "./providers/task.status-manager";
+import { SequenceRegistry } from './providers/sequence.registry';
+import { TaskExecutor } from './providers/task.executor';
+import { TaskRegistry } from './providers/task.registry';
+import { TaskStatusManager } from './providers/task.status-manager';
 import { DefaultTaskLogger } from './providers/default.logger';
 import { TaskLogger } from './interfaces/logger.interface';
 
@@ -28,7 +29,7 @@ import { TaskLogger } from './interfaces/logger.interface';
  */
 interface TasksModuleOptions {
   taskSequences: DynamicModule[];
-  logger?: Provider<TaskLogger>
+  logger?: Provider<TaskLogger>;
 }
 
 /**
@@ -40,14 +41,14 @@ interface TasksModuleOptions {
 export class TasksModule {
   /**
    * Initialize the Tasks module with task sequence modules.
-   * @param {TasksModuleOptions} modules - 
+   * @param {TasksModuleOptions} modules -
    * @returns {DynamicModule} - A dynamic module with the TasksRegistry and TaskExecutor.
    */
   static forRoot(options: TasksModuleOptions): DynamicModule {
     const { taskSequences, logger } = options;
 
     if (taskSequences.length === 0) {
-      throw new Error("At least one task sequence module must be provided.");
+      throw new Error('At least one task sequence module must be provided.');
     }
 
     const loggerProvider: Provider<TaskLogger> = {
@@ -56,17 +57,22 @@ export class TasksModule {
     };
 
     // Extract sequence names from the modules, and build the necessary injection tokens.
-    const sequenceNames = taskSequences.map(module => (module as any).sequenceName);
+    const sequenceNames = taskSequences.map(
+      (module) => (module as any).sequenceName,
+    );
     const totalSequences = sequenceNames.length;
 
-    const sequenceDefinitionTokens = sequenceNames.map(name =>
+    const sequenceDefinitionTokens = sequenceNames.map((name) =>
       createSequenceDefinitionToken(name),
     );
-    const sequenceErrorHandlerTokens = sequenceNames.map(name =>
+    const sequenceErrorHandlerTokens = sequenceNames.map((name) =>
       createSequenceErrorHandlerToken(name),
     );
-    const sequenceSuccessHandlerTokens = sequenceNames.map(name =>
+    const sequenceSuccessHandlerTokens = sequenceNames.map((name) =>
       createSequenceSuccessHandlerToken(name),
+    );
+    const sequenceStartTaskHandlerTokens = sequenceNames.map((name) =>
+      createSequenceStartTaskHandlerToken(name),
     );
 
     // Provider definitions
@@ -77,6 +83,7 @@ export class TasksModule {
           | SequenceDefinition
           | BaseErrorHandlerService
           | BaseSuccessHandlerService
+          | BaseStartTaskHandlerService
         )[]
       ) => {
         // Separate the sequence definitions and handlers (success and error).
@@ -95,15 +102,22 @@ export class TasksModule {
           totalSequences * 3,
         ) as BaseSuccessHandlerService[];
 
+        const seqStartTaskHandlers = seqDefinitionsAndHandlers.slice(
+          totalSequences * 3,
+          totalSequences * 4,
+        ) as BaseStartTaskHandlerService[];
+
         const registry = new SequenceRegistry(logger);
 
         // Register all injected sequence definitions
         seqDefinitions.forEach((definition, index) => {
           const errorHandler = seqErrorHandlers[index];
           const successHandler = seqSuccessHandlers[index];
+          const startTaskHandler = seqStartTaskHandlers[index];
 
           definition.errorHandler = errorHandler;
           definition.successHandler = successHandler;
+          definition.startTaskHandler = startTaskHandler;
 
           registry.registerSequence(definition);
         });
@@ -115,6 +129,7 @@ export class TasksModule {
         ...sequenceDefinitionTokens,
         ...sequenceErrorHandlerTokens,
         ...sequenceSuccessHandlerTokens,
+        ...sequenceStartTaskHandlerTokens,
       ],
     };
 
@@ -135,10 +150,7 @@ export class TasksModule {
 
         return registry;
       },
-      inject: [
-        TASK_LOGGER,
-        ...sequenceDefinitionTokens,
-      ],
+      inject: [TASK_LOGGER, ...sequenceDefinitionTokens],
     };
 
     return {
@@ -151,11 +163,7 @@ export class TasksModule {
         TaskExecutor,
         TaskStatusManager,
       ],
-      exports: [
-        TASK_LOGGER,
-        TaskExecutor,
-        TaskStatusManager,
-      ],
+      exports: [TASK_LOGGER, TaskExecutor, TaskStatusManager],
     };
   }
 }

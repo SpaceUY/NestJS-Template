@@ -1,21 +1,22 @@
 /* eslint-disable ts/no-explicit-any */
-import type { DynamicModule, Provider, Type } from "@nestjs/common";
-import { Module } from "@nestjs/common";
+import type { DynamicModule, Provider, Type } from '@nestjs/common';
+import { Module } from '@nestjs/common';
 
 // ===== Services & Interfaces =====
-import type { BaseTaskService } from "./interfaces/task.base.service";
-import { DefaultErrorHandlerService } from "./interfaces/default-error-handler.service";
-import { DefaultSuccessHandlerService } from "./interfaces/default-success-handler.service";
-import { BaseErrorHandlerService } from "./interfaces/error-handler.base.service";
-import { BaseSuccessHandlerService } from "./interfaces/success-handler.base.service";
+import type { BaseTaskService } from './interfaces/task.base.service';
+import { DefaultErrorHandlerService } from './interfaces/default-error-handler.service';
+import { DefaultSuccessHandlerService } from './interfaces/default-success-handler.service';
+import { BaseErrorHandlerService } from './interfaces/error-handler.base.service';
+import { BaseSuccessHandlerService } from './interfaces/success-handler.base.service';
+import { BaseStartTaskHandlerService } from './interfaces/start-task-handler.base.service';
 
 // ===== Helpers =====
 import {
   createSequenceDefinitionToken,
   createSequenceErrorHandlerToken,
   createSequenceSuccessHandlerToken,
-} from "./constants/injection-tokens";
-
+  createSequenceStartTaskHandlerToken,
+} from './constants/injection-tokens';
 
 /**
  * Interface for task registration
@@ -44,15 +45,22 @@ export interface SequenceDefinition {
   tasks: TaskDefinition[];
   errorHandler: BaseErrorHandlerService;
   successHandler: BaseSuccessHandlerService;
+  startTaskHandler: BaseStartTaskHandlerService;
 }
+
+type SequenceDefinitionWithoutHandlers = Omit<
+  SequenceDefinition,
+  'errorHandler' | 'successHandler' | 'startTaskHandler'
+>;
 
 /**
  * The options for the TaskSequenceModule.
  * This is used to register a task sequence with its dependencies.
  * @property {string} sequenceName - The name of the task sequence.
  * @property {TaskRegistration[]} tasks - The task registrations, each with an ID and task class.
- * @property {Type<BaseErrorHandlerService>} errorHandler - A service that handles errors that occur during the task sequence.
- * @property {Type<BaseSuccessHandlerService>} successHandler - A service that handles the success of the task sequence execution.
+ * @property {Type<BaseErrorHandlerService>} errorHandler ? - A service that handles errors that occur during the task sequence.
+ * @property {Type<BaseSuccessHandlerService>} successHandler ? - A service that handles the success of the task sequence execution.
+ * @property {Type<BaseStartTaskHandlerService>} startTaskHandler ? - A service that handles task start execution. For instance, this can be used to queue tasks for execution. It not provided, tasks will be executed immediately.
  * @property {Type<any>[]} imports - The imports for the module.
  * @property {Provider[]} providers - The providers for the module.
  * @property {(Provider | Type<any>)[]} exports - The exports for the module.
@@ -62,6 +70,7 @@ export interface TaskSequenceModuleOptions {
   tasks: TaskRegistration[];
   errorHandler?: Type<BaseErrorHandlerService>;
   successHandler?: Type<BaseSuccessHandlerService>;
+  startTaskHandler?: Type<BaseStartTaskHandlerService>;
   //
   imports?: (DynamicModule | Type<any>)[];
   providers?: Provider[];
@@ -81,40 +90,43 @@ export class TaskSequenceModule {
    * @returns {TaskSequenceModule} - A dynamic module with task definitions and their dependencies
    */
   static register(options: TaskSequenceModuleOptions): DynamicModule {
-    const { 
+    const {
       sequenceName,
       tasks,
       errorHandler,
       successHandler,
+      startTaskHandler,
       imports = [],
       providers = [],
-      exports = []
+      exports = [],
     } = options;
 
     if (!sequenceName) {
-      throw new Error("TaskSequenceModule requires a unique name");
+      throw new Error('TaskSequenceModule requires a unique name');
     }
 
     if (!tasks || tasks.length === 0) {
-      throw new Error("TaskSequenceModule requires at least one task");
+      throw new Error('TaskSequenceModule requires at least one task');
     }
 
-    // Create a unique injection tokens for this module's sequence, error handler, and success handler.
+    // Create a unique injection tokens for this module's sequence, error handler, success handler, and next task handler.
     const sequenceDefinitionToken = createSequenceDefinitionToken(sequenceName);
-    const sequenceErrorHandlerToken
-      = createSequenceErrorHandlerToken(sequenceName);
-    const sequenceSuccessHandlerToken
-      = createSequenceSuccessHandlerToken(sequenceName);
+    const sequenceErrorHandlerToken =
+      createSequenceErrorHandlerToken(sequenceName);
+    const sequenceSuccessHandlerToken =
+      createSequenceSuccessHandlerToken(sequenceName);
+    const sequenceStartTaskHandlerToken =
+      createSequenceStartTaskHandlerToken(sequenceName);
 
     // Grab the provider for each task. This will be used to inject the task instances.
-    const taskClassProviders = tasks.map(task => task.task);
+    const taskClassProviders = tasks.map((task) => task.task);
 
     // Create a factory that returns an array of task definitions
     const sequenceDefinitionProvider = {
       provide: sequenceDefinitionToken,
       useFactory: (
         ...taskInstances: BaseTaskService[]
-      ): Omit<SequenceDefinition, "errorHandler" | "successHandler"> => {
+      ): SequenceDefinitionWithoutHandlers => {
         return {
           name: sequenceName,
           firstTaskId: tasks[0].id,
@@ -134,6 +146,26 @@ export class TaskSequenceModule {
       inject: [...taskClassProviders],
     };
 
+    const sequenceErrorHandlerProvider = {
+      provide: sequenceErrorHandlerToken,
+      useClass: errorHandler ?? DefaultErrorHandlerService,
+    };
+
+    const sequenceSuccessHandlerProvider = {
+      provide: sequenceSuccessHandlerToken,
+      useClass: successHandler ?? DefaultSuccessHandlerService,
+    };
+
+    const sequenceStartTaskHandlerProvider: any = {
+      provide: sequenceStartTaskHandlerToken,
+    };
+
+    if (startTaskHandler) {
+      sequenceStartTaskHandlerProvider.useClass = startTaskHandler;
+    } else {
+      sequenceStartTaskHandlerProvider.useValue = null;
+    }
+
     const module = {
       module: TaskSequenceModule,
       imports: [...imports],
@@ -141,20 +173,16 @@ export class TaskSequenceModule {
         ...(providers ?? []),
         ...taskClassProviders,
         sequenceDefinitionProvider,
-        {
-          provide: sequenceErrorHandlerToken,
-          useClass: errorHandler ?? DefaultErrorHandlerService,
-        },
-        {
-          provide: sequenceSuccessHandlerToken,
-          useClass: successHandler ?? DefaultSuccessHandlerService,
-        },
+        sequenceErrorHandlerProvider,
+        sequenceSuccessHandlerProvider,
+        sequenceStartTaskHandlerProvider,
       ],
       exports: [
         ...(exports ?? []),
         sequenceDefinitionToken,
         sequenceErrorHandlerToken,
         sequenceSuccessHandlerToken,
+        sequenceStartTaskHandlerToken,
       ],
     };
 

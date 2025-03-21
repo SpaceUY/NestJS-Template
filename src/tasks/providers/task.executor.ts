@@ -1,17 +1,17 @@
 /* eslint-disable ts/no-explicit-any */
-import { Inject, Injectable } from "@nestjs/common";
-import { createHash } from "node:crypto";
+import { Inject, Injectable } from '@nestjs/common';
+import { createHash } from 'node:crypto';
 
-import { TaskStatusManager } from "./task.status-manager";
-import { SequenceRegistry } from "./sequence.registry";
-import { TaskRegistry } from "./task.registry";
-import type { BaseTaskService } from "../interfaces/task.base.service";
-import { ERROR_CODES } from "../constants/error-codes";
-import { JOB_STATUSES } from "../constants/job-statuses";
-import { EMPTY_PAYLOAD } from "../constants/payloads";
-import { getStableStringFromPayload } from "../helpers/get-stable-string";
-import { TaskLogger } from "../interfaces/logger.interface";
-import { TASK_LOGGER } from "../constants/tokens";
+import { TaskStatusManager } from './task.status-manager';
+import { SequenceRegistry } from './sequence.registry';
+import { TaskRegistry } from './task.registry';
+import type { BaseTaskService } from '../interfaces/task.base.service';
+import { ERROR_CODES } from '../constants/error-codes';
+import { JOB_STATUSES } from '../constants/job-statuses';
+import { EMPTY_PAYLOAD } from '../constants/payloads';
+import { getStableStringFromPayload } from '../helpers/get-stable-string';
+import { TaskLogger } from '../interfaces/logger.interface';
+import { TASK_LOGGER } from '../constants/tokens';
 
 /**
  * The TaskExecutor is responsible for executing tasks in a pipe-and-filter pattern.
@@ -24,7 +24,7 @@ export class TaskExecutor {
     private readonly taskStatusManager: TaskStatusManager,
     private readonly sequenceRegistry: SequenceRegistry,
     private readonly taskRegistry: TaskRegistry,
-    @Inject(TASK_LOGGER) private readonly logger: TaskLogger 
+    @Inject(TASK_LOGGER) private readonly logger: TaskLogger,
   ) {
     this.logger.setContext(TaskExecutor.name);
   }
@@ -44,17 +44,25 @@ export class TaskExecutor {
     // This is the task identifier. It's the same for all instances of this task.
     // Not to be confused with the job (sequence) ID, which is unique for each sequence execution,
     // and is used for querying.
-    const taskId = sequenceDefinition.firstTaskId;
+    const { startTaskHandler, firstTaskId: taskId } = sequenceDefinition ?? {};
 
     // Queue task execution. Job ID is deterministic, based on sequence name and payload.
     // This enables caching startegies to work.
     const jobId = this._generateDeterministicId(sequence, initialPayload);
 
-    // TODO: Implement "start task" strategy.
-    // await this.tasksQueue.queueTask(jobId, taskId, initialPayload);
+    if (startTaskHandler) {
+      await startTaskHandler?.handleStartTask(jobId, taskId, initialPayload);
+    } else {
+      this.logger.info({
+        message: 'No start task handler found, executing task immediately...',
+        data: { jobId, taskId, payload: initialPayload },
+      });
+
+      await this.execute(jobId, taskId, initialPayload);
+    }
 
     this.logger.debug({
-      message: "Setting job status as pending...",
+      message: 'Setting job status as pending...',
       data: { jobId },
     });
 
@@ -76,10 +84,12 @@ export class TaskExecutor {
     const task = this.taskRegistry.getTask(taskId);
 
     if (!task) {
-      throw new Error(JSON.stringify({
-        code: ERROR_CODES.TASK_NOT_FOUND,
-        data: { taskId },
-      }));
+      throw new Error(
+        JSON.stringify({
+          code: ERROR_CODES.TASK_NOT_FOUND,
+          data: { taskId },
+        }),
+      );
     }
 
     // Check if the job has already ran, by checking for a cache hit on the result.
@@ -96,8 +106,7 @@ export class TaskExecutor {
     if (!cachedResult) {
       try {
         nextPayload = await this._executeTask(jobId, taskId, task, payload);
-      }
-      catch (err) {
+      } catch (err) {
         this.logger.error({
           message: `Task failed, setting job status to failed...`,
           data: { jobId, taskId, err },
@@ -113,8 +122,7 @@ export class TaskExecutor {
 
         return;
       }
-    }
-    else {
+    } else {
       this.logger.info({
         message: "Task already executed, using previous execution's result...",
         data: { jobId, taskId, cachedResult },
@@ -148,14 +156,14 @@ export class TaskExecutor {
 
     // Execute the pulled task.
     this.logger.debug({
-      message: "Executing task...",
+      message: 'Executing task...',
       data: { taskId, payload },
     });
 
     const nextPayload = await task.execute(payload);
 
     this.logger.info({
-      message: "Task executed successfully",
+      message: 'Task executed successfully',
       data: { taskId, payload },
     });
 
@@ -186,15 +194,15 @@ export class TaskExecutor {
     // If there's a next task, execute it.
     const nextTaskId = this.taskRegistry.getNextTaskId(taskId);
 
+    const sequence = this.sequenceRegistry.getSequence(sequenceName);
+
     if (!nextTaskId) {
       this.logger.info({
         message: `Job completed`,
         data: { jobId },
       });
 
-      const sequence = this.sequenceRegistry.getSequence(sequenceName);
       const { successHandler } = sequence ?? {};
-
       await successHandler?.handleSuccess(jobId);
 
       // Mark job as finished and return
@@ -208,12 +216,22 @@ export class TaskExecutor {
       data: { taskId: nextTaskId, payload },
     });
 
-    // TODO: Implement "start task" strategy.
-    // await this.tasksQueue.queueTask(jobId, nextTaskId, payload);
+    const { startTaskHandler } = sequence ?? {};
+
+    if (startTaskHandler) {
+      await startTaskHandler?.handleStartTask(jobId, nextTaskId, payload);
+    } else {
+      this.logger.info({
+        message: 'No start task handler found, executing task immediately...',
+        data: { jobId, taskId: nextTaskId, payload },
+      });
+
+      await this.execute(jobId, nextTaskId, payload);
+    }
 
     this.logger.info({
-      message: `Task queued successfully`,
-      data: { taskId: nextTaskId, payload },
+      message: 'Next task handler executed successfully',
+      data: { jobId, taskId: nextTaskId, payload },
     });
   }
 
@@ -232,6 +250,6 @@ export class TaskExecutor {
     const inputString = `${sequence}:${payloadString}`;
 
     // Create a hash of the input string
-    return createHash("sha256").update(inputString).digest("hex");
+    return createHash('sha256').update(inputString).digest('hex');
   }
 }
