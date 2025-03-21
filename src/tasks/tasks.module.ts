@@ -3,7 +3,7 @@ import type { BaseErrorHandlerService } from './interfaces/error-handler.base.se
 import type { BaseSuccessHandlerService } from './interfaces/success-handler.base.service';
 import type { BaseStartTaskHandlerService } from './interfaces/start-task-handler.base.service';
 import type { SequenceDefinition } from './task-sequence.module';
-import { Module, Provider, Logger } from '@nestjs/common';
+import { Module, Provider } from '@nestjs/common';
 
 // ===== Constants =====
 import {
@@ -51,10 +51,12 @@ export class TasksModule {
       throw new Error('At least one task sequence module must be provided.');
     }
 
-    const loggerProvider: Provider<TaskLogger> = {
-      provide: TASK_LOGGER,
-      useValue: logger ?? new DefaultTaskLogger(new Logger()),
-    };
+    const loggerProvider: Provider<TaskLogger> = logger
+      ? logger
+      : {
+          provide: TASK_LOGGER,
+          useClass: DefaultTaskLogger,
+        };
 
     // Extract sequence names from the modules, and build the necessary injection tokens.
     const sequenceNames = taskSequences.map(
@@ -79,6 +81,7 @@ export class TasksModule {
     const sequenceRegistryProvider = {
       provide: SequenceRegistry,
       useFactory: (
+        taskLogger: TaskLogger,
         ...seqDefinitionsAndHandlers: (
           | SequenceDefinition
           | BaseErrorHandlerService
@@ -107,7 +110,7 @@ export class TasksModule {
           totalSequences * 4,
         ) as BaseStartTaskHandlerService[];
 
-        const registry = new SequenceRegistry(logger);
+        const registry = new SequenceRegistry(taskLogger);
 
         // Register all injected sequence definitions
         seqDefinitions.forEach((definition, index) => {
