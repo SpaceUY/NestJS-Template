@@ -1,16 +1,17 @@
-import { Injectable } from "@nestjs/common";
-import { BaseSuccessHandlerService } from "./success-handler.base.service";
+import { Inject, Injectable } from '@nestjs/common';
+import { BaseSuccessHandlerService } from './success-handler.base.service';
+import { TASK_LOGGER } from '../constants/tokens';
+import { TaskLogger } from './logger.interface';
 
 @Injectable()
 export class DefaultSuccessHandlerService extends BaseSuccessHandlerService {
-  // TODO: Use a different injection token.
-  constructor(private readonly logger: PinoLogger) {
+  constructor(@Inject(TASK_LOGGER) private readonly logger: TaskLogger) {
     super();
   }
 
   handleSuccess(jobId: string): void {
     this.logger.warn({
-      message: "No success handler defined for task sequence.",
+      message: 'No success handler defined for task sequence.',
       data: { jobId },
     });
   }

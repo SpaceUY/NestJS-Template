@@ -1,15 +1,16 @@
-import { Inject, Injectable } from "@nestjs/common";
-import type { JobStatus } from "../constants/job-statuses";
-import { type EmptyPayload, EMPTY_PAYLOAD } from "../constants/payloads";
+import { Inject, Injectable } from '@nestjs/common';
+import type { JobStatus } from '../constants/job-statuses';
+import { type EmptyPayload, EMPTY_PAYLOAD } from '../constants/payloads';
 
 import {
   getJobCurrentTaskKey,
   getJobStatusKey,
   getJobTaskResultKey,
   getJobTypeKey,
-} from "../helpers/job-status-keys";
-import { TASK_LOGGER } from "../constants/tokens";
-import { TaskLogger } from "../interfaces/logger.interface";
+} from '../helpers/job-status-keys';
+import { TASK_LOGGER, TASK_CACHE_HANDLER } from '../constants/tokens';
+import { TaskLogger } from '../interfaces/logger.interface';
+import { BaseTaskCacheHandler } from '../interfaces/cache-handler.base.service';
 
 /**
  * Manages the status of jobs.
@@ -18,7 +19,8 @@ import { TaskLogger } from "../interfaces/logger.interface";
 export class TaskStatusManager {
   constructor(
     @Inject(TASK_LOGGER) private readonly logger: TaskLogger,
-    // private readonly cacheService: CacheService,
+    @Inject(TASK_CACHE_HANDLER)
+    private readonly cacheHandler: BaseTaskCacheHandler,
   ) {
     this.logger.setContext(TaskStatusManager.name);
   }
@@ -31,13 +33,13 @@ export class TaskStatusManager {
    */
   async setJobType(jobId: string, sequenceName: string): Promise<void> {
     this.logger.debug({
-      message: "Setting job type metadata...",
+      message: 'Setting job type metadata...',
       data: { jobId, sequenceName },
     });
 
     const key = getJobTypeKey(jobId);
-    // TODO: Implement cache set.
-    // await this.cacheService.set(key, sequenceName);
+
+    await this.cacheHandler.set(key, sequenceName);
   }
 
   /**
@@ -47,14 +49,12 @@ export class TaskStatusManager {
    */
   async getJobType(jobId: string): Promise<string | undefined> {
     this.logger.debug({
-      message: "Getting job type...",
+      message: 'Getting job type...',
       data: { jobId },
     });
 
     const key = getJobTypeKey(jobId);
-    // TODO: Implement cache get.
-    // return this.cacheService.get(key) as Promise<string | undefined>;
-    return 'todo!';
+    return this.cacheHandler.get(key);
   }
 
   // ===== Job Status =====
@@ -70,8 +70,7 @@ export class TaskStatusManager {
     });
 
     const key = getJobStatusKey(jobId);
-    // TODO: Implement cache set.
-    // await this.cacheService.set(key, status);
+    await this.cacheHandler.set(key, status);
   }
 
   /**
@@ -86,9 +85,7 @@ export class TaskStatusManager {
     });
 
     const key = getJobStatusKey(jobId);
-    // TODO: Implement cache get.
-    // return this.cacheService.get(key) as Promise<JobStatus | undefined>;
-    return;
+    return this.cacheHandler.get(key) as Promise<JobStatus | undefined>;
   }
 
   // ===== Current Task =====
@@ -104,8 +101,7 @@ export class TaskStatusManager {
     });
 
     const key = getJobCurrentTaskKey(jobId);
-    // TODO: Implement cache set.
-    // await this.cacheService.set(key, taskId);
+    await this.cacheHandler.set(key, taskId);
   }
 
   /**
@@ -120,9 +116,7 @@ export class TaskStatusManager {
     });
 
     const key = getJobCurrentTaskKey(jobId);
-    // TODO: Implement cache get.
-    // return this.cacheService.get(key) as Promise<string | undefined>;
-    return 'todo!';
+    return this.cacheHandler.get(key);
   }
 
   // ===== Job task result =====
@@ -144,8 +138,7 @@ export class TaskStatusManager {
 
     const key = getJobTaskResultKey(jobId, taskId);
     const data = result ? JSON.stringify(result) : EMPTY_PAYLOAD;
-    // TODO: Implement cache set.
-    // await this.cacheService.set(key, data);
+    await this.cacheHandler.set(key, data);
   }
 
   /**
@@ -164,14 +157,10 @@ export class TaskStatusManager {
     });
 
     const key = getJobTaskResultKey(jobId, taskId);
-    // TODO: Implement cache get.
-    // const data = await this.cacheService.get(key);
-    const data: string = 'todo!';
+    const data = await this.cacheHandler.get(key);
 
-    if (data === EMPTY_PAYLOAD)
-      return EMPTY_PAYLOAD;
-    if (!data)
-      return undefined;
+    if (data === EMPTY_PAYLOAD) return EMPTY_PAYLOAD;
+    if (!data) return undefined;
     return JSON.parse(data);
   }
 }
