@@ -1,5 +1,4 @@
-import { Injectable } from '@nestjs/common';
-import { Logger } from '@nestjs/core';
+import { Injectable, Logger } from '@nestjs/common';
 import { TaskLogger, type LoggerInput } from '../interfaces/logger.interface';
 
 @Injectable()
@@ -7,11 +6,11 @@ export class DefaultTaskLogger implements TaskLogger {
   constructor(private readonly logger: Logger) {}
 
   setContext(context: string): void {
-    this.logger.setContext(context);
+    (this.logger as any).setContext(context);
   }
 
   info(input: LoggerInput): void {
-    this.logger.info(input);
+    this.logger.log(input);
   }
 
   warn(input: LoggerInput): void {

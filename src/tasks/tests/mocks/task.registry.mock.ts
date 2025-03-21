@@ -1,5 +1,5 @@
-import { TaskRegistry } from "@/modules/core/tasks/background/providers/task.registry";
-import { MockLogger } from "@/modules/infrastructure/logger/tests/mocks/logger.mock";
+import { TaskRegistry } from '../../providers/task.registry';
+import { MockLogger } from './logger.mock';
 
 export class MockTaskRegistry extends TaskRegistry {
   constructor() {

@@ -45,7 +45,7 @@ export interface SequenceDefinition {
   tasks: TaskDefinition[];
   errorHandler: BaseErrorHandlerService;
   successHandler: BaseSuccessHandlerService;
-  startTaskHandler: BaseStartTaskHandlerService;
+  startTaskHandler?: BaseStartTaskHandlerService;
 }
 
 type SequenceDefinitionWithoutHandlers = Omit<

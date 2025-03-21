@@ -1,5 +1,5 @@
-import { SequenceRegistry } from "@/modules/core/tasks/background/providers/sequence.registry";
-import { MockLogger } from "@/modules/infrastructure/logger/tests/mocks/logger.mock";
+import { SequenceRegistry } from '../../providers/sequence.registry';
+import { MockLogger } from './logger.mock';
 
 export class MockSequenceRegistry extends SequenceRegistry {
   constructor() {
@@ -9,4 +9,4 @@ export class MockSequenceRegistry extends SequenceRegistry {
   public getSequence = jest.fn();
   public registerSequence = jest.fn();
   public hasSequence = jest.fn();
-};
+}
