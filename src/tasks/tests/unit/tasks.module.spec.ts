@@ -75,8 +75,6 @@ describe('tasksModule', () => {
       expect(providerTypes).toContain(TaskStatusManager);
 
       // Check exports
-      expect(tasksModule.exports).toContain(SequenceRegistry);
-      expect(tasksModule.exports).toContain(TaskRegistry);
       expect(tasksModule.exports).toContain(TaskExecutor);
       expect(tasksModule.exports).toContain(TaskStatusManager);
     });

@@ -1,3 +1,4 @@
+import { ERROR_CODES } from '../../constants/error-codes';
 import { SequenceRegistry } from '../../providers/sequence.registry';
 import { MockLogger } from '../mocks/logger.mock';
 
@@ -45,7 +46,11 @@ describe('sequenceRegistry', () => {
       expect(() =>
         sequenceRegistry.registerSequence(sequenceDefinition),
       ).toThrow(
-        `Task with name "${sequenceDefinition.name}" is already registered`,
+        JSON.stringify({
+          code: ERROR_CODES.TASK_ALREADY_REGISTERED,
+          message: `Task with name "${sequenceDefinition.name}" is already registered`,
+          data: { sequenceId: sequenceDefinition.name },
+        }),
       );
     });
   });

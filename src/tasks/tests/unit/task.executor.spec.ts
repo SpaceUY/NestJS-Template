@@ -1,4 +1,5 @@
 import { JOB_STATUSES } from '../../constants/job-statuses';
+import { ERROR_CODES } from '../../constants/error-codes';
 import { BaseTaskService } from '../../interfaces/task.base.service';
 import { TaskLogger } from '../../interfaces/logger.interface';
 import { TaskExecutor } from '../../providers/task.executor';
@@ -7,7 +8,6 @@ import { TaskExecutor } from '../../providers/task.executor';
 import { MockTaskStatusManager } from '../mocks/task.status-manager.service.mock';
 import { MockSequenceRegistry } from '../mocks/sequence.registry.mock';
 import { MockTaskRegistry } from '../mocks/task.registry.mock';
-import { MockTasksQueue } from '../mocks/tasks.queue.mock';
 import { MockLogger } from '../mocks/logger.mock';
 
 describe('taskExecutor', () => {
@@ -15,7 +15,6 @@ describe('taskExecutor', () => {
   let taskStatusManager: MockTaskStatusManager;
   let sequenceRegistry: MockSequenceRegistry;
   let taskRegistry: MockTaskRegistry;
-  let tasksQueue: MockTasksQueue;
   let logger: TaskLogger;
 
   beforeEach(() => {
@@ -24,7 +23,6 @@ describe('taskExecutor', () => {
     taskStatusManager = new MockTaskStatusManager();
     sequenceRegistry = new MockSequenceRegistry();
     taskRegistry = new MockTaskRegistry();
-    tasksQueue = new MockTasksQueue();
 
     // Instantiate TaskExecutor with mocked dependencies
     taskExecutor = new TaskExecutor(
@@ -47,6 +45,7 @@ describe('taskExecutor', () => {
       };
 
       sequenceRegistry.getSequence.mockReturnValue(sequenceDefinition);
+      taskRegistry.getTask.mockReturnValue(firstTaskId);
 
       const jobId = await taskExecutor.startSequence(
         sequenceName,
@@ -54,11 +53,6 @@ describe('taskExecutor', () => {
       );
 
       expect(sequenceRegistry.getSequence).toHaveBeenCalledWith(sequenceName);
-      expect(tasksQueue.queueTask).toHaveBeenCalledWith(
-        jobId,
-        firstTaskId,
-        initialPayload,
-      );
       expect(taskStatusManager.setJobStatus).toHaveBeenCalledWith(
         jobId,
         JOB_STATUSES.PENDING,
@@ -72,26 +66,30 @@ describe('taskExecutor', () => {
     it('should handle errors when starting a sequence', async () => {
       const sequenceName = 'test-sequence';
       const initialPayload = { key: 'value' };
+      const firstTaskId = 'task-1';
       const sequenceDefinition = {
         name: sequenceName,
         errorHandler: { handleError: jest.fn() },
-        firstTaskId: 'task-1',
+        firstTaskId,
       };
 
       sequenceRegistry.getSequence.mockReturnValue(sequenceDefinition);
-      tasksQueue.queueTask.mockRejectedValue(new Error('Queue error'));
 
       await expect(
         taskExecutor.startSequence(sequenceName, initialPayload),
-      ).rejects.toThrow('Queue error');
+      ).rejects.toThrow(
+        JSON.stringify({
+          code: ERROR_CODES.TASK_NOT_FOUND,
+          data: { taskId: firstTaskId },
+        }),
+      );
 
       expect(sequenceRegistry.getSequence).toHaveBeenCalledWith(sequenceName);
-      expect(tasksQueue.queueTask).toHaveBeenCalled();
     });
   });
 
   describe('execute', () => {
-    it('should execute a task and queue the next task', async () => {
+    it('should execute a task and start the next task', async () => {
       const jobId = 'job-1';
       const taskId = 'task-1';
       const nextTaskId = 'task-2';
@@ -104,7 +102,7 @@ describe('taskExecutor', () => {
 
       taskRegistry.getTask.mockReturnValue(task);
       taskStatusManager.getTaskResult.mockResolvedValue(null);
-      taskRegistry.getNextTaskId.mockReturnValue(nextTaskId);
+      taskRegistry.getNextTaskId.mockReturnValueOnce(nextTaskId);
 
       await taskExecutor.execute(jobId, taskId, payload);
 
@@ -119,14 +117,9 @@ describe('taskExecutor', () => {
         taskId,
         nextPayload,
       );
-      expect(tasksQueue.queueTask).toHaveBeenCalledWith(
-        jobId,
-        nextTaskId,
-        nextPayload,
-      );
     });
 
-    it('should not queue another task if there is no next task', async () => {
+    it('should not start another task if there is no next task', async () => {
       const jobId = 'job-1';
       const taskId = 'task-1';
       const payload = { key: 'value' };
@@ -152,7 +145,6 @@ describe('taskExecutor', () => {
         taskId,
         nextPayload,
       );
-      expect(tasksQueue.queueTask).not.toHaveBeenCalled();
     });
 
     it('should handle task execution errors and set job status to failed', async () => {
@@ -242,7 +234,7 @@ describe('taskExecutor', () => {
 
       taskRegistry.getTask.mockReturnValue({ execute: jest.fn() });
       taskStatusManager.getTaskResult.mockResolvedValue(cachedResult);
-      taskRegistry.getNextTaskId.mockReturnValue(nextTaskId);
+      taskRegistry.getNextTaskId.mockReturnValueOnce(nextTaskId);
 
       await taskExecutor.execute(jobId, taskId, payload);
 
@@ -252,11 +244,6 @@ describe('taskExecutor', () => {
         taskId,
       );
       expect(taskStatusManager.setTaskResult).not.toHaveBeenCalled();
-      expect(tasksQueue.queueTask).toHaveBeenCalledWith(
-        jobId,
-        expect.any(String),
-        cachedResult,
-      );
     });
 
     it('should call the successHandler when the job completes successfully', async () => {
