@@ -2,6 +2,7 @@ import type { DynamicModule, Type } from '@nestjs/common';
 import type { BaseErrorHandlerService } from './interfaces/error-handler.base.service';
 import type { BaseSuccessHandlerService } from './interfaces/success-handler.base.service';
 import type { BaseStartTaskHandlerService } from './interfaces/start-task-handler.base.service';
+import type { TaskLogger } from './interfaces/logger.interface';
 import type { BaseTaskCacheHandler } from './interfaces/cache-handler.base.service';
 import type { SequenceDefinition } from './task-sequence.module';
 import { Module, Provider } from '@nestjs/common';
@@ -20,9 +21,8 @@ import { SequenceRegistry } from './providers/sequence.registry';
 import { TaskExecutor } from './providers/task.executor';
 import { TaskRegistry } from './providers/task.registry';
 import { TaskStatusManager } from './providers/task.status-manager';
-import { DefaultTaskLogger } from './providers/default.logger';
-import { TaskLogger } from './interfaces/logger.interface';
-import { DefaultCacheHandlerService } from './interfaces/default-cache-handler.service';
+import { DefaultTaskLogger } from './defaults/default.logger';
+import { DefaultCacheHandlerService } from './defaults/default-cache-handler.service';
 
 /**
  * Options for the TasksModule.
@@ -55,11 +55,19 @@ export class TasksModule {
     }
 
     const loggerProvider: Provider<TaskLogger> = logger
-      ? logger
+      ? ({
+          provide: TASK_LOGGER,
+          useClass: logger,
+        } as Provider<TaskLogger>)
       : {
           provide: TASK_LOGGER,
           useClass: DefaultTaskLogger,
         };
+
+    // Enhance each `taskSequence` module with the `TASK_LOGGER` provider.
+    taskSequences.forEach((module) => {
+      module.providers?.push(loggerProvider);
+    });
 
     const cacheHandlerProvider: Provider<BaseTaskCacheHandler> = {
       provide: TASK_CACHE_HANDLER,

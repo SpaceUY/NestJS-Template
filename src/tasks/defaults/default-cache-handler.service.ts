@@ -1,5 +1,5 @@
 import { Injectable } from '@nestjs/common';
-import { BaseTaskCacheHandler } from './cache-handler.base.service';
+import { BaseTaskCacheHandler } from '../interfaces/cache-handler.base.service';
 
 @Injectable()
 export class DefaultCacheHandlerService extends BaseTaskCacheHandler {

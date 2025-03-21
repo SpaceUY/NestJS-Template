@@ -1,4 +1,3 @@
-/* eslint-disable ts/no-explicit-any */
 import { Inject, Injectable } from '@nestjs/common';
 import { createHash } from 'node:crypto';
 

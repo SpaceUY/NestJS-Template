@@ -1,14 +1,13 @@
-/* eslint-disable ts/no-explicit-any */
 import type { DynamicModule, Provider, Type } from '@nestjs/common';
 import { Module } from '@nestjs/common';
 
 // ===== Services & Interfaces =====
 import type { BaseTaskService } from './interfaces/task.base.service';
-import { DefaultErrorHandlerService } from './interfaces/default-error-handler.service';
-import { DefaultSuccessHandlerService } from './interfaces/default-success-handler.service';
 import { BaseErrorHandlerService } from './interfaces/error-handler.base.service';
 import { BaseSuccessHandlerService } from './interfaces/success-handler.base.service';
 import { BaseStartTaskHandlerService } from './interfaces/start-task-handler.base.service';
+import { DefaultErrorHandlerService } from './defaults/default-error-handler.service';
+import { DefaultSuccessHandlerService } from './defaults/default-success-handler.service';
 
 // ===== Helpers =====
 import {

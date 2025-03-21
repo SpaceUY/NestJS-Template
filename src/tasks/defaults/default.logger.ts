@@ -3,13 +3,17 @@ import { TaskLogger, type LoggerInput } from '../interfaces/logger.interface';
 
 @Injectable()
 export class DefaultTaskLogger implements TaskLogger {
-  constructor(private readonly logger: Logger) {}
+  private readonly logger = new Logger(DefaultTaskLogger.name);
 
   setContext(context: string): void {
-    (this.logger as any).setContext(context);
+    (this.logger as any).setContext?.(context);
   }
 
   info(input: LoggerInput): void {
+    if ((this.logger as any).info) {
+      (this.logger as any).info(input);
+      return;
+    }
     this.logger.log(input);
   }
 

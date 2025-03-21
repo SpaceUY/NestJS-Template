@@ -1,7 +1,7 @@
 import { Inject, Injectable } from '@nestjs/common';
-import { BaseErrorHandlerService } from './error-handler.base.service';
+import { BaseErrorHandlerService } from '../interfaces/error-handler.base.service';
 import { TASK_LOGGER } from '../constants/tokens';
-import { TaskLogger } from './logger.interface';
+import { TaskLogger } from '../interfaces/logger.interface';
 
 @Injectable()
 export class DefaultErrorHandlerService extends BaseErrorHandlerService {

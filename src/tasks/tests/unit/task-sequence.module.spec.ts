@@ -10,8 +10,8 @@ import { BaseErrorHandlerService } from '../../interfaces/error-handler.base.ser
 import { BaseSuccessHandlerService } from '../../interfaces/success-handler.base.service';
 import { TaskSequenceModule } from '../../task-sequence.module';
 
-import { DefaultErrorHandlerService } from '../../interfaces/default-error-handler.service';
-import { DefaultSuccessHandlerService } from '../../interfaces/default-success-handler.service';
+import { DefaultErrorHandlerService } from '../../defaults/default-error-handler.service';
+import { DefaultSuccessHandlerService } from '../../defaults/default-success-handler.service';
 
 // Mock task class
 class MockTask extends BaseTaskService {
