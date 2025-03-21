@@ -1,13 +1,11 @@
 {
-    "javascript.preferences.quoteStyle": "single",
-    "editor.tabSize": 2,
-    "files.eol": "\n",
-    "eslint.enable": true,
-    "eslint.validate": [
-        "javascript",
-        "typescript",
-    ],
-    "editor.codeActionsOnSave": {
-        "source.fixAll.eslint": true
-    },
+  "javascript.preferences.quoteStyle": "single",
+  "editor.tabSize": 2,
+  "files.eol": "\n",
+  "eslint.enable": true,
+  "eslint.validate": ["javascript", "typescript"],
+  "editor.codeActionsOnSave": {
+    "source.fixAll.eslint": "explicit"
+  },
+  "editor.formatOnSave": true
 }
