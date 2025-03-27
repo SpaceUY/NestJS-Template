@@ -1,0 +1,22 @@
+{
+  "modules": {
+    "email": {
+      "path": "src/email",
+      "implementations": [
+        {
+          "name": "sendgrid",
+          "description": "Sendgrid implementation of email module"
+        }
+      ]
+    },
+    "cloud-storage": {
+      "path": "src/cloud-storage",
+      "implementations": [
+        {
+          "name": "s3",
+          "description": "S3 implementation of email module"
+        }
+      ]
+    }
+  }
+}
