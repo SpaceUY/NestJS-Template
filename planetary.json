@@ -13,8 +13,12 @@
       "path": "src/cloud-storage",
       "implementations": [
         {
-          "name": "s3",
-          "description": "S3 implementation of email module"
+          "name": "abstract",
+          "description": "Abstract implementation of email module"
+        },
+        {
+          "name": "s3-adapter",
+          "description": "Abstract implementation of email module"
         }
       ]
     }
