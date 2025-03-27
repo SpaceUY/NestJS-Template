@@ -82,8 +82,10 @@ export class CloudStorageController {
     }
   }
 
+  @ApiParam({ name: 'fileName' })
   @Get(':fileName')
   async getFile(@Param('fileName') fileName: string): Promise<any> {
+    // TODO: TYPE
     try {
       await this.cloudStorageService.getFile(fileName);
       return 'Remove File successfully';

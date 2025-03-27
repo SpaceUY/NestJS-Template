@@ -14,11 +14,11 @@
       "implementations": [
         {
           "name": "abstract",
-          "description": "Abstract implementation of email module"
+          "description": "Abstract implementation of cloud storage module"
         },
         {
           "name": "s3-adapter",
-          "description": "Abstract implementation of email module"
+          "description": "S3 implementation of cloud storage module"
         }
       ]
     }
