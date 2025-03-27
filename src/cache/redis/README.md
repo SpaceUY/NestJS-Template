@@ -8,6 +8,7 @@ This module provides a Redis-based caching solution for NestJS applications. It 
 
 - A configurable Redis cache module
 - A service wrapper for Redis operations
+- Support for Redis Cluster and AWS ElastiCache
 - Mock implementations for testing
 
 ## Directory Structure
@@ -25,6 +26,7 @@ redis/
 - Configurable Redis connection
 - Type-safe cache operations
 - Easy-to-use service interface
+- Redis Cluster support
 - Testing utilities and mocks
 - Integration with NestJS dependency injection
 
@@ -40,6 +42,8 @@ npm install ioredis
 
 ### 1. Import the Module
 
+#### Single Node Mode
+
 ```typescript
 import { Module } from '@nestjs/common';
 import { RedisCacheModule } from './cache/redis/cache.module';
@@ -50,6 +54,35 @@ import { RedisCacheModule } from './cache/redis/cache.module';
       host: 'localhost',
       port: 6379,
       // other Redis options...
+    }),
+  ],
+})
+export class AppModule {}
+```
+
+#### Cluster Mode
+
+> [!WARNING]
+> The `nodes` and `options` keys are not yet integrated!
+
+```typescript
+import { Module } from '@nestjs/common';
+import { RedisCacheModule } from './cache/redis/cache.module';
+
+@Module({
+  imports: [
+    RedisCacheModule.register({
+      clusterMode: true,
+      nodes: [
+        { host: 'redis-node-1', port: 6379 },
+        { host: 'redis-node-2', port: 6379 },
+        { host: 'redis-node-3', port: 6379 },
+      ],
+      options: {
+        scaleReads: 'SLAVE', // Read from replicas
+        maxRedirections: 16,
+        retryDelayOnFailover: 100,
+      },
     }),
   ],
 })
@@ -81,7 +114,7 @@ export class YourService {
 
 ## Configuration Options
 
-The `RedisCacheModule.forRoot()` method accepts standard Redis configuration options:
+The `RedisCacheModule.forRoot()` method accepts standard Redis configuration options plus cluster-specific options:
 
 ```typescript
 interface RedisCacheModuleOptions {
@@ -167,9 +200,16 @@ describe('YourService', () => {
    - Use try-catch blocks around cache operations
 
 3. **Performance**
+
    - Set appropriate TTL values for cached data
    - Monitor cache hit/miss ratios
    - Consider implementing cache warming strategies
+
+4. **Cluster Mode Considerations**
+
+   - Implement proper error handling for node failures
+   - Use appropriate read/write consistency settings
+   - Monitor cluster health and replication status
 
 ## Contributing
 
