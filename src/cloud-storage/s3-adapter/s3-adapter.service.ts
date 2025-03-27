@@ -10,11 +10,13 @@ import {
 export class S3AdapterService {
   private s3: S3Client;
   private region: string;
+  private bucket: string;
   private readonly logger = new Logger(this.constructor.name, {
     timestamp: true,
   });
 
   constructor() {
+    this.bucket = process.env.AWS_S3_BUCKET_NAME!;
     this.region = process.env.AWS_REGION!;
     this.s3 = new S3Client({
       region: process.env.AWS_REGION!, // TODO: Como vamos a acomodar los config?
@@ -27,54 +29,53 @@ export class S3AdapterService {
 
   async uploadFile(
     file: Express.Multer.File,
-    fileKey: string,
-    bucket: string,
+    fileName: string,
   ): Promise<string> {
     try {
       const params = {
-        Bucket: bucket,
-        Key: fileKey,
+        Bucket: this.bucket,
+        Key: fileName,
         Body: file.buffer,
         ContentType: file.mimetype,
       };
       await this.s3.send(new PutObjectCommand(params));
-      const fileUrl = `https://${bucket}.s3.${this.region}.amazonaws.com/${params.Key}`;
+      const fileUrl = `https://${this.bucket}.s3.${this.region}.amazonaws.com/${params.Key}`;
       return fileUrl;
     } catch (error) {
       this.logger.error(
-        `Failed to upload object ${fileKey} to bucket ${bucket}:`,
+        `Failed to upload object ${fileName} to bucket ${this.bucket}:`,
         error,
       );
       throw error;
     }
   }
 
-  async deleteFile(bucket: string, key: string): Promise<void> {
+  async deleteFile(fileName: string): Promise<void> {
     try {
       const params = {
-        Bucket: bucket,
-        Key: key,
+        Bucket: this.bucket,
+        Key: fileName,
       };
       await this.s3.send(new DeleteObjectCommand(params));
     } catch (error) {
       this.logger.error(
-        `Failed to delete object ${key} from bucket ${bucket}:`,
+        `Failed to delete object ${fileName} from bucket ${this.bucket}:`,
         error,
       );
       throw error;
     }
   }
 
-  async getFileUrl(bucket: string, key: string): Promise<void> {
+  async getFileUrl(fileName: string): Promise<void> {
     try {
       const params = {
-        Bucket: bucket,
-        Key: key,
+        Bucket: this.bucket,
+        Key: fileName,
       };
       await this.s3.send(new GetObjectCommand(params));
     } catch (error) {
       this.logger.error(
-        `Failed to get object ${key} from bucket ${bucket}:`,
+        `Failed to get object ${fileName} from bucket ${this.bucket}:`,
         error,
       );
       throw error;
