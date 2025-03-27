@@ -1,0 +1,13 @@
+{
+  "modules": {
+    "email": {
+      "path": "src/email",
+      "implementations": [
+        {
+          "name": "sendgrid",
+          "description": "Sendgrid implementation of email module"
+        }
+      ]
+    }
+  }
+}
