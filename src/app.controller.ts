@@ -4,8 +4,8 @@ import { AuthGuard } from '@nestjs/passport';
 import { AppService } from './app.service';
 import { Html } from './common/decorators/html-content-type';
 import baseConfig from './config/base.config';
-import { EmailType } from './email/core/email-type';
-import test2Email from './email/emails/test2.email';
+import { EmailType } from './email/sengrid/core/email-type';
+import test2Email from './email/sengrid/emails/test2.email';
 import { TemplateType } from './template/core/template-core.module';
 import testTemplate from './template/templates/test/test.template';
 
