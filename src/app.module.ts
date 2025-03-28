@@ -10,6 +10,7 @@ import { SpaceshipModule } from './spaceship/spaceship.module';
 import { PrismaModule } from './prisma/prisma.module';
 import { S3AdapterModule } from './cloud-storage/s3-adapter/s3-adapter.module';
 import { CloudStorageAbstractModule } from './cloud-storage/abstract/cloud-storage-abstract.module.ts';
+import { S3AdapterService } from './cloud-storage/s3-adapter/s3-adapter.service';
 
 @Module({
   imports: [
@@ -21,7 +22,9 @@ import { CloudStorageAbstractModule } from './cloud-storage/abstract/cloud-stora
     SpaceshipModule,
     PrismaModule,
     S3AdapterModule,
-    CloudStorageAbstractModule,
+    CloudStorageAbstractModule.forRoot({
+      adapter: S3AdapterService,
+    }),
   ],
   controllers: [AppController],
   providers: [AppService],

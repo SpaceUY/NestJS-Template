@@ -5,21 +5,24 @@ import {
   DeleteObjectCommand,
   GetObjectCommand,
 } from '@aws-sdk/client-s3';
+import { getSignedUrl } from '@aws-sdk/s3-request-presigner';
 
 @Injectable()
 export class S3AdapterService {
   private s3: S3Client;
   private region: string;
   private bucket: string;
+  private expiresInSeconds: number;
   private readonly logger = new Logger(this.constructor.name, {
     timestamp: true,
   });
 
   constructor() {
+    this.expiresInSeconds = 3600;
     this.bucket = process.env.AWS_S3_BUCKET_NAME!;
     this.region = process.env.AWS_REGION!;
     this.s3 = new S3Client({
-      region: process.env.AWS_REGION!, // TODO: Como vamos a acomodar los config?
+      region: process.env.AWS_REGION!, // TODO: Configure globally congis?
       credentials: {
         accessKeyId: process.env.AWS_ACCESS_KEY!,
         secretAccessKey: process.env.AWS_SECRET_ACCESS_KEY!,
@@ -27,14 +30,11 @@ export class S3AdapterService {
     });
   }
 
-  async uploadFile(
-    file: Express.Multer.File,
-    fileName: string,
-  ): Promise<string> {
+  async uploadFile(file: Express.Multer.File): Promise<string> {
     try {
       const params = {
         Bucket: this.bucket,
-        Key: fileName,
+        Key: file.filename,
         Body: file.buffer,
         ContentType: file.mimetype,
       };
@@ -43,7 +43,7 @@ export class S3AdapterService {
       return fileUrl;
     } catch (error) {
       this.logger.error(
-        `Failed to upload object ${fileName} to bucket ${this.bucket}:`,
+        `Failed to upload object ${file.filename} to bucket ${this.bucket}:`,
         error,
       );
       throw error;
@@ -66,13 +66,16 @@ export class S3AdapterService {
     }
   }
 
-  async getFileUrl(fileName: string): Promise<void> {
+  async getFile(fileName: string): Promise<string> {
     try {
       const params = {
         Bucket: this.bucket,
         Key: fileName,
       };
-      await this.s3.send(new GetObjectCommand(params));
+      const url = await getSignedUrl(this.s3, new GetObjectCommand(params), {
+        expiresIn: this.expiresInSeconds,
+      });
+      return url;
     } catch (error) {
       this.logger.error(
         `Failed to get object ${fileName} from bucket ${this.bucket}:`,

@@ -27,6 +27,7 @@ import { UploadFileDto } from './dto/upload-file.dto';
 
 @ApiTags('Cloud Storage')
 @Controller('cloud-storage')
+// TODO: Use auth guard
 export class CloudStorageController {
   private readonly logger = new Logger(this.constructor.name, {
     timestamp: true,
@@ -37,9 +38,7 @@ export class CloudStorageController {
   @Post('')
   @UseInterceptors(FileInterceptor('file'))
   @ApiConsumes('multipart/form-data')
-  @ApiBearerAuth()
   @ApiBody({ type: UploadFileDto })
-  // @UseGuards(JwtAuthGuard) // TODO: guard?
   @ApiOperation({
     summary: 'Upload new file to cloud storage',
   })
@@ -64,8 +63,6 @@ export class CloudStorageController {
   }
 
   @Delete(':fileName')
-  @ApiBearerAuth()
-  // @UseGuards(JwtAuthGuard) // TODO: Guard?
   @ApiParam({ name: 'fileName' })
   @ApiOperation({ summary: 'Delete a File by path' })
   @ApiResponse({ status: 200, description: 'Complete', type: String })
@@ -84,7 +81,7 @@ export class CloudStorageController {
 
   @ApiParam({ name: 'fileName' })
   @Get(':fileName')
-  async getFile(@Param('fileName') fileName: string): Promise<any> {
+  async getFile(@Param('fileName') fileName: string): Promise<string> {
     // TODO: TYPE
     try {
       await this.cloudStorageService.getFile(fileName);
