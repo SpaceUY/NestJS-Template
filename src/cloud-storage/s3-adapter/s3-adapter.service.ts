@@ -6,6 +6,7 @@ import {
   GetObjectCommand,
 } from '@aws-sdk/client-s3';
 import { getSignedUrl } from '@aws-sdk/s3-request-presigner';
+import { v4 as uuidv4 } from 'uuid';
 
 @Injectable()
 export class S3AdapterService {
@@ -30,55 +31,59 @@ export class S3AdapterService {
     });
   }
 
-  async uploadFile(file: Express.Multer.File): Promise<string> {
+  async uploadFile(
+    file: Express.Multer.File,
+  ): Promise<{ url: string; id: string }> {
     try {
+      const id = uuidv4();
       const params = {
         Bucket: this.bucket,
-        Key: file.filename,
+        Key: id,
         Body: file.buffer,
         ContentType: file.mimetype,
       };
-      await this.s3.send(new PutObjectCommand(params));
-      const fileUrl = `https://${this.bucket}.s3.${this.region}.amazonaws.com/${params.Key}`;
-      return fileUrl;
+      const data = await this.s3.send(new PutObjectCommand(params));
+      console.log(data);
+      const url = `https://${this.bucket}.s3.${this.region}.amazonaws.com/${params.Key}`;
+      return { url, id };
     } catch (error) {
       this.logger.error(
-        `Failed to upload object ${file.filename} to bucket ${this.bucket}:`,
+        `Failed to upload object to bucket ${this.bucket}:`,
         error,
       );
       throw error;
     }
   }
 
-  async deleteFile(fileName: string): Promise<void> {
+  async deleteFile(fileKey: string): Promise<void> {
     try {
       const params = {
         Bucket: this.bucket,
-        Key: fileName,
+        Key: fileKey,
       };
       await this.s3.send(new DeleteObjectCommand(params));
     } catch (error) {
       this.logger.error(
-        `Failed to delete object ${fileName} from bucket ${this.bucket}:`,
+        `Failed to delete object ${fileKey} from bucket ${this.bucket}:`,
         error,
       );
       throw error;
     }
   }
 
-  async getFile(fileName: string): Promise<string> {
+  async getFile(fileKey: string): Promise<{ url: string; id: string }> {
     try {
       const params = {
         Bucket: this.bucket,
-        Key: fileName,
+        Key: fileKey,
       };
       const url = await getSignedUrl(this.s3, new GetObjectCommand(params), {
         expiresIn: this.expiresInSeconds,
       });
-      return url;
+      return { url, id: fileKey };
     } catch (error) {
       this.logger.error(
-        `Failed to get object ${fileName} from bucket ${this.bucket}:`,
+        `Failed to get object ${fileKey} from bucket ${this.bucket}:`,
         error,
       );
       throw error;

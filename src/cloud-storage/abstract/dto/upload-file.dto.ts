@@ -7,5 +7,5 @@ export class UploadFileDto {
     description: 'File',
     required: true,
   })
-  bankCertification: Express.Multer.File;
+  file: Express.Multer.File;
 }

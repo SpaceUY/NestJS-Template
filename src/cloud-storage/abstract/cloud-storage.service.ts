@@ -9,15 +9,15 @@ export class CloudStorageService implements ICloudStorageProvider {
     private readonly storageProvider: ICloudStorageProvider,
   ) {}
 
-  uploadFile(file: Express.Multer.File): Promise<string> {
+  uploadFile(file: Express.Multer.File): Promise<{ url: string; id: string }> {
     return this.storageProvider.uploadFile(file);
   }
 
-  deleteFile(fileName: string): Promise<void> {
-    return this.storageProvider.deleteFile(fileName);
+  deleteFile(fileKey: string): Promise<void> {
+    return this.storageProvider.deleteFile(fileKey);
   }
 
-  getFile(fileName: string): Promise<string> {
-    return this.storageProvider.getFile(fileName);
+  getFile(fileKey: string): Promise<{ url: string; id: string }> {
+    return this.storageProvider.getFile(fileKey);
   }
 }

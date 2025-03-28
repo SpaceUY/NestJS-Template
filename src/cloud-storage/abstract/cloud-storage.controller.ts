@@ -26,6 +26,7 @@ import { CloudStorageService } from './cloud-storage.service';
 import { UploadFileDto } from './dto/upload-file.dto';
 import { CloudStorageException } from './cloud-storage.exception';
 import { CLOUD_STORAGE_ERRORS } from './cloud-storage-error-codes';
+import { FileResponseDto } from './dto/file-response.dto';
 
 @ApiTags('Cloud Storage')
 @Controller('cloud-storage')
@@ -45,10 +46,7 @@ export class CloudStorageController {
     summary: 'Upload new file to cloud storage',
   })
   @ApiResponse({ status: 200, description: 'Complete' })
-  async uploadFile(
-    @UploadedFile() file: Express.Multer.File,
-    @Body() data: UploadFileDto,
-  ): Promise<string> {
+  async uploadFile(@UploadedFile() file: Express.Multer.File): Promise<string> {
     try {
       if (!file) {
         throw new CloudStorageException(
@@ -68,13 +66,13 @@ export class CloudStorageController {
     }
   }
 
-  @Delete(':fileName')
-  @ApiParam({ name: 'fileName' })
-  @ApiOperation({ summary: 'Delete a File by path' })
+  @Delete(':fileKey')
+  @ApiParam({ name: 'fileKey' })
+  @ApiOperation({ summary: 'Delete from cloud storage by file key' })
   @ApiResponse({ status: 200, description: 'Complete', type: String })
-  async deleteFile(@Param('fileName') fileName: string): Promise<string> {
+  async deleteFile(@Param('fileKey') fileKey: string): Promise<string> {
     try {
-      await this.cloudStorageService.deleteFile(fileName);
+      await this.cloudStorageService.deleteFile(fileKey);
       return 'Remove File successfully';
     } catch (error) {
       this.logger.error('Cloud Storage Controller - deleteFile: ', error);
@@ -85,13 +83,13 @@ export class CloudStorageController {
     }
   }
 
-  @ApiParam({ name: 'fileName' })
-  @Get(':fileName')
-  async getFile(@Param('fileName') fileName: string): Promise<string> {
-    // TODO: TYPE
+  @Get(':fileKey')
+  @ApiParam({ name: 'fileKey' })
+  @ApiOperation({ summary: 'Get file from cloud storage by file key' })
+  @ApiResponse({ status: 200, description: 'Complete', type: FileResponseDto })
+  async getFile(@Param('fileKey') fileKey: string): Promise<FileResponseDto> {
     try {
-      await this.cloudStorageService.getFile(fileName);
-      return 'Remove File successfully';
+      return await this.cloudStorageService.getFile(fileKey);
     } catch (error) {
       this.logger.error('Cloud Storage Controller - getFile: ', error);
       if (error instanceof RequestException) {
