@@ -42,8 +42,7 @@ export class S3AdapterService {
         Body: file.buffer,
         ContentType: file.mimetype,
       };
-      const data = await this.s3.send(new PutObjectCommand(params));
-      console.log(data);
+      await this.s3.send(new PutObjectCommand(params));
       const url = `https://${this.bucket}.s3.${this.region}.amazonaws.com/${params.Key}`;
       return { url, id };
     } catch (error) {
