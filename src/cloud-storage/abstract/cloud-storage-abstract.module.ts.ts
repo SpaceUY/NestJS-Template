@@ -2,6 +2,7 @@ import { DynamicModule, Module, Type } from '@nestjs/common';
 import { CloudStorageService } from './cloud-storage.service';
 import { CloudStorageController } from './cloud-storage.controller';
 import { ICloudStorageProvider } from './cloud-storage-provider.interface';
+import { CLOUD_STORAGE_PROVIDER } from './cloud-storage-provider.const';
 
 interface IAbstractCloudStorageModuleOptions {
   adapter: Type<ICloudStorageProvider>;
@@ -16,7 +17,7 @@ export class CloudStorageAbstractModule {
       imports: [],
       providers: [
         CloudStorageService,
-        { provide: 'CLOUD_STORAGE_PROVIDER', useClass: adapter },
+        { provide: CLOUD_STORAGE_PROVIDER, useClass: adapter },
       ],
       exports: [CloudStorageService],
       controllers: [CloudStorageController],

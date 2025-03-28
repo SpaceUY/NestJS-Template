@@ -24,10 +24,12 @@ import { RequestException } from 'src/common/exception/core/ExceptionBase';
 import { FileInterceptor } from '@nestjs/platform-express';
 import { CloudStorageService } from './cloud-storage.service';
 import { UploadFileDto } from './dto/upload-file.dto';
+import { CloudStorageException } from './cloud-storage.exception';
+import { CLOUD_STORAGE_ERRORS } from './cloud-storage-error-codes';
 
 @ApiTags('Cloud Storage')
 @Controller('cloud-storage')
-// TODO: Use auth guard
+// Use an authentication guard if the project requires it.
 export class CloudStorageController {
   private readonly logger = new Logger(this.constructor.name, {
     timestamp: true,
@@ -49,7 +51,11 @@ export class CloudStorageController {
   ): Promise<string> {
     try {
       if (!file) {
-        throw new BadRequestException('A File is required');
+        throw new CloudStorageException(
+          CLOUD_STORAGE_ERRORS.FILE_REQUIRED.message,
+          CLOUD_STORAGE_ERRORS.FILE_REQUIRED.code,
+          CLOUD_STORAGE_ERRORS.FILE_REQUIRED.status,
+        );
       }
       await this.cloudStorageService.uploadFile(file);
       return 'Upload File successfully';

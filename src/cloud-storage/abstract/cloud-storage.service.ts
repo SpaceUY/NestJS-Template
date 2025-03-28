@@ -1,10 +1,11 @@
 import { Injectable, Inject } from '@nestjs/common';
 import { ICloudStorageProvider } from './cloud-storage-provider.interface';
+import { CLOUD_STORAGE_PROVIDER } from './cloud-storage-provider.const';
 
 @Injectable()
 export class CloudStorageService implements ICloudStorageProvider {
   constructor(
-    @Inject('CLOUD_STORAGE_PROVIDER')
+    @Inject(CLOUD_STORAGE_PROVIDER)
     private readonly storageProvider: ICloudStorageProvider,
   ) {}
 
