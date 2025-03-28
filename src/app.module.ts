@@ -5,7 +5,7 @@ import { AuthModule } from './auth/auth.module';
 import { ConfigModule } from './config/config.module';
 import { MiddlewareModule } from './common/middleware/middleware.module';
 import { TemplateModule } from './template/template.module';
-import { EmailModule } from './email/sengrid/email.module';
+import { EmailModule } from './email/sendgrid/email.module';
 import { SpaceshipModule } from './spaceship/spaceship.module';
 import { PrismaModule } from './prisma/prisma.module';
 
