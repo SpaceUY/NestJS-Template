@@ -4,7 +4,7 @@ import { AuthService } from './auth.service';
 import { JwtStrategy } from './jwt.strategy';
 import { PassportModule } from '@nestjs/passport';
 import { AuthTokenModule } from './core/auth-token/auth-token.module';
-import { EmailModule } from './email/email.module';
+import { BasicAuthModule } from './basic/basic-auth.module';
 import { PrismaModule } from '../prisma/prisma.module';
 
 @Module({
@@ -13,7 +13,7 @@ import { PrismaModule } from '../prisma/prisma.module';
     GoogleModule,
     PrismaModule,
     AuthTokenModule,
-    EmailModule,
+    BasicAuthModule,
   ],
   providers: [AuthService, JwtStrategy],
   exports: [AuthService, JwtStrategy, PassportModule],

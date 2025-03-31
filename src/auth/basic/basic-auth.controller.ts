@@ -10,7 +10,7 @@ import { RequestException } from 'src/common/exception/core/ExceptionBase';
 import { Exceptions } from 'src/common/exception/exceptions';
 import { LoginDto } from './dto/login.dto';
 import { LoginResponseDto } from './dto/login-response.dto';
-import { EmailAuthService } from './email.service';
+import { BasicAuthService } from './basic-auth.service';
 import { RegisterDto } from './dto/register.dto';
 import { User } from '@prisma/client';
 import { CurrentUser } from 'src/user/current-user.decorator';
@@ -19,21 +19,21 @@ import { ForgotPasswordDto } from './dto/forgot-password.dto';
 import { ResetPasswordDto } from './dto/reset-password.dto';
 import { JwtAuthGuard } from 'src/common/guard/jwt.guard';
 
-@ApiTags('auth/email')
-@Controller('auth/email')
-export class EmailAuthController {
+@ApiTags('auth/basic')
+@Controller('auth/baasic')
+export class BasicAuthController {
   private readonly logger = new Logger(this.constructor.name, {
     timestamp: true,
   });
 
-  constructor(private readonly emailAuthService: EmailAuthService) {}
+  constructor(private readonly basicAuthService: BasicAuthService) {}
 
   @Post('login')
   @ApiOperation({ summary: 'Login user by email and password' })
   @ApiResponse({ status: 200, description: 'Complete', type: LoginResponseDto })
   async login(@Body() login: LoginDto): Promise<LoginResponseDto> {
     try {
-      return await this.emailAuthService.login(login);
+      return await this.basicAuthService.login(login);
     } catch (error) {
       this.logger.error('Email Auth Controller - login: ', error);
       if (error instanceof RequestException) {
@@ -49,7 +49,7 @@ export class EmailAuthController {
   @ApiResponse({ status: 200, description: 'Complete', type: LoginResponseDto })
   async register(@Body() registerData: RegisterDto): Promise<LoginResponseDto> {
     try {
-      return await this.emailAuthService.register(registerData);
+      return await this.basicAuthService.register(registerData);
     } catch (error) {
       this.logger.error('Email Auth Controller - register: ', error);
       if (error instanceof RequestException) {
@@ -71,7 +71,7 @@ export class EmailAuthController {
     @CurrentUser() currentUser: User,
   ): Promise<string> {
     try {
-      await this.emailAuthService.changePassword(
+      await this.basicAuthService.changePassword(
         currentUser,
         changeData.newPassword,
         changeData.currentPassword,
@@ -95,7 +95,7 @@ export class EmailAuthController {
     @Body() forgotPasswordData: ForgotPasswordDto,
   ): Promise<string> {
     try {
-      await this.emailAuthService.forgotPassword(forgotPasswordData.email);
+      await this.basicAuthService.forgotPassword(forgotPasswordData.email);
       return 'We have sent you an email to recover your password';
     } catch (error) {
       this.logger.error('Email Auth Controller - forgotPassword: ', error);
@@ -116,7 +116,7 @@ export class EmailAuthController {
     @Body() resetPasswordData: ResetPasswordDto,
   ): Promise<string> {
     try {
-      await this.emailAuthService.resetPassword(
+      await this.basicAuthService.resetPassword(
         resetPasswordData.resetToken,
         resetPasswordData.newPassword,
       );

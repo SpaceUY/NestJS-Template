@@ -8,6 +8,15 @@
           "description": "Sendgrid implementation of email module"
         }
       ]
+    },
+    "auth": {
+      "path": "src/auth",
+      "implementations": [
+        {
+          "name": "basic",
+          "description": "Basic auth implementation of auth module"
+        }
+      ]
     }
   }
 }

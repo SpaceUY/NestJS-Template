@@ -15,7 +15,7 @@ import forgotPasswordEmail from 'src/email/sendgrid/emails/forgot-password.email
 import { EmailType } from 'src/email/sendgrid/core/email-type';
 
 @Injectable()
-export class EmailAuthService {
+export class BasicAuthService {
   private readonly logger = new Logger(this.constructor.name, {
     timestamp: true,
   });
@@ -55,7 +55,7 @@ export class EmailAuthService {
         token: jwt,
       };
     } catch (error) {
-      this.logger.error('EmailAuthService - login: ', error);
+      this.logger.error('BasicAuthService - login: ', error);
       if (error instanceof RequestException) {
         throw error;
       }
@@ -84,7 +84,7 @@ export class EmailAuthService {
       );
       return { token: jwt };
     } catch (error) {
-      this.logger.error('EmailAuthService - register: ', error);
+      this.logger.error('BasicAuthService - register: ', error);
       if (error instanceof RequestException) {
         throw error;
       }
@@ -119,11 +119,11 @@ export class EmailAuthService {
         email,
         { resetLink },
         {
-          subject: '¿Perdiste tu contraseña?',
+          subject: 'Forgot your password?',
         },
       );
     } catch (error) {
-      this.logger.error('EmailAuthService - forgotPassword: ', error);
+      this.logger.error('BasicAuthService - forgotPassword: ', error);
       if (error instanceof RequestException) {
         throw error;
       }
@@ -146,7 +146,7 @@ export class EmailAuthService {
       }
       await this.changePassword(user, newPassword);
     } catch (error) {
-      this.logger.error('EmailAuthService - resetPassword: ', error);
+      this.logger.error('BasicAuthService - resetPassword: ', error);
       if (error instanceof RequestException) throw error;
       throw new RequestException(Exceptions.auth.invalidPayload);
     }
@@ -181,7 +181,7 @@ export class EmailAuthService {
         },
       });
     } catch (error) {
-      this.logger.error('EmailAuthService - changePassword: ', error);
+      this.logger.error('BasicAuthService - changePassword: ', error);
       if (error instanceof RequestException) throw error;
       throw new RequestException(Exceptions.auth.invalidPayload);
     }
