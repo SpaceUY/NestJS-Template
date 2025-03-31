@@ -22,7 +22,6 @@ import awsConfig from 'src/config/aws.config';
     EmailModule,
     SpaceshipModule,
     PrismaModule,
-    S3AdapterModule,
     CloudStorageAbstractModule.forRoot({
       adapter: S3AdapterModule.forRootAsync({
         inject: [awsConfig.KEY],

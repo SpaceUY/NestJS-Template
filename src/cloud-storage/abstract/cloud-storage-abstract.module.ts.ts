@@ -17,7 +17,7 @@ export class CloudStorageAbstractModule {
         },
       ],
       imports: [adapter],
-      exports: [adapter],
+      exports: [CloudStorageService],
       controllers: [CloudStorageController],
     };
   }
