@@ -1,12 +1,12 @@
 import { SendgridEmailDeliveryIntegrator } from './sendgridEmailDeliveryIntegrator';
-import { EmailType } from '../../../email/core/email-type';
+import { RequestException } from 'src/common/exception/core/ExceptionBase';
+import { Exceptions } from 'src/common/exception/exceptions';
+import { EmailType } from 'src/email/sendgrid/core/email-type';
 import {
   EmailKeyHost,
   EmailRegistration,
-} from '../../../email/core/register-email';
-import { SenderOptions } from 'src/email/core/sender-options';
-import { RequestException } from 'src/common/exception/core/ExceptionBase';
-import { Exceptions } from 'src/common/exception/exceptions';
+} from 'src/email/sendgrid/core/register-email';
+import { SenderOptions } from 'src/email/sendgrid/core/sender-options';
 
 export interface IEmailDeliveryIntegrator {
   sendEmail(

@@ -6,13 +6,13 @@ import { AuthType, User } from '@prisma/client';
 import { RequestException } from 'src/common/exception/core/ExceptionBase';
 import { Exceptions } from 'src/common/exception/exceptions';
 import { RegisterDto } from './dto/register.dto';
-import forgotPasswordEmail from '../../email/emails/forgot-password.email';
 import EmailDeliveryIntegratorFactory, {
   EmailDeliveryIntegratorName,
 } from 'src/common/factory/emailDeliveryIntegrator/emailDeliveryIntegrator.factory';
-import { EmailType } from 'src/email/core/email-type';
 import { PrismaService } from 'src/prisma/prisma.service';
 import { EncryptService } from '../core/auth-token/encrypt.service';
+import forgotPasswordEmail from 'src/email/sendgrid/emails/forgot-password.email';
+import { EmailType } from 'src/email/sendgrid/core/email-type';
 
 @Injectable()
 export class EmailAuthService {
