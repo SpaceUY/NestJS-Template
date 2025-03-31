@@ -1,6 +1,4 @@
 import {
-  BadRequestException,
-  Body,
   Controller,
   Delete,
   Get,
@@ -12,7 +10,6 @@ import {
   UseInterceptors,
 } from '@nestjs/common';
 import {
-  ApiBearerAuth,
   ApiBody,
   ApiConsumes,
   ApiOperation,
@@ -46,7 +43,9 @@ export class CloudStorageController {
     summary: 'Upload new file to cloud storage',
   })
   @ApiResponse({ status: 200, description: 'Complete' })
-  async uploadFile(@UploadedFile() file: Express.Multer.File): Promise<string> {
+  async uploadFile(
+    @UploadedFile() file: Express.Multer.File,
+  ): Promise<FileResponseDto> {
     try {
       if (!file) {
         throw new CloudStorageException(
@@ -55,8 +54,7 @@ export class CloudStorageController {
           CLOUD_STORAGE_ERRORS.FILE_REQUIRED.status,
         );
       }
-      await this.cloudStorageService.uploadFile(file);
-      return 'Upload File successfully';
+      return await this.cloudStorageService.uploadFile(file);
     } catch (error) {
       this.logger.error('Cloud Storage Controller - uploadFile: ', error);
       if (error instanceof RequestException) {

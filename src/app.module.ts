@@ -10,7 +10,8 @@ import { SpaceshipModule } from './spaceship/spaceship.module';
 import { PrismaModule } from './prisma/prisma.module';
 import { S3AdapterModule } from './cloud-storage/s3-adapter/s3-adapter.module';
 import { CloudStorageAbstractModule } from './cloud-storage/abstract/cloud-storage-abstract.module.ts';
-import { S3AdapterService } from './cloud-storage/s3-adapter/s3-adapter.service';
+import { ConfigType } from '@nestjs/config';
+import awsConfig from 'src/config/aws.config';
 
 @Module({
   imports: [
@@ -23,7 +24,16 @@ import { S3AdapterService } from './cloud-storage/s3-adapter/s3-adapter.service'
     PrismaModule,
     S3AdapterModule,
     CloudStorageAbstractModule.forRoot({
-      adapter: S3AdapterService,
+      adapter: S3AdapterModule.forRootAsync({
+        inject: [awsConfig.KEY],
+        useFactory: (aws: ConfigType<typeof awsConfig>) => ({
+          bucket: aws.s3.bucket,
+          region: aws.base.region,
+          accessKeyId: aws.base.accessKeyId,
+          secretAccessKey: aws.base.secretAccessKey,
+          expiresInSeconds: aws.s3.expiresInSeconds,
+        }),
+      }),
     }),
   ],
   controllers: [AppController],

@@ -1,4 +1,4 @@
-import { Injectable, Logger } from '@nestjs/common';
+import { Inject, Injectable } from '@nestjs/common';
 import {
   S3Client,
   PutObjectCommand,
@@ -7,6 +7,8 @@ import {
 } from '@aws-sdk/client-s3';
 import { getSignedUrl } from '@aws-sdk/s3-request-presigner';
 import { v4 as uuidv4 } from 'uuid';
+import { S3_ADAPTER_PROVIDER_CONFIG } from './s3-adapter-config-provider.const';
+import { S3AdapterConfig } from './s3-adapter-config.interface';
 
 @Injectable()
 export class S3AdapterService {
@@ -14,19 +16,19 @@ export class S3AdapterService {
   private region: string;
   private bucket: string;
   private expiresInSeconds: number;
-  private readonly logger = new Logger(this.constructor.name, {
-    timestamp: true,
-  });
 
-  constructor() {
-    this.expiresInSeconds = 3600;
-    this.bucket = process.env.AWS_S3_BUCKET_NAME!;
-    this.region = process.env.AWS_REGION!;
+  constructor(
+    @Inject(S3_ADAPTER_PROVIDER_CONFIG)
+    private readonly config: S3AdapterConfig,
+  ) {
+    this.expiresInSeconds = config.expiresInSeconds;
+    this.bucket = config.bucket;
+    this.region = config.region;
     this.s3 = new S3Client({
-      region: process.env.AWS_REGION!, // TODO: Configure globally congis?
+      region: this.region,
       credentials: {
-        accessKeyId: process.env.AWS_ACCESS_KEY!,
-        secretAccessKey: process.env.AWS_SECRET_ACCESS_KEY!,
+        accessKeyId: config.accessKeyId,
+        secretAccessKey: config.secretAccessKey,
       },
     });
   }
@@ -46,10 +48,10 @@ export class S3AdapterService {
       const url = `https://${this.bucket}.s3.${this.region}.amazonaws.com/${params.Key}`;
       return { url, id };
     } catch (error) {
-      this.logger.error(
+      console.log(
         `Failed to upload object to bucket ${this.bucket}:`,
-        error,
-      );
+        `Error: ${error}`,
+      ); // TODO: Integrate log provider
       throw error;
     }
   }
@@ -62,10 +64,10 @@ export class S3AdapterService {
       };
       await this.s3.send(new DeleteObjectCommand(params));
     } catch (error) {
-      this.logger.error(
+      console.log(
         `Failed to delete object ${fileKey} from bucket ${this.bucket}:`,
-        error,
-      );
+        `Error: ${error}`,
+      ); // TODO: Integrate log provider
       throw error;
     }
   }
@@ -81,10 +83,10 @@ export class S3AdapterService {
       });
       return { url, id: fileKey };
     } catch (error) {
-      this.logger.error(
+      console.log(
         `Failed to get object ${fileKey} from bucket ${this.bucket}:`,
-        error,
-      );
+        `Error: ${error}`,
+      ); // TODO: Integrate log provider
       throw error;
     }
   }
