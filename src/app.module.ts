@@ -33,6 +33,8 @@ import awsConfig from 'src/config/aws.config';
           expiresInSeconds: aws.s3.expiresInSeconds,
         }),
       }),
+      useDefaultController: true,
+      isGlobal: true,
     }),
   ],
   controllers: [AppController],

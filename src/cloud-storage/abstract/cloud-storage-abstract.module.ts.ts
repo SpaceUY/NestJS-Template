@@ -13,16 +13,22 @@ interface CloudStorageModuleOptions {
   adapter: AdapterModule;
   useDefaultController?: boolean;
   isGlobal?: boolean;
+  customController?: Type<any>[];
 }
 
 @Module({})
 export class CloudStorageAbstractModule {
   static forRoot(options: CloudStorageModuleOptions): DynamicModule {
-    const { adapter, isGlobal = false } = options;
+    const {
+      adapter,
+      isGlobal = false,
+      useDefaultController = true,
+      customController,
+    } = options;
 
-    const controllers = options.useDefaultController
-      ? [CloudStorageController]
-      : [];
+    const controllers =
+      customController ||
+      (useDefaultController ? [CloudStorageController] : []);
 
     return {
       module: CloudStorageAbstractModule,

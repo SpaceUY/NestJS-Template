@@ -130,6 +130,8 @@ Assuming that a `awsConfig` is registered using `@nestjs/common`'s `registerAs` 
 
 ## API Reference
 
+The `CloudStorageAbstractModule` allows the optional registration of a default controller (`CloudStorageController`), which exposes endpoints for file management with the cloud storage provider.
+
 ### CloudStorageController
 
 The main endpoints for interacting with cloud storage provider:
@@ -147,6 +149,69 @@ class CloudStorageController {
   // Retrieve a file signed url from cloud storage provider by fileKey
   async getFile(@Param('fileKey') fileKey: string): Promise<FileResponseDto>
 }
+```
+
+### **Enabling the Default Controller**
+
+To use the default controller, set `useDefaultController: true` when registering the module:
+
+```typescript
+import { Module } from '@nestjs/common';
+import { CloudStorageAbstractModule } from './cloud-storage/cloud-storage-abstract.module';
+import { S3AdapterModule } from './adapters/s3-adapter.module';
+
+@Module({
+  imports: [
+    CloudStorageAbstractModule.forRoot({
+      adapter: S3AdapterModule.registerAsync({
+        inject: [awsConfig.KEY],
+        useFactory: (aws: ConfigType<typeof awsConfig>) => ({
+          bucket: aws.s3.bucket,
+          region: aws.base.region,
+          accessKeyId: aws.base.accessKeyId,
+          secretAccessKey: aws.base.secretAccessKey,
+          expiresInSeconds: aws.s3.expiresInSeconds,
+        }),
+      }),
+      useDefaultController: true, // Enables the default controller
+      isGlobal: true, // If you need, enables the module as global
+    }),
+  ],
+})
+export class AppModule {}
+```
+
+### **Enabling a Custom Controller**
+
+To use a custom controller, set `useDefaultController: false` when registering the module:
+
+```typescript
+import { Module } from '@nestjs/common';
+import { CloudStorageAbstractModule } from './cloud-storage/cloud-storage-abstract.module';
+import { S3AdapterModule } from './adapters/s3-adapter.module';
+import { CustomStorageController } from './custom-storage.controller';
+
+@Module({
+  imports: [
+    CloudStorageAbstractModule.forRoot({
+      adapter: S3AdapterModule.registerAsync({
+        inject: [awsConfig.KEY],
+        useFactory: (aws: ConfigType<typeof awsConfig>) => ({
+          bucket: aws.s3.bucket,
+          region: aws.base.region,
+          accessKeyId: aws.base.accessKeyId,
+          secretAccessKey: aws.base.secretAccessKey,
+          expiresInSeconds: aws.s3.expiresInSeconds,
+        }),
+      }),
+      useDefaultController: false, // Disable the default controller
+      customController: [YourController], // Registers the custom controller
+      isGlobal: true, // If you need, enables the module as global
+    }),
+  ], 
+})
+export class AppModule {}
+
 ```
 
 ## Extending Functionality with Other Storage Providers
