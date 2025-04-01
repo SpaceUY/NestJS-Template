@@ -3,7 +3,6 @@ import {
   Delete,
   Get,
   InternalServerErrorException,
-  Logger,
   Param,
   Post,
   UploadedFile,
@@ -17,7 +16,6 @@ import {
   ApiResponse,
   ApiTags,
 } from '@nestjs/swagger';
-import { RequestException } from 'src/common/exception/core/ExceptionBase';
 import { FileInterceptor } from '@nestjs/platform-express';
 import { CloudStorageService } from './cloud-storage.service';
 import { UploadFileDto } from './dto/upload-file.dto';
@@ -29,10 +27,6 @@ import { FileResponseDto } from './dto/file-response.dto';
 @Controller('cloud-storage')
 // Use an authentication guard if the project requires it.
 export class CloudStorageController {
-  private readonly logger = new Logger(this.constructor.name, {
-    timestamp: true,
-  });
-
   constructor(private cloudStorageService: CloudStorageService) {}
 
   @Post('')
@@ -56,8 +50,7 @@ export class CloudStorageController {
       }
       return this.cloudStorageService.uploadFile(file);
     } catch (error) {
-      this.logger.error('Cloud Storage Controller - uploadFile: ', error);
-      if (error instanceof RequestException) {
+      if (error instanceof CloudStorageException) {
         throw error;
       }
       throw new InternalServerErrorException(error);
@@ -72,8 +65,7 @@ export class CloudStorageController {
     try {
       await this.cloudStorageService.deleteFile(fileKey);
     } catch (error) {
-      this.logger.error('Cloud Storage Controller - deleteFile: ', error);
-      if (error instanceof RequestException) {
+      if (error instanceof CloudStorageException) {
         throw error;
       }
       throw new InternalServerErrorException(error);
@@ -88,8 +80,7 @@ export class CloudStorageController {
     try {
       return this.cloudStorageService.getFile(fileKey);
     } catch (error) {
-      this.logger.error('Cloud Storage Controller - getFile: ', error);
-      if (error instanceof RequestException) {
+      if (error instanceof CloudStorageException) {
         throw error;
       }
       throw new InternalServerErrorException(error);

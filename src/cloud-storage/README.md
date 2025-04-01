@@ -20,7 +20,6 @@ cloud-storage/
 │   ├── cloud-storage-abstract.module.ts
 │   ├── cloud-storage-error-codes.ts
 │   ├── cloud-storage-provider.const.ts
-│   ├── cloud-storage-provider.interface.ts
 │   ├── cloud-storage.controller.ts
 │   ├── cloud-storage.exception.ts
 │   ├── cloud-storage.service.ts
@@ -67,7 +66,7 @@ import awsConfig from 'src/config/aws.config'; // Your aws config
 @Module({
   imports: [
     CloudStorageAbstractModule.forRoot({
-      adapter: S3AdapterModule.forRootAsync({
+      adapter: S3AdapterModule.registerAsync({
         inject: [awsConfig.KEY],
         useFactory: (aws: ConfigType<typeof awsConfig>) => ({
           bucket: aws.s3.bucket,
@@ -87,19 +86,41 @@ export class AppModule {}
 
 ```typescript
 import { Injectable } from '@nestjs/common';
-import { ICloudStorageProvider } from './cloud-storage-provider.interface';
+import { CloudStorageService } from './cloud-storage.service';
 import { CLOUD_STORAGE_PROVIDER } from './cloud-storage-provider.const';
 
 @Injectable()
 export class YourService {
-  constructor(@Inject(CLOUD_STORAGE_PROVIDER)
-    private readonly storageProvider: ICloudStorageProvider,) {}
+  constructor(private cloudStorageService: CloudStorageService) {}
 
-   getFile(fileKey: string): Promise<{ url: string; id: string }> {
+   getFile(fileKey: string): Promise<CloudStorageFile> {
     return this.storageProvider.getFile(fileKey);
   }
 }
 ```
+
+## Using the S3 Adapter with CloudStorageAbstractModule
+
+To make the `CloudStorageAbstractModule` work with the S3 adapter, it's required to extend the `CloudStorageService` class. Specifically, in your `S3AdapterService` class that extends `CloudStorageService`. This extension is necessary for the CloudStorageAbstractModule to interact with the S3 storage provider.
+
+If your project only requires the S3 adapter and you know that you won't need to change the provider, you can skip using the abstract module and directly import the S3AdapterModule into your project.
+
+**Fix Import Paths Manually (If Needed)**:
+
+  After copying the files, you might need to fix the import paths manually. Ensure that the import paths for the CloudStorageService and the S3AdapterService are correct according to your project structure. If you encounter any errors related to the imports, double-check that the paths are resolved correctly.
+
+  In your project, find a service that extends `CloudStorageService`, and adjust the import path if needed, like this:
+
+  ```typescript
+  import { CloudStorageService } from 'path-to-cloud-storage-service'; // Adjust the import path
+  import { Injectable } from '@nestjs/common';
+
+  @Injectable()
+  export class S3AdapterService extends CloudStorageService {
+  }
+   
+```
+
 
 ## Configuration Options
 
@@ -109,11 +130,11 @@ The `CloudStorageAbstractModule.forRoot()` method accepts standard AWS S3 config
 static forRoot(options: { adapter: DynamicModule }): DynamicModule
 ```
 
-There's also a `forRootAsync` option which allows for dependency injection. For instance, the module can be used in the following fashion:
+There's also a `registerAsync` option which allows for dependency injection. For instance, the module can be used in the following fashion:
 
 ```typescript
 CloudStorageAbstractModule.forRoot({
-  adapter: S3AdapterModule.forRootAsync({
+  adapter: S3AdapterModule.registerAsync({
     inject: [awsConfig.KEY],
     useFactory: (aws: ConfigType<typeof awsConfig>) => ({
       bucket: aws.s3.bucket,
@@ -144,7 +165,7 @@ class CloudStorageController {
   ): Promise<FileResponseDto>
 
   // Delete a file from cloud storage provider by fileKey
-  async deleteFile(@Param('fileKey') fileKey: string): Promise<string>
+  async deleteFile(@Param('fileKey') fileKey: string): Promise<void>
 
   // Retrieve a file signed url from cloud storage provider by fileKey
   async getFile(@Param('fileKey') fileKey: string): Promise<FileResponseDto>
@@ -224,14 +245,14 @@ The `CloudStorageAbstractModule` is designed to be flexible and support multiple
 
 2. **Define the Adapter Module**  
    - Create a module similar to `S3AdapterModule` to initialize the new provider.  
-   - Ensure it provides a configuration mechanism (e.g., `forRoot` or `forRootAsync` methods).
+   - Ensure it provides a configuration mechanism (e.g., `register` or `registerAsync` methods).
 
 3. **Register the Adapter in the Abstract Module**  
    - Modify `CloudStorageAbstractModule` to accept the new adapter as a dynamic module.  
    - Example:  
    ```typescript
    CloudStorageAbstractModule.forRoot({
-     adapter: GCSAdapterModule.forRootAsync({
+     adapter: GCSAdapterModule.registerAsync({
        inject: [gcsConfig.KEY],
        useFactory: (gcs: ConfigType<typeof gcsConfig>) => ({
          bucket: gcs.bucket,
