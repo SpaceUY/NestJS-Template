@@ -213,6 +213,12 @@ The `CloudStorageAbstractModule` is designed to be flexible and support multiple
    - Regularly audit and clean up unused or orphaned files.
    - Monitor storage usage and costs to avoid unexpected charges.
 
+6. **If you need, using the S3 Endpoint Option for Local Cloud Storage**
+
+   - The endpoint option in AWS SDKs allows connecting to a custom S3-compatible storage service, such as a local MinIO server or an on-premise object storage system.
+   - By specifying a custom endpoint, data can be stored and accessed without routing through AWS public endpoints, improving performance and reducing data transfer costs.
+   - Ensure proper authentication and security settings when configuring the endpoint, especially when connecting to private or self-hosted storage solutions.
+
 ## Contributing
 
 Feel free to submit issues and enhancement requests!
