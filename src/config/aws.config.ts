@@ -17,7 +17,7 @@ export default registerWithValidation(
   {
     AWS_S3_BUCKET_NAME: Joi.string(),
     AWS_REGION: Joi.string(),
-    AWS_ACCESS_KEY: Joi.string(),
-    AWS_SECRET_ACCESS_KEY: Joi.string(),
+    AWS_ACCESS_KEY: Joi.string().optional(),
+    AWS_SECRET_ACCESS_KEY: Joi.string().optional(),
   },
 );

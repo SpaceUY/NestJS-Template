@@ -147,7 +147,11 @@ CloudStorageAbstractModule.forRoot({
 }),
 ```
 
-Assuming that a `awsConfig` is registered using `@nestjs/common`'s `registerAs` method.
+Assuming that a `awsConfig` is registered using `@nestjs/common`'s `registerAs` method. 
+
+
+For a secure and scalable integration with AWS S3, it is recommended to **use IAM Roles instead of passing access keys explicitly**.  
+For this reason, the environment variables **AWS_ACCESS_KEY** and **AWS_SECRET_ACCESS_KEY** are optional in this project.
 
 ## API Reference
 
@@ -286,6 +290,7 @@ The `CloudStorageAbstractModule` is designed to be flexible and support multiple
    - Use signed URLs or pre-signed URLs for secure temporary access
    - Restrict public access to storage unless necessary
    - Apply bucket policies and IAM roles to limit access
+   - For a secure and scalable integration with AWS S3, it is recommended to use IAM Roles instead of passing access keys explicitly. IAM Roles allow applications (e.g., EC2, Lambda, ECS) to assume roles and gain the necessary permissions to access S3 without needing to manage access keys manually. By using IAM Roles, you reduce the risk of exposing sensitive credentials and simplify the management of access permissions. For this reason, the environment variables AWS_ACCESS_KEY and AWS_SECRET_ACCESS_KEY are optional in this project
 
 4. **Performance Optimization**
 

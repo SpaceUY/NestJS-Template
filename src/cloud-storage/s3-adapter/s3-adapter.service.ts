@@ -26,12 +26,18 @@ export class S3AdapterService extends CloudStorageService {
     this.expiresInSeconds = config.expiresInSeconds;
     this.bucket = config.bucket;
     this.region = config.region;
+    const credentials =
+      config.accessKeyId && config.secretAccessKey
+        ? {
+            credentials: {
+              accessKeyId: config.accessKeyId,
+              secretAccessKey: config.secretAccessKey,
+            },
+          }
+        : {};
     this.s3 = new S3Client({
       region: this.region,
-      credentials: {
-        accessKeyId: config.accessKeyId,
-        secretAccessKey: config.secretAccessKey,
-      },
+      ...credentials,
     });
   }
 
