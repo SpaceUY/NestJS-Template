@@ -54,7 +54,7 @@ export class CloudStorageController {
           CLOUD_STORAGE_ERRORS.FILE_REQUIRED.status,
         );
       }
-      return await this.cloudStorageService.uploadFile(file);
+      return this.cloudStorageService.uploadFile(file);
     } catch (error) {
       this.logger.error('Cloud Storage Controller - uploadFile: ', error);
       if (error instanceof RequestException) {
@@ -68,10 +68,9 @@ export class CloudStorageController {
   @ApiParam({ name: 'fileKey' })
   @ApiOperation({ summary: 'Delete from cloud storage by file key' })
   @ApiResponse({ status: 200, description: 'Complete', type: String })
-  async deleteFile(@Param('fileKey') fileKey: string): Promise<string> {
+  async deleteFile(@Param('fileKey') fileKey: string): Promise<void> {
     try {
       await this.cloudStorageService.deleteFile(fileKey);
-      return 'Remove File successfully';
     } catch (error) {
       this.logger.error('Cloud Storage Controller - deleteFile: ', error);
       if (error instanceof RequestException) {
@@ -87,7 +86,7 @@ export class CloudStorageController {
   @ApiResponse({ status: 200, description: 'Complete', type: FileResponseDto })
   async getFile(@Param('fileKey') fileKey: string): Promise<FileResponseDto> {
     try {
-      return await this.cloudStorageService.getFile(fileKey);
+      return this.cloudStorageService.getFile(fileKey);
     } catch (error) {
       this.logger.error('Cloud Storage Controller - getFile: ', error);
       if (error instanceof RequestException) {

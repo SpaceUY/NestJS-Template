@@ -23,7 +23,7 @@ import awsConfig from 'src/config/aws.config';
     SpaceshipModule,
     PrismaModule,
     CloudStorageAbstractModule.forRoot({
-      adapter: S3AdapterModule.forRootAsync({
+      adapter: S3AdapterModule.registerAsync({
         inject: [awsConfig.KEY],
         useFactory: (aws: ConfigType<typeof awsConfig>) => ({
           bucket: aws.s3.bucket,
