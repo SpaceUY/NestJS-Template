@@ -11,7 +11,21 @@ import { CLOUD_STORAGE_PROVIDER } from '../abstract/cloud-storage-provider.const
 
 @Module({})
 export class S3AdapterModule {
-  static forRootAsync(options: {
+  static register(config: S3AdapterConfig): DynamicModule {
+    return {
+      module: S3AdapterModule,
+      providers: [
+        {
+          provide: S3_ADAPTER_PROVIDER_CONFIG,
+          useValue: config,
+        },
+        { provide: CLOUD_STORAGE_PROVIDER, useClass: S3AdapterService },
+      ],
+      exports: [CLOUD_STORAGE_PROVIDER, S3_ADAPTER_PROVIDER_CONFIG],
+    };
+  }
+
+  static registerAsync(options: {
     imports?: ModuleMetadata['imports'];
     inject?: InjectionToken[];
     useFactory: (...args: any[]) => Promise<S3AdapterConfig> | S3AdapterConfig;

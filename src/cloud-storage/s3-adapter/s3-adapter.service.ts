@@ -9,9 +9,10 @@ import { getSignedUrl } from '@aws-sdk/s3-request-presigner';
 import { v4 as uuidv4 } from 'uuid';
 import { S3_ADAPTER_PROVIDER_CONFIG } from './s3-adapter-config-provider.const';
 import { S3AdapterConfig } from './s3-adapter-config.interface';
+import { CloudStorageService } from '../abstract/cloud-storage.service';
 
 @Injectable()
-export class S3AdapterService {
+export class S3AdapterService extends CloudStorageService {
   private s3: S3Client;
   private region: string;
   private bucket: string;
@@ -19,8 +20,9 @@ export class S3AdapterService {
 
   constructor(
     @Inject(S3_ADAPTER_PROVIDER_CONFIG)
-    private readonly config: S3AdapterConfig,
+    config: S3AdapterConfig,
   ) {
+    super();
     this.expiresInSeconds = config.expiresInSeconds;
     this.bucket = config.bucket;
     this.region = config.region;

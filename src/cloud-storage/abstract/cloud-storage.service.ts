@@ -1,23 +1,39 @@
-import { Injectable, Inject } from '@nestjs/common';
-import { ICloudStorageProvider } from './cloud-storage-provider.interface';
-import { CLOUD_STORAGE_PROVIDER } from './cloud-storage-provider.const';
+/**
+ * Interface for the file object returned by the Cloud Storage provider.
+ * @property {string} url - The public URL where the file can be accessed.
+ * @property {string} id - The unique identifier assigned to the file in the cloud provider.
+ */
+interface CloudStorageFile {
+  url: string;
+  id: string;
+}
 
-@Injectable()
-export class CloudStorageService implements ICloudStorageProvider {
-  constructor(
-    @Inject(CLOUD_STORAGE_PROVIDER)
-    private readonly storageProvider: ICloudStorageProvider,
-  ) {}
+/**
+ * Interface for adapters to implement to work alongside the `CloudStorageModule.`
+ */
+export abstract class CloudStorageService {
+  /**
+   * Uploads a file to the Cloud Storage provider.
+   * @param {Express.Multer.File} file - The file to upload.
+   * @returns {Promise<CloudStorageFile>} An object containing:
+   *   - `url`: The public URL where the file can be accessed.
+   *   - `id`: The unique identifier assigned to the file in the cloud provider.
+   */
+  abstract uploadFile(file: Express.Multer.File): Promise<CloudStorageFile>;
 
-  uploadFile(file: Express.Multer.File): Promise<{ url: string; id: string }> {
-    return this.storageProvider.uploadFile(file);
-  }
+  /**
+   * Delete a file from the Cloud Storage provider.
+   * @param {string} fileKey - The unique identifier assigned to the file in the cloud provider.
+   * @returns {void}
+   */
+  abstract deleteFile(fileKey: string): Promise<void>;
 
-  deleteFile(fileKey: string): Promise<void> {
-    return this.storageProvider.deleteFile(fileKey);
-  }
-
-  getFile(fileKey: string): Promise<{ url: string; id: string }> {
-    return this.storageProvider.getFile(fileKey);
-  }
+  /**
+   * Get a file from the Cloud Storage provider.
+   * @param {string} fileKey - The unique identifier assigned to the file in the cloud provider.
+   * @returns {Promise<CloudStorageFile>} An object containing:
+   *   - `url`: Signed URL where the file can be accessed.
+   *   - `id`: The unique identifier assigned to the file in the cloud provider.
+   */
+  abstract getFile(fileKey: string): Promise<CloudStorageFile>;
 }
