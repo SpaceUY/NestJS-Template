@@ -27,7 +27,7 @@ import { FileResponseDto } from './dto/file-response.dto';
 @Controller('cloud-storage')
 // Use an authentication guard if the project requires it.
 export class CloudStorageController {
-  constructor(private cloudStorageService: CloudStorageService) {}
+  constructor(private readonly cloudStorageService: CloudStorageService) {}
 
   @Post('')
   @UseInterceptors(FileInterceptor('file'))

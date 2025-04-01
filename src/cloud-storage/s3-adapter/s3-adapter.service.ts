@@ -75,7 +75,7 @@ export class S3AdapterService extends CloudStorageService {
       console.log(
         `Failed to delete object ${fileKey} from bucket ${this.bucket}:`,
         `Error: ${error}`,
-      ); // TODO: Integrate log provider
+      );
       throw error;
     }
   }
@@ -94,7 +94,7 @@ export class S3AdapterService extends CloudStorageService {
       console.log(
         `Failed to get object ${fileKey} from bucket ${this.bucket}:`,
         `Error: ${error}`,
-      ); // TODO: Integrate log provider
+      );
       throw error;
     }
   }
