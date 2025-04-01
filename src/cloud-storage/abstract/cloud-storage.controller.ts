@@ -48,7 +48,7 @@ export class CloudStorageController {
           CLOUD_STORAGE_ERRORS.FILE_REQUIRED.status,
         );
       }
-      return this.cloudStorageService.uploadFile(file);
+      return await this.cloudStorageService.uploadFile(file);
     } catch (error) {
       if (error instanceof CloudStorageException) {
         throw error;
@@ -78,7 +78,7 @@ export class CloudStorageController {
   @ApiResponse({ status: 200, description: 'Complete', type: FileResponseDto })
   async getFile(@Param('fileKey') fileKey: string): Promise<FileResponseDto> {
     try {
-      return this.cloudStorageService.getFile(fileKey);
+      return await this.cloudStorageService.getFile(fileKey);
     } catch (error) {
       if (error instanceof CloudStorageException) {
         throw error;
