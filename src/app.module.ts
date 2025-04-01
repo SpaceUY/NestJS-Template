@@ -8,6 +8,10 @@ import { TemplateModule } from './template/template.module';
 import { EmailModule } from './email/sendgrid/email.module';
 import { SpaceshipModule } from './spaceship/spaceship.module';
 import { PrismaModule } from './prisma/prisma.module';
+import { S3AdapterModule } from './cloud-storage/s3-adapter/s3-adapter.module';
+import { CloudStorageAbstractModule } from './cloud-storage/abstract/cloud-storage-abstract.module.ts';
+import { ConfigType } from '@nestjs/config';
+import awsConfig from 'src/config/aws.config';
 
 @Module({
   imports: [
@@ -18,6 +22,20 @@ import { PrismaModule } from './prisma/prisma.module';
     EmailModule,
     SpaceshipModule,
     PrismaModule,
+    CloudStorageAbstractModule.forRoot({
+      adapter: S3AdapterModule.registerAsync({
+        inject: [awsConfig.KEY],
+        useFactory: (aws: ConfigType<typeof awsConfig>) => ({
+          bucket: aws.s3.bucket,
+          region: aws.base.region,
+          accessKeyId: aws.base.accessKeyId,
+          secretAccessKey: aws.base.secretAccessKey,
+          expiresInSeconds: aws.s3.expiresInSeconds,
+        }),
+      }),
+      useDefaultController: true,
+      isGlobal: true,
+    }),
   ],
   controllers: [AppController],
   providers: [AppService],

@@ -8,6 +8,19 @@
           "description": "Sendgrid implementation of email module"
         }
       ]
+    },
+    "cloud-storage": {
+      "path": "src/cloud-storage",
+      "implementations": [
+        {
+          "name": "abstract",
+          "description": "Abstract implementation of cloud storage module"
+        },
+        {
+          "name": "s3-adapter",
+          "description": "S3 implementation of cloud storage module"
+        }
+      ]
     }
   }
 }

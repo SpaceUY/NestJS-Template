@@ -5,6 +5,7 @@ import databaseConfig from './database.config';
 import emailConfig from './email.config';
 import googleConfig from './google.config';
 import jwtConfig from './jwt.config';
+import awsConfig from './aws.config';
 
 @Module({
   imports: [
@@ -14,6 +15,7 @@ import jwtConfig from './jwt.config';
       databaseConfig,
       googleConfig,
       emailConfig,
+      awsConfig,
     ]),
   ],
   exports: [ConfigCoreModule],
