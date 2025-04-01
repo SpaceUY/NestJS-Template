@@ -20,12 +20,34 @@ export class AuthTokenService {
     private readonly jwtConf: ConfigType<typeof jwtConfig>,
   ) {}
 
-  generateAuthToken(user: User, authType: AuthType): Promise<string> {
-    return this.jwtService.signAsync({
-      userId: user.id,
-      authType,
-      type: 'auth',
-    } as AuthTokenPayload);
+  async generateAuthTokens(
+    user: User,
+    authType: AuthType,
+  ): Promise<{ token: string; refreshToken: string }> {
+    const token = this.jwtService.sign(
+      {
+        userId: user.id,
+        authType,
+        type: 'auth',
+      } as AuthTokenPayload,
+      {
+        secret: this.jwtConf.secret,
+        expiresIn: this.jwtConf.expiresIn,
+      },
+    );
+
+    const refreshToken = this.jwtService.sign(
+      {
+        userId: user.id,
+        authType,
+        type: 'auth',
+      } as AuthTokenPayload,
+      {
+        secret: this.jwtConf.secretRefreshToken,
+        expiresIn: this.jwtConf.expiresInRefreshToken,
+      },
+    );
+    return { token, refreshToken };
   }
 
   generateResetPasswordAuthToken(

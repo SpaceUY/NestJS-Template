@@ -18,6 +18,7 @@ import { ChangePasswordDto } from './dto/change-password.dto';
 import { ForgotPasswordDto } from './dto/forgot-password.dto';
 import { ResetPasswordDto } from './dto/reset-password.dto';
 import { JwtAuthGuard } from 'src/common/guard/jwt.guard';
+import { JwtRefreshAuthGuard } from './guard/jwt-refresh.guard';
 
 @ApiTags('auth/basic')
 @Controller('auth/baasic')
@@ -129,6 +130,27 @@ export class BasicAuthController {
       throw new RequestException(
         Exceptions.generic.internalServer({ msg: error.message }),
       );
+    }
+  }
+
+  @Post('refresh-token')
+  @ApiBearerAuth()
+  @UseGuards(JwtRefreshAuthGuard)
+  @ApiOperation({ summary: 'Refresh Token' })
+  @ApiResponse({
+    status: 200,
+    description: 'Complete',
+    type: LoginResponseDto,
+  })
+  async refreshToken(@CurrentUser() user: User): Promise<LoginResponseDto> {
+    try {
+      return await this.basicAuthService.refreshToken(user);
+    } catch (error) {
+      this.logger.error('Email Auth Controller - Refresh Token: ', error);
+      if (error instanceof RequestException) {
+        throw error;
+      }
+      throw new RequestException(Exceptions.auth.invalidCredentials);
     }
   }
 }

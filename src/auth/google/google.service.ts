@@ -22,7 +22,9 @@ export class GoogleService {
     private authTokenService: AuthTokenService,
   ) {}
 
-  async register(idToken: string): Promise<string> {
+  async register(
+    idToken: string,
+  ): Promise<{ token: string; refreshToken: string }> {
     try {
       const ticket = await this.oauthClient.verifyIdToken({
         idToken,
@@ -53,7 +55,7 @@ export class GoogleService {
         },
       });
 
-      return this.authTokenService.generateAuthToken(user, AuthType.GOOGLE);
+      return this.authTokenService.generateAuthTokens(user, AuthType.GOOGLE);
     } catch (e) {
       this.logger.error('Google login: ', e);
       if (e instanceof RequestException) {
@@ -63,7 +65,9 @@ export class GoogleService {
     }
   }
 
-  async login(idToken: string): Promise<string> {
+  async login(
+    idToken: string,
+  ): Promise<{ token: string; refreshToken: string }> {
     try {
       const ticket = await this.oauthClient.verifyIdToken({
         idToken,
@@ -86,7 +90,7 @@ export class GoogleService {
         throw new RequestException(Exceptions.auth.invalidCredentials);
       }
 
-      return this.authTokenService.generateAuthToken(
+      return await this.authTokenService.generateAuthTokens(
         existingUser,
         AuthType.GOOGLE,
       );

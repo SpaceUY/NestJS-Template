@@ -46,13 +46,12 @@ export class BasicAuthService {
         throw new RequestException(Exceptions.auth.invalidCredentials);
       }
 
-      const jwt = await this.authTokenService.generateAuthToken(
-        user,
-        AuthType.EMAIL,
-      );
+      const { token, refreshToken } =
+        await this.authTokenService.generateAuthTokens(user, AuthType.EMAIL);
 
       return {
-        token: jwt,
+        token,
+        refreshToken,
       };
     } catch (error) {
       this.logger.error('BasicAuthService - login: ', error);
@@ -78,11 +77,9 @@ export class BasicAuthService {
           authType: AuthType.EMAIL,
         },
       });
-      const jwt = await this.authTokenService.generateAuthToken(
-        user,
-        AuthType.EMAIL,
-      );
-      return { token: jwt };
+      const { token, refreshToken } =
+        await this.authTokenService.generateAuthTokens(user, AuthType.EMAIL);
+      return { token, refreshToken };
     } catch (error) {
       this.logger.error('BasicAuthService - register: ', error);
       if (error instanceof RequestException) {
@@ -183,6 +180,25 @@ export class BasicAuthService {
     } catch (error) {
       this.logger.error('BasicAuthService - changePassword: ', error);
       if (error instanceof RequestException) throw error;
+      throw new RequestException(Exceptions.auth.invalidPayload);
+    }
+  }
+
+  async refreshToken(
+    user: User,
+  ): Promise<{ token: string; refreshToken: string }> {
+    try {
+      const { token, refreshToken } =
+        await this.authTokenService.generateAuthTokens(user, user.authType);
+      return {
+        token,
+        refreshToken,
+      };
+    } catch (error) {
+      this.logger.error('EmailAuthService - login: ', error);
+      if (error instanceof RequestException) {
+        throw error;
+      }
       throw new RequestException(Exceptions.auth.invalidPayload);
     }
   }

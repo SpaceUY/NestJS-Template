@@ -9,6 +9,8 @@ export default registerWithValidation(
     ignoreExpiration: process.env.JWT_IGNORE_EXPIRATION === 'true',
     secretResetPassword: process.env.JWT_RESET_PASSWORD_SECRET,
     expiresInResetPassword: process.env.JWT_RESET_PASSWORD_EXPIRES_IN || '7d',
+    secretRefreshToken: process.env.JWT_REFRESH_SECRET,
+    expiresInRefreshToken: process.env.JWT_REFRESH_TOKEN_EXPIRES_IN,
   }),
   {
     JWT_SECRET: Joi.string(),
