@@ -1,10 +1,14 @@
-import { Module } from '@nestjs/common';
+import { Global, Module } from '@nestjs/common';
 import { EmailCoreModule } from './core/email-core.module';
 import testEmail from './emails/test.email';
 import test2Email from './emails/test2.email';
+import forgotPasswordEmail from './emails/forgot-password.email';
 
+@Global()
 @Module({
-  imports: [EmailCoreModule.forRoot([testEmail, test2Email])],
+  imports: [
+    EmailCoreModule.forRoot([forgotPasswordEmail, testEmail, test2Email]),
+  ],
   exports: [EmailCoreModule],
 })
 export class EmailModule {}

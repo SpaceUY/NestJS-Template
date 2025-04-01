@@ -26,6 +26,17 @@ export const Exceptions = {
       errorCode: 'AUTH_INVALID_CREDS',
       errorMsg: 'Invalid credentials were used. Please try again',
     } as ExceptionInfo,
+    invalidNotLoggedEmail: {
+      httpStatus: HttpStatus.BAD_REQUEST,
+      errorCode: 'AUTH_INVALID_NOT_LOGGED_EMAIL',
+      errorMsg:
+        'Invalid, not register with email. Please try with auth method register',
+    } as ExceptionInfo,
+    invalidResetCode: {
+      httpStatus: HttpStatus.BAD_REQUEST,
+      errorCode: 'AUTH_INVALID_RESET_CODE',
+      errorMsg: 'Invalid reset token. Please try again',
+    } as ExceptionInfo,
   },
   database: {
     alreadyExists: (args: {
@@ -36,6 +47,13 @@ export const Exceptions = {
       httpStatus: HttpStatus.CONFLICT,
       errorCode: 'DB_EXISTING',
       errorMsg: `${args.entity} with ${args.field} ${args.value} already exists`,
+    }),
+  },
+  generic: {
+    internalServer: (args?: { msg?: string }) => ({
+      httpStatus: HttpStatus.INTERNAL_SERVER_ERROR,
+      errorCode: 'INTERNAL_SERVER_ERROR',
+      errorMsg: args?.msg ? args.msg : 'Internal Server Error',
     }),
   },
 };

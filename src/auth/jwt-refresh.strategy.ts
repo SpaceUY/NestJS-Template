@@ -7,22 +7,23 @@ import { User } from '@prisma/client';
 import { RequestException } from 'src/common/exception/core/ExceptionBase';
 import { Exceptions } from 'src/common/exception/exceptions';
 import jwtConfig from '../config/jwt.config';
-import { PrismaService } from '../prisma/prisma.service';
 import { AuthTokenPayload } from './core/auth-token/auth-token.service';
 import { AuthService } from './auth.service';
 
 @Injectable()
-export class JwtStrategy extends PassportStrategy(Strategy) {
+export class JwtRefreshStrategy extends PassportStrategy(
+  Strategy,
+  'jwt-refresh',
+) {
   constructor(
     @Inject(jwtConfig.KEY)
     jwtConf: ConfigType<typeof jwtConfig>,
     private readonly authService: AuthService,
-    private readonly prisma: PrismaService,
   ) {
     super({
       jwtFromRequest: ExtractJwt.fromAuthHeaderAsBearerToken(),
       ignoreExpiration: jwtConf.ignoreExpiration,
-      secretOrKey: jwtConf.secret,
+      secretOrKey: jwtConf.secretRefreshToken,
     } as StrategyOptions);
   }
 
