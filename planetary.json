@@ -21,6 +21,19 @@
           "description": "S3 implementation of cloud storage module"
         }
       ]
+    },
+    "push-notification": {
+      "path": "src/push-notification",
+      "implementations": [
+        {
+          "name": "abstract",
+          "description": "Abstract implementation of push notification module"
+        },
+        {
+          "name": "expo-adapter",
+          "description": "Expo server SDK implementation of push notification module"
+        }
+      ]
     }
   }
 }

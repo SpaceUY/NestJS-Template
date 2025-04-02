@@ -12,6 +12,9 @@ import { S3AdapterModule } from './cloud-storage/s3-adapter/s3-adapter.module';
 import { CloudStorageAbstractModule } from './cloud-storage/abstract/cloud-storage-abstract.module.ts';
 import { ConfigType } from '@nestjs/config';
 import awsConfig from 'src/config/aws.config';
+import { PushNotificationAbstractModule } from './push-notification/abstract/push-notification-abstract.module.ts';
+import { ExpoAdapterModule } from './push-notification/expo-adapter/expo-adapter.module';
+import expoConfig from './config/expo.config';
 
 @Module({
   imports: [
@@ -31,6 +34,16 @@ import awsConfig from 'src/config/aws.config';
           accessKeyId: aws.base.accessKeyId,
           secretAccessKey: aws.base.secretAccessKey,
           expiresInSeconds: aws.s3.expiresInSeconds,
+        }),
+      }),
+      useDefaultController: true,
+      isGlobal: true,
+    }),
+    PushNotificationAbstractModule.forRoot({
+      adapter: ExpoAdapterModule.registerAsync({
+        inject: [expoConfig.KEY],
+        useFactory: (expo: ConfigType<typeof expoConfig>) => ({
+          expoAccessToken: expo.accessToken,
         }),
       }),
       useDefaultController: true,

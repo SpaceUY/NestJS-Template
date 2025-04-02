@@ -245,7 +245,7 @@ The `CloudStorageAbstractModule` is designed to be flexible and support multiple
 
 1. **Create a New Adapter**  
    - Create a new directory inside `cloud-storage`, for example: `gcs-adapter/` for Google Cloud Storage.  
-   - Implement a service that follows the `ICloudStorageProvider` interface defined in `cloud-storage/abstract/cloud-storage-provider.interface.ts`.
+   - Implement a service that extends the `CloudStorageService` abstract class defined in `cloud-storage/abstract/cloud-storage.service.ts`.
 
 2. **Define the Adapter Module**  
    - Create a module similar to `S3AdapterModule` to initialize the new provider.  
