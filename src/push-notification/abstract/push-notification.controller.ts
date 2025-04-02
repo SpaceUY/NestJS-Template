@@ -29,7 +29,7 @@ export class PushNotificationController {
   @ApiParam({ name: 'token' })
   @ApiOperation({ summary: 'Send notification to a scpecific device token' })
   @ApiResponse({ status: 200, description: 'Complete' })
-  async validatePin(
+  async sendPushNotification(
     @Param('token') token: string,
     @Body() notificationDto: PushNotificationDto,
   ): Promise<void> {

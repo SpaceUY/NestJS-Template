@@ -1,43 +1,43 @@
-# Cloud Storage Module
+# Push Notification Module
 
-A NestJS module that provides Cloud Storage functionality with a clean, injectable service interface.
+A NestJS module that provides Push Notification functionality with a clean, injectable service interface.
 
 ## Overview
 
-This module provides a cloud storage files solution for NestJS applications. It includes:
+This module provides Push Notification files solution for NestJS applications. It includes:
 
-- A configurable Cloud Storage module
-- A service wrapper for Cloud Storage operations
-- Endpoints upload, delete and get files from cloud storage provider
-- AWS S3 Integration
+- A configurable Push Notification module
+- A service wrapper for Push Notification operations
+- Endpoint for send a push notification for test purposes
+- Expo Server SDK Integration
 
 ## Directory Structure
 
 ```
-cloud-storage/
+push-notification/
 ├── abstract/
 │   ├── dto/
-│   ├── cloud-storage-abstract.module.ts
-│   ├── cloud-storage-error-codes.ts
-│   ├── cloud-storage-provider.const.ts
-│   ├── cloud-storage.controller.ts
-│   ├── cloud-storage.exception.ts
-│   ├── cloud-storage.service.ts
-├── s3-adapter/
-│   ├── s3-adapter-config.provider.const.ts
-│   ├── s3-adapter-config.interface.ts
-│   ├── s3-adapter.module.ts
-│   ├── s3-adapter.service.ts
+│   ├── push-notification-abstract.module.ts
+│   ├── push-notification-error-codes.ts
+│   ├── push-notification-provider.const.ts
+│   ├── push-notification.controller.ts
+│   ├── push-notification.exception.ts
+│   ├── push-notification.service.ts
+├── expo-adapter/
+│   ├── expo-adapter-config.provider.const.ts
+│   ├── expo-adapter-config.interface.ts
+│   ├── expo-adapter.module.ts
+│   ├── expo-adapter.service.ts
 └── README.md
 
 ```
 
 ## Features
 
-- Configurable Cloud Storage connection
-- Cloud storage provider operations, upload, delete and get file
+- Configurable Push Notification connection
+- Push Notification provider operations, sendNotification and sendNotificationByChunks
 - Easy-to-use service interface
-- AWS S3 support
+- Expo Server SDK support
 - Integration with NestJS dependency injection
 
 ## Installation
@@ -45,9 +45,7 @@ cloud-storage/
 Ensure you have the required dependencies:
 
 ```bash
-npm install @aws-sdk/client-s3
-npm install @aws-sdk/s3-request-presigner
-npm install @types/multer
+npm expo-server-sdk
 ```
 
 ## Usage
@@ -58,65 +56,66 @@ npm install @types/multer
 
 ```typescript
 import { Module } from '@nestjs/common';
-import { S3AdapterModule } from './cloud-storage/s3-adapter/s3-adapter.module';
-import { CloudStorageAbstractModule } from './cloud-storage/abstract/cloud-storage-abstract.module.ts';
 import { ConfigType } from '@nestjs/config';
-import awsConfig from 'src/config/aws.config'; // Your aws config
+import { PushNotificationAbstractModule } from './push-notification/abstract/push-notification-abstract.module.ts';
+import { ExpoAdapterModule } from './push-notification/expo-adapter/expo-adapter.module';
+import expoConfig from './config/expo.config'; // Your expo config
 
 @Module({
   imports: [
-    CloudStorageAbstractModule.forRoot({
-      adapter: S3AdapterModule.registerAsync({
-        inject: [awsConfig.KEY],
-        useFactory: (aws: ConfigType<typeof awsConfig>) => ({
-          bucket: aws.s3.bucket,
-          region: aws.base.region,
-          accessKeyId: aws.base.accessKeyId,
-          secretAccessKey: aws.base.secretAccessKey,
-          expiresInSeconds: aws.s3.expiresInSeconds,
+    PushNotificationAbstractModule.forRoot({
+      adapter: ExpoAdapterModule.registerAsync({
+        inject: [expoConfig.KEY],
+        useFactory: (expo: ConfigType<typeof expoConfig>) => ({
+          expoAccessToken: expo.accessToken,
         }),
       }),
-    }),
+      useDefaultController: true,
+      isGlobal: true,
+    })
   ],
 })
 export class AppModule {}
 ```
 
-### 2. Use the Cloud Storage Service
+### 2. Use the Push Notification Service
 
 ```typescript
 import { Injectable } from '@nestjs/common';
-import { CloudStorageService } from './cloud-storage.service';
-import { CLOUD_STORAGE_PROVIDER } from './cloud-storage-provider.const';
+import { PushNotificationService } from './push-notification.service';
 
 @Injectable()
 export class YourService {
-  constructor(private cloudStorageService: CloudStorageService) {}
+  constructor(private pushNotificationService: PushNotificationService) {}
 
-   getFile(fileKey: string): Promise<CloudStorageFile> {
-    return this.storageProvider.getFile(fileKey);
+   sendPushNotification(pushToken: string,
+    notification: IPushNotification): Promise<PushNotificationSuccessResponse> {
+    return await this.pushNotificationService.sendPushNotification(
+        token,
+        notificationDto,
+      );
   }
 }
 ```
 
-## Using the S3 Adapter with CloudStorageAbstractModule
+## Using the Expo Adapter with PushNotificationAbstractModule
 
-To make the `CloudStorageAbstractModule` work with the S3 adapter, it's required to extend the `CloudStorageService` class. Specifically, in your `S3AdapterService` class that extends `CloudStorageService`. This extension is necessary for the CloudStorageAbstractModule to interact with the S3 storage provider.
+To make the `PushNotificationAbstractModule` work with the Expo adapter, it's required to extend the `PushNotificationService` class. Specifically, in your `ExpoAdapterService` class that extends `PushNotificationService`. This extension is necessary for the PushNotificationAbstractModule to interact with the Expo provider.
 
-If your project only requires the S3 adapter and you know that you won't need to change the provider, you can skip using the abstract module and directly import the S3AdapterModule into your project.
+If your project only requires the Expo adapter and you know that you won't need to change the provider, you can skip using the abstract module and directly import the ExpoAdapterModule into your project.
 
 **Fix Import Paths Manually (If Needed)**:
 
-  After copying the files, you might need to fix the import paths manually. Ensure that the import paths for the CloudStorageService and the S3AdapterService are correct according to your project structure. If you encounter any errors related to the imports, double-check that the paths are resolved correctly.
+  After copying the files, you might need to fix the import paths manually. Ensure that the import paths for the PushNotificationService and the ExpoAdapterService are correct according to your project structure. If you encounter any errors related to the imports, double-check that the paths are resolved correctly.
 
-  In your project, find a service that extends `CloudStorageService`, and adjust the import path if needed, like this:
+  In your project, find a service that extends `PushNotificationService`, and adjust the import path if needed, like this:
 
   ```typescript
-  import { CloudStorageService } from 'path-to-cloud-storage-service'; // Adjust the import path
+  import { PushNotificationService } from 'path-to-push-notification-service'; // Adjust the import path
   import { Injectable } from '@nestjs/common';
 
   @Injectable()
-  export class S3AdapterService extends CloudStorageService {
+  export class ExpoAdapterService extends PushNotificationService {
   }
    
 ```
@@ -124,7 +123,7 @@ If your project only requires the S3 adapter and you know that you won't need to
 
 ## Configuration Options
 
-The `CloudStorageAbstractModule.forRoot()` method accepts standard AWS S3 configuration options:
+The `PushNotificationAbstractModule.forRoot()` method accepts standard Expo configuration options:
 
 ```typescript
 static forRoot(options: { adapter: DynamicModule }): DynamicModule
@@ -133,46 +132,33 @@ static forRoot(options: { adapter: DynamicModule }): DynamicModule
 There's also a `registerAsync` option which allows for dependency injection. For instance, the module can be used in the following fashion:
 
 ```typescript
-CloudStorageAbstractModule.forRoot({
-  adapter: S3AdapterModule.registerAsync({
-    inject: [awsConfig.KEY],
-    useFactory: (aws: ConfigType<typeof awsConfig>) => ({
-      bucket: aws.s3.bucket,
-      region: aws.base.region,
-      accessKeyId: aws.base.accessKeyId,
-      secretAccessKey: aws.base.secretAccessKey,
-      expiresInSeconds: aws.s3.expiresInSeconds,
+PushNotificationAbstractModule.forRoot({
+  adapter: ExpoAdapterModule.registerAsync({
+    inject: [expoConfig.KEY],
+    useFactory: (expo: ConfigType<typeof expoConfig>) => ({
+      expoAccessToken: expo.accessToken,
     }),
   }),
 }),
 ```
 
-Assuming that a `awsConfig` is registered using `@nestjs/common`'s `registerAs` method. 
-
-
-For a secure and scalable integration with AWS S3, it is recommended to **use IAM Roles instead of passing access keys explicitly**.  
-For this reason, the environment variables **AWS_ACCESS_KEY** and **AWS_SECRET_ACCESS_KEY** are optional in this project.
+Assuming that a `expoConfig` is registered using `@nestjs/common`'s `registerAs` method. 
 
 ## API Reference
 
-The `CloudStorageAbstractModule` allows the optional registration of a default controller (`CloudStorageController`), which exposes endpoints for file management with the cloud storage provider.
+The `PushNotificationAbstractModule` allows the optional registration of a default controller (`PushNotificationController`), which expose an endpoint for test purposes to send a notification to a specific token device.
 
-### CloudStorageController
+### PushNotificationController
 
-The main endpoints for interacting with cloud storage provider:
+The main endpoint for interacting with push notification provider:
 
 ```typescript
-class CloudStorageController {
-  // Upload a file buffer to cloud storage provider
-  async uploadFile(
-    @UploadedFile() file: Express.Multer.File,
-  ): Promise<FileResponseDto>
-
-  // Delete a file from cloud storage provider by fileKey
-  async deleteFile(@Param('fileKey') fileKey: string): Promise<void>
-
-  // Retrieve a file signed url from cloud storage provider by fileKey
-  async getFile(@Param('fileKey') fileKey: string): Promise<FileResponseDto>
+class PushNotificationController {
+  // Send a push notification to a specific token device
+  async sendPushNotification(
+    @Param('token') token: string,
+    @Body() notificationDto: PushNotificationDto,
+  ): Promise<void>
 }
 ```
 
@@ -182,20 +168,16 @@ To use the default controller, set `useDefaultController: true` when registering
 
 ```typescript
 import { Module } from '@nestjs/common';
-import { CloudStorageAbstractModule } from './cloud-storage/cloud-storage-abstract.module';
-import { S3AdapterModule } from './adapters/s3-adapter.module';
+import { PushNotificationAbstractModule } from './push-notification/push-notification-abstract.module';
+import { ExpoAdapterModule } from './adapters/expo-adapter.module';
 
 @Module({
   imports: [
-    CloudStorageAbstractModule.forRoot({
-      adapter: S3AdapterModule.registerAsync({
-        inject: [awsConfig.KEY],
-        useFactory: (aws: ConfigType<typeof awsConfig>) => ({
-          bucket: aws.s3.bucket,
-          region: aws.base.region,
-          accessKeyId: aws.base.accessKeyId,
-          secretAccessKey: aws.base.secretAccessKey,
-          expiresInSeconds: aws.s3.expiresInSeconds,
+    PushNotificationAbstractModule.forRoot({
+      adapter: ExpoAdapterModule.registerAsync({
+        inject: [expoConfig.KEY],
+        useFactory: (expo: ConfigType<typeof expoConfig>) => ({
+          expoAccessToken: expo.accessToken,
         }),
       }),
       useDefaultController: true, // Enables the default controller
@@ -212,21 +194,17 @@ To use a custom controller, set `useDefaultController: false` when registering t
 
 ```typescript
 import { Module } from '@nestjs/common';
-import { CloudStorageAbstractModule } from './cloud-storage/cloud-storage-abstract.module';
-import { S3AdapterModule } from './adapters/s3-adapter.module';
-import { CustomStorageController } from './custom-storage.controller';
+import { PushNotificationAbstractModule } from './push-notification/push-notification-abstract.module';
+import { ExpoAdapterModule } from './adapters/expo-adapter.module';
+import { CustomNotificationController } from './custom-notification.controller';
 
 @Module({
   imports: [
-    CloudStorageAbstractModule.forRoot({
-      adapter: S3AdapterModule.registerAsync({
-        inject: [awsConfig.KEY],
-        useFactory: (aws: ConfigType<typeof awsConfig>) => ({
-          bucket: aws.s3.bucket,
-          region: aws.base.region,
-          accessKeyId: aws.base.accessKeyId,
-          secretAccessKey: aws.base.secretAccessKey,
-          expiresInSeconds: aws.s3.expiresInSeconds,
+    PushNotificationAbstractModule.forRoot({
+      adapter: ExpoAdapterModule.registerAsync({
+        inject: [expoConfig.KEY],
+        useFactory: (expo: ConfigType<typeof expoConfig>) => ({
+          expoAccessToken: expo.accessToken,
         }),
       }),
       useDefaultController: false, // Disable the default controller
@@ -239,76 +217,61 @@ export class AppModule {}
 
 ```
 
-## Extending Functionality with Other Storage Providers
+## Extending Functionality with Other Push Notification Providers
 
-The `CloudStorageAbstractModule` is designed to be flexible and support multiple cloud storage providers. To add support for another provider, follow these steps:
+The `PushNotificationAbstractModule` is designed to be flexible and support multiple push notification providers. To add support for another provider, follow these steps:
 
 1. **Create a New Adapter**  
-   - Create a new directory inside `cloud-storage`, for example: `gcs-adapter/` for Google Cloud Storage.  
-   - Implement a service that follows the `ICloudStorageProvider` interface defined in `cloud-storage/abstract/cloud-storage-provider.interface.ts`.
+   - Create a new directory inside `push-notification`, for example: `firebase-adapter/` for Firebase Admin.  
+   - Implement a service that extends the `PushNotificationService` abstract class defined in `push-notification/abstract/push-notification.service.ts`.
 
 2. **Define the Adapter Module**  
-   - Create a module similar to `S3AdapterModule` to initialize the new provider.  
+   - Create a module similar to `ExpoAdapterModule` to initialize the new provider.  
    - Ensure it provides a configuration mechanism (e.g., `register` or `registerAsync` methods).
 
 3. **Register the Adapter in the Abstract Module**  
-   - Modify `CloudStorageAbstractModule` to accept the new adapter as a dynamic module.  
+   - Modify `PushNotificationAbstractModule` to accept the new adapter as a dynamic module.  
    - Example:  
    ```typescript
-   CloudStorageAbstractModule.forRoot({
-     adapter: GCSAdapterModule.registerAsync({
-       inject: [gcsConfig.KEY],
-       useFactory: (gcs: ConfigType<typeof gcsConfig>) => ({
-         bucket: gcs.bucket,
-         projectId: gcs.projectId,
-         credentials: gcs.credentials,
+   PushNotificationAbstractModule.forRoot({
+     adapter: FirebaseAdapterModule.registerAsync({
+       inject: [firebaseConfig.KEY],
+       useFactory: (firebase: ConfigType<typeof firebaseConfig>) => ({
+         token: firebase.token,
        }),
      }),
    }),
    ```
 4. **Implement Provider-Specific Logic**
-  - Ensure the new adapter correctly implements methods such as uploadFile, deleteFile, and getFile.
-  - Use the respective SDK (e.g., @google-cloud/storage for Google Cloud Storage).
-  - By following this structure, you can easily extend the cloud storage module to support different providers like Google Cloud Storage, Azure Blob Storage, or others.
+  - Ensure the new adapter correctly implements methods such as sendPushNotification and sendPushNotificationByChunks.
+  - Use the respective SDK (e.g., firebase-admin for Firebase).
+  - By following this structure, you can easily extend the push notification module to support different providers like Firebase or others.
 
 ## Best Practices
 
-1. **File Naming & Organization**
+1. **Message Formatting & Consistency**
 
-   - Use a consistent naming convention for stored files (e.g., user-avatars/{userId}.jpg).
-   - Include timestamps or UUIDs in filenames to prevent overwrites
-   - Organize files into logical directories (e.g., events/{eventId}/images/)
+   - Use a consistent payload structure for all notifications.
+   - Include clear titles and concise messages to improve user engagement.
+   - Use localization when sending notifications to support multiple languages.
 
-2. **Error Handling**
+2. **Error Handling & Retry Mechanism**
 
-   - Implement logging for file operations to track issues
-   - Handle upload failures and implement retry mechanisms
-   - Use try-catch blocks around cloud-storage operations
+   - Log all notification requests and responses for debugging.
+   - Implement a retry mechanism for failed notifications, considering exponential backoff.
+   - Store failed notifications for future reprocessing, especially for critical messages.
 
-3. **Security & Access Control**
+3. **Security & Privacy**
 
-   - Use signed URLs or pre-signed URLs for secure temporary access
-   - Restrict public access to storage unless necessary
-   - Apply bucket policies and IAM roles to limit access
-   - For a secure and scalable integration with AWS S3, it is recommended to use IAM Roles instead of passing access keys explicitly. IAM Roles allow applications (e.g., EC2, Lambda, ECS) to assume roles and gain the necessary permissions to access S3 without needing to manage access keys manually. By using IAM Roles, you reduce the risk of exposing sensitive credentials and simplify the management of access permissions. For this reason, the environment variables AWS_ACCESS_KEY and AWS_SECRET_ACCESS_KEY are optional in this project
+   - Use authentication when managing push tokens in your backend.
+   - Do not expose push tokens in logs or client-side code.
+   - Encrypt sensitive data included in the notification payload.
 
-4. **Performance Optimization**
-
-   - Enable content caching using a CDN (e.g., AWS CloudFront).
-   - Set appropriate cache-control headers for frequently accessed files.
-   - Consider multipart uploads for large files.
-
-5. **Storage Cost Management**
-
-   - Use lifecycle policies to move old files to lower-cost storage (e.g., S3 Glacier).
-   - Regularly audit and clean up unused or orphaned files.
-   - Monitor storage usage and costs to avoid unexpected charges.
-
-6. **If you need, using the S3 Endpoint Option for Local Cloud Storage**
-
-   - The endpoint option in AWS SDKs allows connecting to a custom S3-compatible storage service, such as a local MinIO server or an on-premise object storage system.
-   - By specifying a custom endpoint, data can be stored and accessed without routing through AWS public endpoints, improving performance and reducing data transfer costs.
-   - Ensure proper authentication and security settings when configuring the endpoint, especially when connecting to private or self-hosted storage solutions.
+4. **Performance & Scalability**
+   - Send notifications in batches using chunking mechanisms.
+   - Implement asynchronous processing for large-scale notifications.
+   - Monitor push notification response times and delivery rates to detect bottlenecks.
+   - Implement asynchronous processing for large-scale notifications.
 
 ## Contributing
 

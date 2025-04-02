@@ -63,12 +63,12 @@ export class ExpoAdapterService extends PushNotificationService {
       const relatedTicket = expoPushTicket[0];
       if (relatedTicket.status === ExpoStatusNotificationEnum.ERROR) {
         console.error(
-          `[sendPushNotification]: ERROR: error send push notification to device token ${pushToken}. Error: ${relatedTicket.message}`,
+          `[sendPushNotification]: ERROR: error send push notification to device token. Error: ${relatedTicket.message}`,
         );
         throw new InternalServerErrorException(relatedTicket.message);
       }
       console.log(
-        `[sendPushNotification]: Send notification succesfully to device token ${pushToken}`,
+        `[sendPushNotification]: Send notification succesfully to device token`,
       );
       return {
         id: relatedTicket.id,
@@ -76,7 +76,7 @@ export class ExpoAdapterService extends PushNotificationService {
       };
     } catch (error) {
       console.error(
-        `[sendPushNotification]: ERROR: error send push notification to device token ${pushToken}. Error: ${error}`,
+        `[sendPushNotification]: ERROR: error send push notification to device token. Error: ${error}`,
       );
       throw error;
     }
