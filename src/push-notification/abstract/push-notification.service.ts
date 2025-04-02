@@ -1,15 +1,39 @@
 import { IPushNotification } from './push-notification.interface';
 
+export enum PushNotificationStatusEnum {
+  SUCCESS = 'SUCCESS',
+  ERROR = 'ERROR',
+}
 /**
- * Interface for the file object returned by the Cloud Storage provider.
- * @property {string} url - The public URL where the file can be accessed.
- * @property {string} id - The unique identifier assigned to the file in the cloud provider.
+ * Interface for the success push notification object returned by the Push Notification provider.
+ * @property {string} id - The unique identifier assigned to the notification in the push notification provider.
+ * @property {string} status - Indicates the current status of the notification ("SUCCESS").
  */
-interface PushNotificationFile {
-  url: string;
-  id: string; // TODO: La usaremos?
+export interface PushNotificationSuccessResponse {
+  id: string;
+  status: PushNotificationStatusEnum;
+}
+/**
+ * Interface for the error push notification object returned by the Push Notification provider.
+ * @property {string} pushToken - The failed push notification token of the target device.
+ * @property {string} status - Indicates the current status of the notification ("ERROR").
+ * @property {string} message - Additional information related to the error status.
+ */
+export interface PushNotificationErrorResponse {
+  pushToken: string;
+  message: string;
+  status: PushNotificationStatusEnum;
 }
 
+/**
+ * Interface for the push notification report object returned by the Push Notification provider when send multiple notifications in chunks.
+ * @property {PushNotificationSuccessResponse[]} successNotifications - Array of success notifications.
+ * @property {PushNotificationErrorResponse[]} errorNotifications - Array of failed notifications.
+ */
+export interface PushNotificationChunkReport {
+  successNotifications: PushNotificationSuccessResponse[];
+  errorNotifications: PushNotificationErrorResponse[];
+}
 /**
  * Interface for adapters to implement to work alongside the `PushNotificationModule.`
  */
@@ -17,12 +41,12 @@ export abstract class PushNotificationService {
   /**
    * Send a push notification to a specific mobile device.
    * @param {string} pushToken - The push notification token of the target device.
-   * @returns {Promise<void>}
+   * @returns {Promise<PushNotificationResponse>} An object containing the push notification response.
    */
   abstract sendPushNotification(
     pushToken: string,
     notification: IPushNotification,
-  ): Promise<void>; // TODO: void??
+  ): Promise<PushNotificationSuccessResponse>;
 
   /**
    * Send a push notification to a multiples mobile devices.
@@ -32,5 +56,5 @@ export abstract class PushNotificationService {
   abstract sendPushNotificationInChunks(
     pushTokens: string[],
     notification: IPushNotification,
-  ): Promise<void>;
+  ): Promise<PushNotificationChunkReport>;
 }

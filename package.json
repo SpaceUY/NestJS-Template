@@ -37,6 +37,7 @@
     "build": "^0.1.4",
     "class-transformer": "0.5.1",
     "class-validator": "^0.13.2",
+    "expo-server-sdk": "^3.14.0",
     "google-auth-library": "^8.5.2",
     "joi": "^17.6.1",
     "passport": "^0.6.0",
