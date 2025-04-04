@@ -9,6 +9,16 @@
         }
       ]
     },
+    "cache": {
+      "path": "src/cache",
+      "implementations": [
+        {
+          "name": "redis",
+          "description": "Full Redis implementation of the Cache module",
+          "dependencies": ["ioredis"]
+        }
+      ]
+    },
     "cloud-storage": {
       "path": "src/cloud-storage",
       "implementations": [
