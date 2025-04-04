@@ -14,8 +14,21 @@
       "implementations": [
         {
           "name": "redis",
-          "description": "Redis implementation of cache module",
+          "description": "Full Redis implementation of the Cache module",
           "dependencies": ["ioredis"]
+        }
+      ]
+    },
+    "cloud-storage": {
+      "path": "src/cloud-storage",
+      "implementations": [
+        {
+          "name": "abstract",
+          "description": "Abstract implementation of cloud storage module"
+        },
+        {
+          "name": "s3-adapter",
+          "description": "S3 implementation of cloud storage module"
         }
       ]
     }
