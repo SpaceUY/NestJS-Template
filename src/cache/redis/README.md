@@ -62,9 +62,6 @@ export class AppModule {}
 
 #### Cluster Mode
 
-> [!WARNING]
-> The `nodes` and `options` keys are not yet integrated!
-
 ```typescript
 import { Module } from '@nestjs/common';
 import { RedisCacheModule } from './cache/redis/cache.module';
@@ -73,15 +70,17 @@ import { RedisCacheModule } from './cache/redis/cache.module';
   imports: [
     RedisCacheModule.register({
       clusterMode: true,
-      nodes: [
-        { host: 'redis-node-1', port: 6379 },
-        { host: 'redis-node-2', port: 6379 },
-        { host: 'redis-node-3', port: 6379 },
-      ],
-      options: {
-        scaleReads: 'SLAVE', // Read from replicas
-        maxRedirections: 16,
-        retryDelayOnFailover: 100,
+      clusterOptions: {
+        nodes: [
+          { host: 'redis-node-1', port: 6379 },
+          { host: 'redis-node-2', port: 6379 },
+          { host: 'redis-node-3', port: 6379 },
+        ],
+        options: {
+          scaleReads: 'SLAVE', // Read from replicas
+          maxRedirections: 16,
+          retryDelayOnFailover: 100,
+        },
       },
     }),
   ],
@@ -123,6 +122,7 @@ interface RedisCacheModuleOptions {
   host: string;
   port: number;
   clusterMode?: boolean;
+  clusterOptions?: object;
   reconnectionDelayMs?: number;
   reconnectionMaxRetries?: number;
 }

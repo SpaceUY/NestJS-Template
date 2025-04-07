@@ -22,25 +22,77 @@ interface RedisClusterOptions {
   >;
 }
 
-interface RedisCacheModuleOptions {
+/**
+ * Base options that are common to both modes
+ */
+interface BaseRedisCacheModuleOptions {
   protocol: 'redis' | 'rediss';
   password?: string;
   host: string;
   port: number;
-  clusterMode?: boolean;
   reconnectionDelayMs?: number;
   reconnectionMaxRetries?: number;
+}
+
+/**
+ * Standalone mode options
+ */
+interface StandaloneRedisCacheModuleOptions
+  extends BaseRedisCacheModuleOptions {
+  clusterMode?: false | undefined;
+  clusterOptions?: never;
+}
+
+/**
+ * Cluster mode options
+ */
+interface ClusterRedisCacheModuleOptions extends BaseRedisCacheModuleOptions {
+  clusterMode: true;
   clusterOptions?: RedisClusterOptions;
 }
 
-interface RedisCacheModuleAsyncOptions {
-  useFactory: (
-    ...args: any[]
-  ) => Promise<RedisCacheModuleOptions> | RedisCacheModuleOptions;
+/**
+ * Redis cache module options as a union of standalone and cluster mode options
+ */
+type RedisCacheModuleOptions =
+  | StandaloneRedisCacheModuleOptions
+  | ClusterRedisCacheModuleOptions;
+
+type AsyncFactoryFn<T> = (...args: any[]) => Promise<T> | T;
+
+interface BaseAsyncOptions {
   inject?: any[];
 }
 
+/**
+ * Standalone async options
+ */
+interface StandaloneAsyncOptions extends BaseAsyncOptions {
+  useFactory: AsyncFactoryFn<StandaloneRedisCacheModuleOptions>;
+}
+
+/**
+ * Cluster async options
+ */
+interface ClusterAsyncOptions extends BaseAsyncOptions {
+  useFactory: AsyncFactoryFn<ClusterRedisCacheModuleOptions>;
+}
+
+/**
+ * Redis cache module async options as a union of standalone and cluster mode async options
+ */
+type RedisCacheModuleAsyncOptions =
+  | StandaloneAsyncOptions
+  | ClusterAsyncOptions;
+
+/**
+ * Redis client type. Abstract away the underlying implementation
+ */
 export type RedisClient = Redis | Cluster;
+
+/**
+ * Redis client token
+ */
 export const REDIS_CLIENT = 'REDIS_CLIENT_TOKEN';
 
 /**
@@ -54,6 +106,8 @@ export const REDIS_CLIENT = 'REDIS_CLIENT_TOKEN';
 export class RedisCacheModule {
   /**
    * Creates a Redis client based on the provided configuration
+   * @param {RedisCacheModuleOptions} config - The configuration for the Redis client
+   * @returns {RedisClient} A Redis client instance
    */
   private static createRedisClient(
     config: RedisCacheModuleOptions,
@@ -98,9 +152,12 @@ export class RedisCacheModule {
   }
 
   /**
-   * Creates a Redis client based on the provided configuration.
-   * Use this for sync configuration (i.e. when the config is available at module load time).
+   * Create a Redis client with pre-configured options
+   * @param {RedisCacheModuleOptions} options - The configuration for the Redis cache module
+   * @returns {DynamicModule} The dynamic module for the Redis cache module
    */
+  static forRoot(options: StandaloneRedisCacheModuleOptions): DynamicModule; // Overload for standalone mode
+  static forRoot(options: ClusterRedisCacheModuleOptions): DynamicModule; // Overload for cluster mode
   static forRoot(options: RedisCacheModuleOptions): DynamicModule {
     return {
       module: RedisCacheModule,
@@ -116,10 +173,12 @@ export class RedisCacheModule {
   }
 
   /**
-   * Creates a Redis client based on the provided configuration.
-   * Use this for async configuration (i.e. when the config is not available at module load time).
-   * For example, this is useful when using the `ConfigModule`, and when the config is provided via injection.
+   * Create a Redis client with pre-configured options
+   * @param {RedisCacheModuleAsyncOptions} options - The configuration for the Redis cache module
+   * @returns {DynamicModule} The dynamic module for the Redis cache module
    */
+  static forRootAsync(options: StandaloneAsyncOptions): DynamicModule; // Overload for standalone mode async
+  static forRootAsync(options: ClusterAsyncOptions): DynamicModule; // Overload for cluster mode async
   static forRootAsync(options: RedisCacheModuleAsyncOptions): DynamicModule {
     return {
       module: RedisCacheModule,
