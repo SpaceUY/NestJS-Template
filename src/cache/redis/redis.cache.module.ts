@@ -1,6 +1,26 @@
 import { DynamicModule, Global, Module } from '@nestjs/common';
-import { Cluster, Redis } from 'ioredis';
+import { Cluster, Redis, RedisOptions } from 'ioredis';
 import { CacheService } from './redis.cache.service';
+
+interface RedisClusterOptions {
+  scaleReads?: 'master' | 'slave' | 'all';
+  maxRedirections?: number;
+  retryDelayOnFailover?: number;
+  dnsLookup?: (
+    address: string,
+    callback: (err: Error | null, address: string) => void,
+  ) => void;
+  redisOptions?: Omit<
+    RedisOptions,
+    | 'port'
+    | 'host'
+    | 'path'
+    | 'sentinels'
+    | 'retryStrategy'
+    | 'enableOfflineQueue'
+    | 'readOnly'
+  >;
+}
 
 interface RedisCacheModuleOptions {
   protocol: 'redis' | 'rediss';
@@ -10,6 +30,7 @@ interface RedisCacheModuleOptions {
   clusterMode?: boolean;
   reconnectionDelayMs?: number;
   reconnectionMaxRetries?: number;
+  clusterOptions?: RedisClusterOptions;
 }
 
 interface RedisCacheModuleAsyncOptions {
@@ -45,6 +66,7 @@ export class RedisCacheModule {
       port,
       reconnectionDelayMs = 5000,
       reconnectionMaxRetries = 10,
+      clusterOptions = {},
     } = config;
 
     const commonOptions = {
@@ -62,12 +84,12 @@ export class RedisCacheModule {
       // This is specially tailored for AWS ElastiCache
       // https://github.com/redis/ioredis?tab=readme-ov-file#special-note-aws-elasticache-clusters-with-tls
       return new Cluster([{ host, port }], {
-        dnsLookup: (address, callback) => callback(null, address),
-        redisOptions: {
-          password,
-          tls: {},
-          ...commonOptions,
-        },
+        dnsLookup:
+          clusterOptions.dnsLookup ||
+          ((address, callback) => callback(null, address)),
+        scaleReads: clusterOptions.scaleReads || 'master',
+        maxRedirections: clusterOptions.maxRedirections || 16,
+        redisOptions: clusterOptions.redisOptions,
       }) as RedisClient;
     }
 
