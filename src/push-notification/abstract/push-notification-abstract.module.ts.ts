@@ -13,7 +13,7 @@ interface PushNotificationModuleOptions {
   adapter: AdapterModule;
   useDefaultController?: boolean;
   isGlobal?: boolean;
-  customController?: Type<any>[];
+  controllers?: Type<any>[];
 }
 
 @Module({})
@@ -23,13 +23,12 @@ export class PushNotificationAbstractModule {
       adapter,
       isGlobal = false,
       useDefaultController = true,
-      customController,
+      controllers = [],
     } = options;
 
-    const controllers =
-      customController ||
-      (useDefaultController ? [PushNotificationController] : []);
-
+    if (useDefaultController) {
+      controllers.push(PushNotificationController);
+    }
     return {
       module: PushNotificationAbstractModule,
       global: isGlobal,

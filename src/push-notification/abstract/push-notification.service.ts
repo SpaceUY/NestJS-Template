@@ -1,9 +1,12 @@
 import { IPushNotification } from './push-notification.interface';
 
-export enum PushNotificationStatusEnum {
-  SUCCESS = 'SUCCESS',
-  ERROR = 'ERROR',
-}
+export const PUSH_NOTIFICATION_STATUSES = {
+  SUCCESS: 'SUCCESS',
+  ERROR: 'ERROR',
+} as const;
+
+export type PushNotificationStatus =
+  (typeof PUSH_NOTIFICATION_STATUSES)[keyof typeof PUSH_NOTIFICATION_STATUSES];
 /**
  * Interface for the success push notification object returned by the Push Notification provider.
  * @property {string} id - The unique identifier assigned to the notification in the push notification provider.
@@ -11,7 +14,7 @@ export enum PushNotificationStatusEnum {
  */
 export interface PushNotificationSuccessResponse {
   id: string;
-  status: PushNotificationStatusEnum;
+  status: PushNotificationStatus;
 }
 /**
  * Interface for the error push notification object returned by the Push Notification provider.
@@ -22,7 +25,7 @@ export interface PushNotificationSuccessResponse {
 export interface PushNotificationErrorResponse {
   pushToken: string;
   message: string;
-  status: PushNotificationStatusEnum;
+  status: PushNotificationStatus;
 }
 
 /**

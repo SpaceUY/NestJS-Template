@@ -15,6 +15,7 @@ import {
 import { PushNotificationService } from './push-notification.service';
 import { PushNotificationDto } from './dto/push-notification.dto';
 import { PushNotificationException } from './push-notification.exception';
+import { SendPushNotificationMetadata } from './push-notification.metadata';
 
 @ApiTags('Push Notification')
 @Controller('push-notification')
@@ -25,10 +26,7 @@ export class PushNotificationController {
   ) {}
 
   @Post(':token/send')
-  @ApiBody({ type: PushNotificationDto })
-  @ApiParam({ name: 'token' })
-  @ApiOperation({ summary: 'Send notification to a scpecific device token' })
-  @ApiResponse({ status: 200, description: 'Complete' })
+  @SendPushNotificationMetadata()
   async sendPushNotification(
     @Param('token') token: string,
     @Body() notificationDto: PushNotificationDto,

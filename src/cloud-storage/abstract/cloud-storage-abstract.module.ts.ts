@@ -13,7 +13,7 @@ interface CloudStorageModuleOptions {
   adapter: AdapterModule;
   useDefaultController?: boolean;
   isGlobal?: boolean;
-  customController?: Type<any>[];
+  controllers?: Type<any>[];
 }
 
 @Module({})
@@ -23,12 +23,12 @@ export class CloudStorageAbstractModule {
       adapter,
       isGlobal = false,
       useDefaultController = true,
-      customController,
+      controllers = [],
     } = options;
 
-    const controllers =
-      customController ||
-      (useDefaultController ? [CloudStorageController] : []);
+    if (useDefaultController) {
+      controllers.push(CloudStorageController);
+    }
 
     return {
       module: CloudStorageAbstractModule,

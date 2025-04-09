@@ -21,7 +21,7 @@ export class ExpoAdapterModule {
         },
         { provide: PUSH_NOTIFICATION_PROVIDER, useClass: ExpoAdapterService },
       ],
-      exports: [PUSH_NOTIFICATION_PROVIDER, EXPO_ADAPTER_PROVIDER_CONFIG],
+      exports: [PUSH_NOTIFICATION_PROVIDER],
     };
   }
 
@@ -43,7 +43,7 @@ export class ExpoAdapterModule {
         },
         { provide: PUSH_NOTIFICATION_PROVIDER, useClass: ExpoAdapterService },
       ],
-      exports: [PUSH_NOTIFICATION_PROVIDER, EXPO_ADAPTER_PROVIDER_CONFIG],
+      exports: [PUSH_NOTIFICATION_PROVIDER],
     };
   }
 }

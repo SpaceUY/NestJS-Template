@@ -8,24 +8,23 @@ import { EXPO_ADAPTER_PROVIDER_CONFIG } from './expo-adapter-config-provider.con
 import { ExpoAdapterConfig } from './expo-adapter-config.interface';
 import { IPushNotification } from '../abstract/push-notification.interface';
 import {
+  PUSH_NOTIFICATION_STATUSES,
   PushNotificationChunkReport,
   PushNotificationErrorResponse,
   PushNotificationService,
-  PushNotificationStatusEnum,
   PushNotificationSuccessResponse,
 } from '../abstract/push-notification.service';
+import { PUSH_NOTIFICATION_EXPO_STATUSES } from './expo.types';
 
 @Injectable()
 export class ExpoAdapterService extends PushNotificationService {
-  expo: Expo;
-  sound: string;
-  errorLabel: string;
+  private expo: Expo;
+  private sound: string;
   constructor(
     @Inject(EXPO_ADAPTER_PROVIDER_CONFIG)
     config: ExpoAdapterConfig,
   ) {
     super();
-    this.errorLabel = 'error';
     this.sound = 'default';
     this.expo = new Expo({
       accessToken: config.expoAccessToken,
@@ -61,7 +60,7 @@ export class ExpoAdapterService extends PushNotificationService {
       const expoPushTicket: ExpoPushTicket[] =
         await this.expo.sendPushNotificationsAsync(message);
       const relatedTicket = expoPushTicket[0];
-      if (relatedTicket.status === ExpoStatusNotificationEnum.ERROR) {
+      if (relatedTicket.status === PUSH_NOTIFICATION_EXPO_STATUSES.ERROR) {
         console.error(
           `[sendPushNotification]: ERROR: error send push notification to device token. Error: ${relatedTicket.message}`,
         );
@@ -72,7 +71,7 @@ export class ExpoAdapterService extends PushNotificationService {
       );
       return {
         id: relatedTicket.id,
-        status: PushNotificationStatusEnum.SUCCESS,
+        status: PUSH_NOTIFICATION_STATUSES.SUCCESS,
       };
     } catch (error) {
       console.error(
@@ -123,7 +122,7 @@ export class ExpoAdapterService extends PushNotificationService {
     const successNotifications: PushNotificationSuccessResponse[] = [];
     const errorNotifications: PushNotificationErrorResponse[] = [];
     for (const ticket of ticketChunks) {
-      if (ticket.status === ExpoStatusNotificationEnum.ERROR) {
+      if (ticket.status === PUSH_NOTIFICATION_EXPO_STATUSES.ERROR) {
         const errorToken = ticket.details?.expoPushToken;
         const errorMessage = ticket.message;
         console.error(
@@ -132,21 +131,16 @@ export class ExpoAdapterService extends PushNotificationService {
         errorNotifications.push({
           message: ticket.message,
           pushToken: errorToken || '',
-          status: PushNotificationStatusEnum.ERROR,
+          status: PUSH_NOTIFICATION_STATUSES.ERROR,
         });
       }
-      if (ticket.status === ExpoStatusNotificationEnum.OK) {
+      if (ticket.status === PUSH_NOTIFICATION_EXPO_STATUSES.OK) {
         successNotifications.push({
           id: ticket.id,
-          status: PushNotificationStatusEnum.SUCCESS,
+          status: PUSH_NOTIFICATION_STATUSES.SUCCESS,
         });
       }
     }
     return { successNotifications, errorNotifications };
   }
-}
-
-enum ExpoStatusNotificationEnum {
-  OK = 'ok',
-  ERROR = 'error',
 }

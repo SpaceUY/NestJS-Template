@@ -18,7 +18,8 @@
         },
         {
           "name": "s3-adapter",
-          "description": "S3 implementation of cloud storage module"
+          "description": "S3 implementation of cloud storage module",
+          "dependencies": ["@aws-sdk/client-s3", "@aws-sdk/s3-request-presigner", "@types/multer"]
         }
       ]
     },
@@ -31,7 +32,8 @@
         },
         {
           "name": "expo-adapter",
-          "description": "Expo server SDK implementation of push notification module"
+          "description": "Expo server SDK implementation of push notification module",
+          "dependencies": ["expo-server-sdk"]
         }
       ]
     }
