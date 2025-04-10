@@ -93,7 +93,7 @@ export type RedisClient = Redis | Cluster;
 /**
  * Redis client token
  */
-export const REDIS_CLIENT = 'REDIS_CLIENT_TOKEN';
+export const REDIS_CLIENT = 'REDIS_CLIENT_PROVIDER';
 
 /**
  * CacheModule
