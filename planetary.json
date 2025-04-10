@@ -21,6 +21,16 @@
           "description": "S3 implementation of cloud storage module"
         }
       ]
+    },
+    "cache": {
+      "path": "src/cache",
+      "implementations": [
+        {
+          "name": "redis",
+          "description": "Redis implementation of cache module",
+          "dependencies": ["ioredis"]
+        }
+      ]
     }
   }
 }

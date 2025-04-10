@@ -38,6 +38,7 @@
     "class-transformer": "0.5.1",
     "class-validator": "^0.13.2",
     "google-auth-library": "^8.5.2",
+    "ioredis": "^5.6.0",
     "joi": "^17.6.1",
     "passport": "^0.6.0",
     "passport-google-oauth20": "^2.0.0",
