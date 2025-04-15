@@ -1,7 +1,7 @@
 import { DynamicModule, ForwardReference, Module, Type } from '@nestjs/common';
-import { CloudStorageService } from './cloud-storage.service';
-import { CloudStorageController } from './cloud-storage.controller';
-import { CLOUD_STORAGE_PROVIDER } from './cloud-storage-provider.const';
+import { PushNotificationService } from './push-notification.service';
+import { PushNotificationController } from './push-notification.controller';
+import { PUSH_NOTIFICATION_PROVIDER } from './push-notification-provider.const';
 
 type AdapterModule =
   | Type<any>
@@ -9,7 +9,7 @@ type AdapterModule =
   | Promise<DynamicModule>
   | ForwardReference;
 
-interface CloudStorageModuleOptions {
+interface PushNotificationModuleOptions {
   adapter: AdapterModule;
   useDefaultController?: boolean;
   isGlobal?: boolean;
@@ -17,8 +17,8 @@ interface CloudStorageModuleOptions {
 }
 
 @Module({})
-export class CloudStorageAbstractModule {
-  static forRoot(options: CloudStorageModuleOptions): DynamicModule {
+export class PushNotificationAbstractModule {
+  static forRoot(options: PushNotificationModuleOptions): DynamicModule {
     const {
       adapter,
       isGlobal = false,
@@ -27,22 +27,21 @@ export class CloudStorageAbstractModule {
     } = options;
 
     if (useDefaultController) {
-      controllers.push(CloudStorageController);
+      controllers.push(PushNotificationController);
     }
-
     return {
-      module: CloudStorageAbstractModule,
+      module: PushNotificationAbstractModule,
       global: isGlobal,
       providers: [
         {
-          provide: CloudStorageService,
+          provide: PushNotificationService,
           useFactory: (adapter) => adapter,
-          inject: [CLOUD_STORAGE_PROVIDER],
+          inject: [PUSH_NOTIFICATION_PROVIDER],
         },
       ],
       imports: [adapter],
-      exports: [CloudStorageService],
+      exports: [PushNotificationService],
       controllers,
     };
   }
-}
+} // TODO: Add forRootAsync

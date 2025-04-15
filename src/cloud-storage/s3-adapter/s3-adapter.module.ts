@@ -21,7 +21,7 @@ export class S3AdapterModule {
         },
         { provide: CLOUD_STORAGE_PROVIDER, useClass: S3AdapterService },
       ],
-      exports: [CLOUD_STORAGE_PROVIDER, S3_ADAPTER_PROVIDER_CONFIG],
+      exports: [CLOUD_STORAGE_PROVIDER],
     };
   }
 
@@ -41,7 +41,7 @@ export class S3AdapterModule {
         },
         { provide: CLOUD_STORAGE_PROVIDER, useClass: S3AdapterService },
       ],
-      exports: [CLOUD_STORAGE_PROVIDER, S3_ADAPTER_PROVIDER_CONFIG],
+      exports: [CLOUD_STORAGE_PROVIDER],
     };
   }
 }
