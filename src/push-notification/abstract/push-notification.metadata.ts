@@ -11,7 +11,7 @@ export function SendPushNotificationMetadata(): MethodDecorator {
   return applyDecorators(
     ApiBody({ type: PushNotificationDto }),
     ApiParam({ name: 'token' }),
-    ApiOperation({ summary: 'Send notification to a scpecific device token' }),
+    ApiOperation({ summary: 'Send notification to a specific device token' }),
     ApiResponse({ status: 200, description: 'Complete' }),
   );
 }

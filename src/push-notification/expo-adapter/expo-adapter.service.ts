@@ -77,6 +77,7 @@ export class ExpoAdapterService extends PushNotificationService {
       console.error(
         `[sendPushNotification]: ERROR: error send push notification to device token. Error: ${error}`,
       );
+      // TODO: Integrate log provider in this service
       throw error;
     }
   }
