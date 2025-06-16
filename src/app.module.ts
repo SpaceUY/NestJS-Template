@@ -4,8 +4,6 @@ import { AppService } from './app.service';
 import { AuthModule } from './auth/auth.module';
 import { ConfigModule } from './config/config.module';
 import { MiddlewareModule } from './common/middleware/middleware.module';
-import { TemplateModule } from './template/template.module';
-import { EmailModule } from './email/sendgrid/email.module';
 import { SpaceshipModule } from './spaceship/spaceship.module';
 import { PrismaModule } from './prisma/prisma.module';
 import { S3AdapterModule } from './cloud-storage/s3-adapter/s3-adapter.module';
@@ -15,16 +13,29 @@ import awsConfig from 'src/config/aws.config';
 import { PushNotificationAbstractModule } from './push-notification/abstract/push-notification-abstract.module.ts';
 import { ExpoAdapterModule } from './push-notification/expo-adapter/expo-adapter.module';
 import expoConfig from './config/expo.config';
+import { EmailAbstractModule } from './email/abstract/email-abstract.module';
+import emailConfig from './config/email.config';
+import { SendgridAdapterModule } from './email/sendgrid-adapter/sendgrid-adapter.module';
+import { PugCompilerModule } from './template/pug-compiler/pug-compiler.module';
 
 @Module({
   imports: [
     ConfigModule,
     AuthModule,
     MiddlewareModule,
-    TemplateModule,
-    EmailModule,
     SpaceshipModule,
     PrismaModule,
+    EmailAbstractModule.forRoot({
+      templateService: PugCompilerModule,
+      adapter: SendgridAdapterModule.registerAsync({
+        inject: [emailConfig.KEY],
+        useFactory: (email: ConfigType<typeof emailConfig>) => ({
+          sendgridApiKey: email.sendgrid.apiKey,
+          emailFrom: email.from,
+        }),
+      }),
+      isGlobal: true,
+    }),
     CloudStorageAbstractModule.forRoot({
       adapter: S3AdapterModule.registerAsync({
         inject: [awsConfig.KEY],

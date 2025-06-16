@@ -1,13 +1,9 @@
 import { Controller, Get, Inject, UseGuards } from '@nestjs/common';
 import { ConfigType } from '@nestjs/config';
-import { AuthGuard } from '@nestjs/passport';
 import { AppService } from './app.service';
-import { Html } from './common/decorators/html-content-type';
 import baseConfig from './config/base.config';
-import { TemplateType } from './template/core/template-core.module';
-import testTemplate from './template/templates/test/test.template';
-import { EmailType } from './email/sendgrid/core/email-type';
-import test2Email from './email/sendgrid/emails/test2.email';
+import emailConfig from './config/email.config';
+import { EmailService } from './email/abstract/email.service';
 
 @Controller()
 export class AppController {
@@ -15,10 +11,9 @@ export class AppController {
     private readonly appService: AppService,
     @Inject(baseConfig.KEY)
     private readonly baseConf: ConfigType<typeof baseConfig>,
-    @Inject(testTemplate.KEY)
-    private readonly testTemp: TemplateType<typeof testTemplate>,
-    @Inject(test2Email.KEY)
-    private readonly test2Mail: EmailType<typeof test2Email>,
+    @Inject(emailConfig.KEY)
+    private readonly emailConf: ConfigType<typeof emailConfig>,
+    private readonly emailService: EmailService,
   ) {}
 
   @Get()
@@ -26,17 +21,15 @@ export class AppController {
     return this.appService.getHello() + ' ' + this.baseConf.nodeEnv;
   }
 
-  @Get('template')
-  @Html()
-  template(): string {
-    return this.testTemp.compileHTML({ a: 'A', b: 'B' });
-  }
-
   @Get('email')
   async sendEmail(): Promise<void> {
-    await this.test2Mail.send('nestjstemplate@mailinator.com', {
-      name: 'Test',
-      amount: 300,
+    await this.emailService.sendEmail({
+      to: 'nestjstemplate@mailinator.com',
+      subject: 'Test',
+      from: this.emailConf.from,
+      content: {
+        html: '<p>Test</p>',
+      },
     });
   }
 }

@@ -108,8 +108,8 @@ export class SendgridAdapterService extends EmailService {
       } else {
         response = await this.sendTemplate(
           params.to,
-          params.content.templateId,
-          params.content.params,
+          params.content.templateId || '',
+          params.content.params || {},
           {
             from: params.from,
             subject: params.subject,
@@ -142,8 +142,8 @@ export class SendgridAdapterService extends EmailService {
       } else {
         response = await this.sendMultipleTemplate(
           params.to,
-          params.content.templateId,
-          params.content.params,
+          params.content.templateId || '',
+          params.content.params || {},
           {
             from: params.from,
             subject: params.subject,
