@@ -1,11 +1,11 @@
-import { EmailTemplateService } from "./templates.abstract";
+import { EmailTemplateService } from './templates.abstract';
 import {
   MailingResponse,
   RenderedEmailContent,
   RenderEmailTemplateParams,
   SendRenderedEmailParams,
   SendRenderedEmailMultipleParams,
-} from "./email.interface";
+} from './email.interface';
 
 export abstract class EmailService {
   constructor(protected templateService: EmailTemplateService) {}
@@ -15,12 +15,12 @@ export abstract class EmailService {
    */
   async renderTemplate<
     Templates extends Record<string, string>,
-    Params extends Record<Templates[keyof Templates], any>,
+    Params extends Record<Templates[keyof Templates], unknown>,
   >(
     params: RenderEmailTemplateParams<Templates, Params>,
   ): Promise<RenderedEmailContent> {
     if (!this.templateService) {
-      throw new Error("No template service provided");
+      throw new Error('No template service provided');
     }
 
     const html = await this.templateService.compile(params.name, params.params);
@@ -37,7 +37,7 @@ export abstract class EmailService {
   /**
    * Sends multiple emails using pre-rendered content
    */
-  abstract sendEmailMultiple(
+  abstract sendEmailBatch(
     params: SendRenderedEmailMultipleParams,
   ): Promise<MailingResponse>;
 }
