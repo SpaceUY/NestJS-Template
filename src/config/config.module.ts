@@ -7,6 +7,7 @@ import googleConfig from './google.config';
 import jwtConfig from './jwt.config';
 import awsConfig from './aws.config';
 import expoConfig from './expo.config';
+import auth0Config from './auth0.config';
 
 @Module({
   imports: [
@@ -18,6 +19,7 @@ import expoConfig from './expo.config';
       emailConfig,
       awsConfig,
       expoConfig,
+      auth0Config,
     ]),
   ],
   exports: [ConfigCoreModule],

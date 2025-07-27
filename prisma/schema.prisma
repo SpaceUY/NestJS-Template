@@ -16,6 +16,7 @@ datasource db {
 enum AuthType {
   EMAIL
   GOOGLE
+  AUTH0
 }
 
 model User {
@@ -28,6 +29,14 @@ model User {
   email    String
   verified Boolean  @default(false)
   authType AuthType @default(EMAIL)
+  
+  // Auth0 specific fields
+  auth0Id      String?  @unique // Auth0 user ID (sub claim from JWT)
+  userMetadata Json?    // Auth0 user_metadata
+  appMetadata  Json?    // Auth0 app_metadata
+  picture      String?  // Profile picture URL
+  nickname     String?  // User nickname
+  emailVerified Boolean @default(false) // Email verification status
 
   ship Spaceship?
 }
