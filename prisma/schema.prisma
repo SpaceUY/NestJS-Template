@@ -26,17 +26,10 @@ model User {
   deletedAt DateTime?
 
   name     String
-  email    String
+  email    String    @unique
   verified Boolean  @default(false)
   authType AuthType @default(EMAIL)
-  
-  // Auth0 specific fields
-  auth0Id      String?  @unique // Auth0 user ID (sub claim from JWT)
-  userMetadata Json?    // Auth0 user_metadata
-  appMetadata  Json?    // Auth0 app_metadata
-  picture      String?  // Profile picture URL
-  nickname     String?  // User nickname
-  emailVerified Boolean @default(false) // Email verification status
+  auth0Id  String?   @unique
 
   ship Spaceship?
 }
