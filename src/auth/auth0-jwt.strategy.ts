@@ -1,14 +1,14 @@
 import { Inject, Injectable } from '@nestjs/common';
 import { ConfigType } from '@nestjs/config';
 import { PassportStrategy } from '@nestjs/passport';
-import { ExtractJwt, Strategy, StrategyOptions } from 'passport-jwt';
-import { passportJwtSecret } from 'jwks-rsa';
+import { ExtractJwt, Strategy } from 'passport-jwt';
 
 import { User } from '@prisma/client';
 import { RequestException } from 'src/common/exception/core/ExceptionBase';
 import { Exceptions } from 'src/common/exception/exceptions';
 import auth0Config from '../config/auth0.config';
 import { PrismaService } from '../prisma/prisma.service';
+import { passportJwtSecret } from 'jwks-rsa';
 
 export interface Auth0JwtPayload {
   sub: string; // Auth0 user ID
@@ -34,13 +34,13 @@ export class Auth0JwtStrategy extends PassportStrategy(Strategy, 'auth0-jwt') {
       audience: auth0Conf.audience,
       issuer: auth0Conf.issuer,
       algorithms: ['RS256'],
-      secretOrKey: passportJwtSecret({
+      secretOrKeyProvider: passportJwtSecret({
         cache: true,
         rateLimit: true,
         jwksRequestsPerMinute: 5,
         jwksUri: auth0Conf.jwksUri,
       }),
-    } as StrategyOptions);
+    });
   }
 
   async validate(payload: Auth0JwtPayload): Promise<User> {
@@ -53,7 +53,6 @@ export class Auth0JwtStrategy extends PassportStrategy(Strategy, 'auth0-jwt') {
     });
 
     if (!user) {
-      // Create user if they don't exist
       user = await this.prisma.user.create({
         data: {
           auth0Id: payload.sub,
@@ -64,7 +63,6 @@ export class Auth0JwtStrategy extends PassportStrategy(Strategy, 'auth0-jwt') {
         },
       });
     } else {
-      // Update user information if needed
       if (
         user.email !== payload.email ||
         user.name !== (payload.name || payload.email.split('@')[0])
