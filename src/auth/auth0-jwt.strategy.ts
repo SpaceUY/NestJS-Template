@@ -2,24 +2,22 @@ import { Inject, Injectable } from '@nestjs/common';
 import { ConfigType } from '@nestjs/config';
 import { PassportStrategy } from '@nestjs/passport';
 import { ExtractJwt, Strategy } from 'passport-jwt';
-
+import * as jwt from 'jsonwebtoken';
 import { User } from '@prisma/client';
 import { RequestException } from 'src/common/exception/core/ExceptionBase';
 import { Exceptions } from 'src/common/exception/exceptions';
 import auth0Config from '../config/auth0.config';
 import { PrismaService } from '../prisma/prisma.service';
 import { passportJwtSecret } from 'jwks-rsa';
+import axios from 'axios';
+import { Request } from 'express';
 
-export interface Auth0JwtPayload {
-  sub: string; // Auth0 user ID
+interface Auth0UserInfo {
+  sub: string;
   email: string;
   email_verified: boolean;
   name?: string;
   picture?: string;
-  aud: string;
-  iss: string;
-  iat: number;
-  exp: number;
 }
 
 @Injectable()
@@ -34,6 +32,7 @@ export class Auth0JwtStrategy extends PassportStrategy(Strategy, 'auth0-jwt') {
       audience: auth0Conf.audience,
       issuer: auth0Conf.issuer,
       algorithms: ['RS256'],
+      passReqToCallback: true,
       secretOrKeyProvider: passportJwtSecret({
         cache: true,
         rateLimit: true,
@@ -43,41 +42,64 @@ export class Auth0JwtStrategy extends PassportStrategy(Strategy, 'auth0-jwt') {
     });
   }
 
-  async validate(payload: Auth0JwtPayload): Promise<User> {
-    if (!payload.email_verified) {
+  async validate(req: Request, payload: jwt.JwtPayload): Promise<User> {
+    if (!payload || !payload.sub) {
+      throw new RequestException(Exceptions.auth.invalidCredentials);
+    }
+
+    // Extract the raw token from the Authorization header
+    const authHeader = req.headers.authorization;
+    if (!authHeader?.startsWith('Bearer ')) {
+      throw new RequestException(Exceptions.auth.invalidCredentials);
+    }
+    const token = authHeader.substring(7);
+    const userInfo = await this.getUserInfo(token);
+
+    if (!userInfo.email_verified) {
       throw new RequestException(Exceptions.auth.invalidCredentials);
     }
 
     let user = await this.prisma.user.findUnique({
-      where: { auth0Id: payload.sub },
+      where: { auth0Id: userInfo.sub },
     });
 
     if (!user) {
       user = await this.prisma.user.create({
         data: {
-          auth0Id: payload.sub,
-          email: payload.email,
-          name: payload.name || payload.email.split('@')[0],
-          verified: payload.email_verified,
+          auth0Id: userInfo.sub,
+          email: userInfo.email,
+          name: userInfo.name || userInfo.email.split('@')[0],
+          verified: userInfo.email_verified,
           authType: 'AUTH0',
         },
       });
     } else {
-      if (
-        user.email !== payload.email ||
-        user.name !== (payload.name || payload.email.split('@')[0])
-      ) {
+      const expectedName = userInfo.name || userInfo.email.split('@')[0];
+      if (user.email !== userInfo.email || user.name !== expectedName) {
         user = await this.prisma.user.update({
           where: { id: user.id },
           data: {
-            email: payload.email,
-            name: payload.name || payload.email.split('@')[0],
-            verified: payload.email_verified,
+            email: userInfo.email,
+            name: expectedName,
+            verified: userInfo.email_verified,
           },
         });
       }
     }
 
     return user;
+  }
+
+  private async getUserInfo(accessToken: string): Promise<Auth0UserInfo> {
+    try {
+      const response = await axios.get(`${this.auth0Conf.issuer}userinfo`, {
+        headers: {
+          Authorization: `Bearer ${accessToken}`,
+        },
+      });
+      return response.data;
+    } catch {
+      throw new RequestException(Exceptions.auth.invalidCredentials);
+    }
   }
 }
