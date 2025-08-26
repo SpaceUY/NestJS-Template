@@ -45,6 +45,11 @@ src/email/
 │   ├── sendgrid-adapter.module.ts
 │   ├── sendgrid-adapter-config-provider.const.ts
 │   └── sendgrid-adapter-config.interface.ts
+├── aws-ses-adapter/
+│   ├── aws-ses-adapter.service.ts
+│   ├── aws-ses-adapter.module.ts
+│   ├── aws-ses-adapter-config-provider.const.ts
+│   └── aws-ses-adapter-config.interface.ts
 ```
 
 ---
@@ -218,6 +223,14 @@ export class AppModule {}
 When you call `emailService.renderTemplate(...)`, the system will use the `PugCompilerService` to render the specified `.pug` template with the given parameters.
 
 ---
+
+## AWS SES Integration
+
+Assuming that a `awsConfig` is registered using `@nestjs/common`'s `registerAs` method. 
+
+
+For a secure and scalable integration with AWS SES, it is recommended to **use IAM Roles instead of passing access keys explicitly**.  
+For this reason, the environment variables **AWS_ACCESS_KEY** and **AWS_SECRET_ACCESS_KEY** are optional in this project.
 
 ## Adding New Providers
 
