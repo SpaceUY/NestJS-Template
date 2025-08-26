@@ -232,6 +232,22 @@ Assuming that a `awsConfig` is registered using `@nestjs/common`'s `registerAs` 
 For a secure and scalable integration with AWS SES, it is recommended to **use IAM Roles instead of passing access keys explicitly**.  
 For this reason, the environment variables **AWS_ACCESS_KEY** and **AWS_SECRET_ACCESS_KEY** are optional in this project.
 
+```typescript
+  EmailAbstractModule.forRoot({
+      adapter: AwsSesAdapterModule.registerAsync({
+        inject: [awsConfig.KEY],
+        useFactory: (aws: ConfigType<typeof awsConfig>) => ({
+          region: aws.ses.region,
+          accessKeyId: aws.ses.accessKeyId,
+          secretAccessKey: aws.ses.secretAccessKey,
+          fromEmail: aws.ses.from,
+        }),
+      }),
+      useDefaultController: true,
+      isGlobal: true,
+  }),
+    ```
+
 ## Adding New Providers
 
 To add support for another email provider (e.g., AWS SES):
