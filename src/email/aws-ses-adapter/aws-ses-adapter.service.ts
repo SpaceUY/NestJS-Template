@@ -20,9 +20,9 @@ export class AwsSesAdapterService extends EmailService {
     timestamp: true,
   });
 
-  private fromEmail: string;
+  private readonly fromEmail: string;
 
-  private sesClient: SESClient;
+  private readonly sesClient: SESClient;
 
   constructor(
     @Inject(AWS_SES_ADAPTER_PROVIDER_CONFIG)
