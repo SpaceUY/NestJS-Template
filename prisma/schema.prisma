@@ -16,6 +16,7 @@ datasource db {
 enum AuthType {
   EMAIL
   GOOGLE
+  AUTH0
 }
 
 model User {
@@ -25,9 +26,10 @@ model User {
   deletedAt DateTime?
 
   name     String
-  email    String
+  email    String    @unique
   verified Boolean  @default(false)
   authType AuthType @default(EMAIL)
+  auth0Id  String?   @unique
 
   ship Spaceship?
 }

@@ -8,7 +8,7 @@ import {
   Post,
   UseGuards,
 } from '@nestjs/common';
-import { AuthGuard } from '@nestjs/passport';
+import { Auth0Guard } from '../auth/auth0.guard';
 import { ApiBearerAuth, ApiTags } from '@nestjs/swagger';
 import { User } from '@prisma/client';
 import { CurrentUser } from '../user/current-user.decorator';
@@ -18,7 +18,7 @@ import { SpaceshipService } from './spaceship.service';
 
 @ApiTags('spaceships')
 @ApiBearerAuth()
-@UseGuards(AuthGuard('jwt'))
+@UseGuards(Auth0Guard)
 @Controller('spaceships')
 export class SpaceshipController {
   constructor(private readonly service: SpaceshipService) {}
