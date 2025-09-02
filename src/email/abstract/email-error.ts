@@ -1,6 +1,7 @@
 export enum EmailErrorCode {
   Unknown = 'UNKNOWN',
   InvalidParams = 'INVALID_PARAMS',
+  InvalidRecipient = 'INVALID_RECIPIENT',
   TemplateNotFound = 'TEMPLATE_NOT_FOUND',
   TemplateRenderFailed = 'TEMPLATE_RENDER_FAILED',
   ProviderAuthFailed = 'PROVIDER_AUTH_FAILED',

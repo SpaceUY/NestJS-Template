@@ -11,7 +11,7 @@ import { EMAIL_PROVIDER } from '../abstract/email-provider.const';
 // No template service wiring in mail adapters anymore
 import { Logger } from '@nestjs/common';
 import { EMAIL_LOGGER } from '../abstract/email-logger.interface';
-import { createDefaultEmailLogger } from '../logger/email-logger.adapter';
+import { createDefaultEmailLogger } from '../utils/email-logger.adapter';
 // Logger token can be provided by the application if desired
 
 @Module({})

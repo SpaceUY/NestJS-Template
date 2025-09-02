@@ -1,6 +1,4 @@
 import { Logger } from '@nestjs/common';
-import { adaptLogger } from '../standard-logger.interface';
-import type { StandardLogger } from '../standard-logger.interface';
 
 export interface LevelLogger {
   debug?(message: string, meta?: Record<string, unknown>): void;
@@ -9,17 +7,26 @@ export interface LevelLogger {
   error?(message: string, meta?: Record<string, unknown>): void;
 }
 
+function formatMessage(
+  message: string,
+  meta?: Record<string, unknown>,
+): string {
+  if (!meta || Object.keys(meta).length === 0) {
+    return message;
+  }
+  return `${message} - ${JSON.stringify(meta)}`;
+}
+
 export function createLevelLogger(context = 'App'): LevelLogger {
   const nestLogger = new Logger(context);
-  const std: StandardLogger = adaptLogger(nestLogger);
   return {
     debug: (message: string, meta?: Record<string, unknown>) =>
-      std.debug({ message, data: meta }),
+      nestLogger.debug(formatMessage(message, meta)),
     info: (message: string, meta?: Record<string, unknown>) =>
-      std.info({ message, data: meta }),
+      nestLogger.log(formatMessage(message, meta)),
     warn: (message: string, meta?: Record<string, unknown>) =>
-      std.warn({ message, data: meta }),
+      nestLogger.warn(formatMessage(message, meta)),
     error: (message: string, meta?: Record<string, unknown>) =>
-      std.error({ message, data: meta }),
+      nestLogger.error(formatMessage(message, meta)),
   };
 }

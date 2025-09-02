@@ -287,7 +287,7 @@ import { Module, Logger } from '@nestjs/common';
 import { EmailAbstractModule } from './email/abstract/email-abstract.module';
 import { SendgridAdapterModule } from './email/sendgrid-adapter/sendgrid-adapter.module';
 import { EMAIL_LOGGER } from './email/abstract/email-logger.interface';
-import { adaptLogger } from './email/logger/standard-logger.interface';
+// Using Nest Logger directly for simplicity
 
 @Module({
   imports: [

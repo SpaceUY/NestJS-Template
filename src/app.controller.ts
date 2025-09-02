@@ -35,8 +35,8 @@ export class AppController {
     );
 
     await this.emailService.sendEmail({
-      to: 'econtrerasvale@gmail.com',
-      subject: 'Test',
+      to: 'johndoe@example.com',
+      subject: 'Welcome to our app',
       from: this.emailConf.from,
       content: { html },
     });

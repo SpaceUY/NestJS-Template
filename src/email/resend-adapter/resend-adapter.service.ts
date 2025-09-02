@@ -15,12 +15,12 @@ import { EmailError, EmailErrorCode } from '../abstract/email-error';
 export class ResendAdapterService extends EmailService {
   private emailFrom: string;
   private resend: Resend;
-  private logger?: EmailLogger;
+  private logger: EmailLogger;
 
   constructor(
     @Inject(RESEND_ADAPTER_PROVIDER_CONFIG)
     config: ResendAdapterConfig,
-    @Inject(EMAIL_LOGGER) logger?: EmailLogger,
+    @Inject(EMAIL_LOGGER) logger: EmailLogger,
   ) {
     super();
     this.emailFrom = config.emailFrom;
@@ -35,7 +35,7 @@ export class ResendAdapterService extends EmailService {
   ): Promise<CreateEmailResponse> {
     const from = options.from || this.emailFrom;
     const subject = options.subject || '';
-    this.logger?.debug?.('Resend sending HTML', { to, from, subject });
+    this.logger.debug?.('Resend sending HTML', { to, from, subject });
     return this.resend.emails.send({
       from,
       to,
@@ -49,7 +49,7 @@ export class ResendAdapterService extends EmailService {
     html: string,
     options: Pick<SendRenderedEmailParams, 'from' | 'subject'>,
   ): Promise<CreateBatchResponse> {
-    this.logger?.debug?.('Resend sending batch HTML', {
+    this.logger.debug?.('Resend sending batch HTML', {
       toCount: to.length,
       from: options.from,
       subject: options.subject,
@@ -86,12 +86,12 @@ export class ResendAdapterService extends EmailService {
         body: response,
         headers: {},
       };
-      this.logger?.info?.('Resend email sent', {
+      this.logger.info?.('Resend email sent', {
         statusCode: mailingResponse.statusCode,
       });
       return mailingResponse;
     } catch (error: unknown) {
-      this.logger?.error?.('Resend sendEmail failed', {
+      this.logger.error?.('Resend sendEmail failed', {
         error: String(error),
       });
       throw new EmailError(
@@ -128,13 +128,13 @@ export class ResendAdapterService extends EmailService {
         body: response,
         headers: {},
       };
-      this.logger?.info?.('Resend batch email sent', {
+      this.logger.info?.('Resend batch email sent', {
         statusCode: mailingResponse.statusCode,
         count: params.to.length,
       });
       return mailingResponse;
     } catch (error: unknown) {
-      this.logger?.error?.('Resend sendEmailBatch failed', {
+      this.logger.error?.('Resend sendEmailBatch failed', {
         error: String(error),
         count: params.to.length,
       });
