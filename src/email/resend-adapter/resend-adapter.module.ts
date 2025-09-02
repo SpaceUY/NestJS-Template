@@ -8,8 +8,10 @@ import { ResendAdapterService } from './resend-adapter.service';
 import { ResendAdapterConfig } from './resend-adapter-config.interface';
 import { RESEND_ADAPTER_PROVIDER_CONFIG } from './resend-adapter-config-provider.const';
 import { EMAIL_PROVIDER } from '../abstract/email-provider.const';
-import { EmailTemplateService } from '../abstract/templates.abstract';
-import { EMAIL_TEMPLATE_SERVICE } from '../abstract/template-provider.const';
+// No template service wiring in mail adapters anymore
+import { Logger } from '@nestjs/common';
+import { EMAIL_LOGGER } from '../abstract/email-logger.interface';
+import { createDefaultEmailLogger } from '../logger/email-logger.adapter';
 
 @Module({})
 export class ResendAdapterModule {
@@ -17,24 +19,22 @@ export class ResendAdapterModule {
     return {
       module: ResendAdapterModule,
       providers: [
+        Logger,
         {
           provide: RESEND_ADAPTER_PROVIDER_CONFIG,
           useValue: config,
         },
         {
-          provide: EMAIL_TEMPLATE_SERVICE,
-          useValue: EmailTemplateService,
+          provide: EMAIL_LOGGER,
+          inject: [Logger],
+          useFactory: () => createDefaultEmailLogger(),
         },
         {
           provide: EMAIL_PROVIDER,
           useClass: ResendAdapterService,
         },
       ],
-      exports: [
-        EMAIL_PROVIDER,
-        EMAIL_TEMPLATE_SERVICE,
-        RESEND_ADAPTER_PROVIDER_CONFIG,
-      ],
+      exports: [EMAIL_PROVIDER, RESEND_ADAPTER_PROVIDER_CONFIG],
     };
   }
 
@@ -49,25 +49,23 @@ export class ResendAdapterModule {
       module: ResendAdapterModule,
       imports: options.imports || [],
       providers: [
+        Logger,
         {
           provide: RESEND_ADAPTER_PROVIDER_CONFIG,
           useFactory: options.useFactory,
           inject: options.inject || [],
         },
         {
-          provide: EMAIL_TEMPLATE_SERVICE,
-          useValue: EmailTemplateService,
+          provide: EMAIL_LOGGER,
+          inject: [Logger],
+          useFactory: () => createDefaultEmailLogger(),
         },
         {
           provide: EMAIL_PROVIDER,
           useClass: ResendAdapterService,
         },
       ],
-      exports: [
-        EMAIL_PROVIDER,
-        EMAIL_TEMPLATE_SERVICE,
-        RESEND_ADAPTER_PROVIDER_CONFIG,
-      ],
+      exports: [EMAIL_PROVIDER, RESEND_ADAPTER_PROVIDER_CONFIG],
     };
   }
 }

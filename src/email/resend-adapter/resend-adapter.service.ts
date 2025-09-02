@@ -8,21 +8,24 @@ import {
 import { RESEND_ADAPTER_PROVIDER_CONFIG } from './resend-adapter-config-provider.const';
 import { ResendAdapterConfig } from './resend-adapter-config.interface';
 import { CreateBatchResponse, CreateEmailResponse, Resend } from 'resend';
-import { EmailTemplateService } from '../abstract/templates.abstract';
+import { EmailLogger, EMAIL_LOGGER } from '../abstract/email-logger.interface';
+import { EmailError, EmailErrorCode } from '../abstract/email-error';
 
 @Injectable()
 export class ResendAdapterService extends EmailService {
   private emailFrom: string;
   private resend: Resend;
+  private logger?: EmailLogger;
 
   constructor(
     @Inject(RESEND_ADAPTER_PROVIDER_CONFIG)
     config: ResendAdapterConfig,
-    protected readonly templateService: EmailTemplateService,
+    @Inject(EMAIL_LOGGER) logger?: EmailLogger,
   ) {
-    super(templateService);
+    super();
     this.emailFrom = config.emailFrom;
     this.resend = new Resend(config.resendApiKey);
+    this.logger = logger;
   }
 
   private async sendHTML(
@@ -32,6 +35,7 @@ export class ResendAdapterService extends EmailService {
   ): Promise<CreateEmailResponse> {
     const from = options.from || this.emailFrom;
     const subject = options.subject || '';
+    this.logger?.debug?.('Resend sending HTML', { to, from, subject });
     return this.resend.emails.send({
       from,
       to,
@@ -40,37 +44,16 @@ export class ResendAdapterService extends EmailService {
     });
   }
 
-  // Resend doesn't support template IDs like SendGrid. Their system only supports
-  // HTML content or React components passed directly in the API call.
-  // Broadcasts exist but are for mass campaigns, not individual template rendering.
-  private async sendTemplate(
-    to: string,
-    templateId: string,
-    locals: Record<string, unknown>,
-    options: Pick<SendRenderedEmailParams, 'from' | 'subject'>,
-  ): Promise<CreateEmailResponse> {
-    throw new Error(
-      'Template ID functionality not supported by Resend provider',
-    );
-  }
-
-  private async sendEmailBatchTemplate(
-    to: string[],
-    templateId: string,
-    locals: Record<string, unknown>,
-    options: Pick<SendRenderedEmailParams, 'from' | 'subject'>,
-  ): Promise<CreateBatchResponse> {
-    // TODO: Make this a part of set errors for provider
-    throw new Error(
-      'Template ID functionality not supported by Resend provider',
-    );
-  }
-
   private async sendEmailBatchHTML(
     to: string[],
     html: string,
     options: Pick<SendRenderedEmailParams, 'from' | 'subject'>,
   ): Promise<CreateBatchResponse> {
+    this.logger?.debug?.('Resend sending batch HTML', {
+      toCount: to.length,
+      from: options.from,
+      subject: options.subject,
+    });
     const response = await this.resend.batch.send(
       to.map((recipient) => ({
         from: options.from!,
@@ -92,26 +75,30 @@ export class ResendAdapterService extends EmailService {
           subject: params.subject,
         });
       } else {
-        response = await this.sendTemplate(
-          params.to,
-          params.content.templateId || '',
-          params.content.params || {},
-          {
-            from: params.from,
-            subject: params.subject,
-          },
+        throw new EmailError(
+          'Template-based sending is not supported by this adapter. Provide HTML content.',
+          EmailErrorCode.InvalidParams,
         );
       }
 
-      return {
+      const mailingResponse: MailingResponse = {
         statusCode: response.error ? 500 : 200,
         body: response,
         headers: {},
       };
+      this.logger?.info?.('Resend email sent', {
+        statusCode: mailingResponse.statusCode,
+      });
+      return mailingResponse;
     } catch (error: unknown) {
-      // TODO: Integrate log provider
-      console.log(`Failed to send email:`, `Error: ${error}`);
-      throw error;
+      this.logger?.error?.('Resend sendEmail failed', {
+        error: String(error),
+      });
+      throw new EmailError(
+        'Failed to send email',
+        EmailErrorCode.ProviderRejected,
+        error,
+      );
     }
   }
 
@@ -130,26 +117,32 @@ export class ResendAdapterService extends EmailService {
           },
         );
       } else {
-        response = await this.sendEmailBatchTemplate(
-          params.to,
-          params.content.templateId || '',
-          params.content.params || {},
-          {
-            from: params.from,
-            subject: params.subject,
-          },
+        throw new EmailError(
+          'Template-based batch sending is not supported by this adapter. Provide HTML content.',
+          EmailErrorCode.InvalidParams,
         );
       }
 
-      return {
+      const mailingResponse: MailingResponse = {
         statusCode: response.error ? 500 : 200,
         body: response,
         headers: {},
       };
+      this.logger?.info?.('Resend batch email sent', {
+        statusCode: mailingResponse.statusCode,
+        count: params.to.length,
+      });
+      return mailingResponse;
     } catch (error: unknown) {
-      // TODO: Integrate log provider
-      console.log(`Failed to send multiple emails:`, `Error: ${error}`);
-      throw error;
+      this.logger?.error?.('Resend sendEmailBatch failed', {
+        error: String(error),
+        count: params.to.length,
+      });
+      throw new EmailError(
+        'Failed to send multiple emails',
+        EmailErrorCode.ProviderRejected,
+        error,
+      );
     }
   }
 }

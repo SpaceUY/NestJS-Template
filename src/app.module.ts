@@ -15,9 +15,9 @@ import { ExpoAdapterModule } from './push-notification/expo-adapter/expo-adapter
 import expoConfig from './config/expo.config';
 import { EmailAbstractModule } from './email/abstract/email-abstract.module';
 import emailConfig from './config/email.config';
-import { SendgridAdapterModule } from './email/sendgrid-adapter/sendgrid-adapter.module';
 import { ResendAdapterModule } from './email/resend-adapter/resend-adapter.module';
-import { PugCompilerModule } from './templates/pug-compiler/pug-compiler.module';
+import { TemplateModule } from './templating/template.module';
+import { PugAdapterModule } from './templating/pug-adapter/pug-adapter.module';
 
 @Module({
   imports: [
@@ -26,8 +26,11 @@ import { PugCompilerModule } from './templates/pug-compiler/pug-compiler.module'
     MiddlewareModule,
     SpaceshipModule,
     PrismaModule,
+    TemplateModule.forRoot({
+      adapter: PugAdapterModule.register({}),
+      isGlobal: true,
+    }),
     EmailAbstractModule.forRoot({
-      templateService: PugCompilerModule,
       adapter: ResendAdapterModule.registerAsync({
         inject: [emailConfig.KEY],
         useFactory: (email: ConfigType<typeof emailConfig>) => ({

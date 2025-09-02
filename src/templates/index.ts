@@ -1,2 +1,2 @@
-export * from "./template.const";
-export * from "./template-params.interface";
+export * from './template.const';
+export * from './template-params.interface';

@@ -5,6 +5,8 @@ import baseConfig from './config/base.config';
 import emailConfig from './config/email.config';
 import { EmailService } from './email/abstract/email.service';
 import { TEMPLATES } from './templates';
+import { TEMPLATE_PATHS } from './templates/template.const';
+import { TemplateService } from './templating/abstract/template.service';
 
 @Controller()
 export class AppController {
@@ -15,6 +17,7 @@ export class AppController {
     @Inject(emailConfig.KEY)
     private readonly emailConf: ConfigType<typeof emailConfig>,
     private readonly emailService: EmailService,
+    private readonly templateService: TemplateService,
   ) {}
 
   @Get()
@@ -24,16 +27,18 @@ export class AppController {
 
   @Get('email')
   async sendEmail(): Promise<void> {
+    const html = await this.templateService.compile(
+      TEMPLATE_PATHS[TEMPLATES.WELCOME],
+      {
+        name: 'John Doe',
+      },
+    );
+
     await this.emailService.sendEmail({
-      to: 'nestjstemplate@mailinator.com',
+      to: 'econtrerasvale@gmail.com',
       subject: 'Test',
       from: this.emailConf.from,
-      content: await this.emailService.renderTemplate({
-        name: TEMPLATES.WELCOME,
-        params: {
-          name: 'John Doe',
-        },
-      }),
+      content: { html },
     });
   }
 }

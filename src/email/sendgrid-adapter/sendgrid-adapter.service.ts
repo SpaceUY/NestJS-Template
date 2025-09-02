@@ -9,19 +9,22 @@ import { SENDGRID_ADAPTER_PROVIDER_CONFIG } from './sendgrid-adapter-config-prov
 import { SendgridAdapterConfig } from './sendgrid-adapter-config.interface';
 import * as sgMail from '@sendgrid/mail';
 import { ClientResponse } from '@sendgrid/mail';
-import { EmailTemplateService } from '../abstract/templates.abstract';
+import { EmailLogger, EMAIL_LOGGER } from '../abstract/email-logger.interface';
+import { EmailError, EmailErrorCode } from '../abstract/email-error';
 
 @Injectable()
 export class SendgridAdapterService extends EmailService {
   private emailFrom: string;
+  private logger?: EmailLogger;
 
   constructor(
     @Inject(SENDGRID_ADAPTER_PROVIDER_CONFIG)
     config: SendgridAdapterConfig,
-    protected readonly templateService: EmailTemplateService,
+    @Inject(EMAIL_LOGGER) logger?: EmailLogger,
   ) {
-    super(templateService);
+    super();
     this.emailFrom = config.emailFrom;
+    this.logger = logger;
     sgMail.setApiKey(config.sendgridApiKey);
   }
 
@@ -32,50 +35,17 @@ export class SendgridAdapterService extends EmailService {
   ): Promise<ClientResponse> {
     options.from = options.from || this.emailFrom;
     options.subject = options.subject || '';
+    this.logger?.debug?.('SendGrid sending HTML', {
+      to,
+      from: options.from,
+      subject: options.subject,
+    });
     return sgMail
       .send({
         to,
         from: options.from,
         subject: options.subject,
         html,
-      })
-      .then((resp) => resp[0]);
-  }
-
-  private async sendTemplate(
-    to: string,
-    templateId: string,
-    locals: Record<string, unknown>,
-    options: Pick<SendRenderedEmailParams, 'from' | 'subject'>,
-  ): Promise<ClientResponse> {
-    options.from = options.from || this.emailFrom;
-    options.subject = options.subject || '';
-    return sgMail
-      .send({
-        to,
-        from: options.from,
-        subject: options.subject,
-        templateId,
-        dynamicTemplateData: locals,
-      })
-      .then((resp) => resp[0]);
-  }
-
-  private async sendMultipleTemplate(
-    to: string[],
-    templateId: string,
-    locals: Record<string, unknown>,
-    options: Pick<SendRenderedEmailParams, 'from' | 'subject'>,
-  ): Promise<ClientResponse> {
-    options.from = options.from || this.emailFrom;
-    options.subject = options.subject || '';
-    return sgMail
-      .sendMultiple({
-        to,
-        from: options.from,
-        subject: options.subject,
-        templateId,
-        dynamicTemplateData: locals,
       })
       .then((resp) => resp[0]);
   }
@@ -87,6 +57,11 @@ export class SendgridAdapterService extends EmailService {
   ): Promise<ClientResponse> {
     options.from = options.from || this.emailFrom;
     options.subject = options.subject || '';
+    this.logger?.debug?.('SendGrid sending multiple HTML', {
+      toCount: to.length,
+      from: options.from,
+      subject: options.subject,
+    });
     return sgMail
       .sendMultiple({
         to,
@@ -106,26 +81,28 @@ export class SendgridAdapterService extends EmailService {
           subject: params.subject,
         });
       } else {
-        response = await this.sendTemplate(
-          params.to,
-          params.content.templateId || '',
-          params.content.params || {},
-          {
-            from: params.from,
-            subject: params.subject,
-          },
+        throw new EmailError(
+          'Template-based sending is not supported by this adapter. Provide HTML content.',
+          EmailErrorCode.InvalidParams,
         );
       }
 
-      return {
+      const mailingResponse: MailingResponse = {
         statusCode: response.statusCode,
         body: response.body,
         headers: response.headers as Record<string, string>,
       };
+      this.logger?.info?.('SendGrid email sent', {
+        statusCode: mailingResponse.statusCode,
+      });
+      return mailingResponse;
     } catch (error) {
-      // TODO: Integrate log provider
-      console.log(`Failed to send email:`, `Error: ${error}`);
-      throw error;
+      this.logger?.error?.('SendGrid sendEmail failed', {
+        error: String(error),
+      });
+      // Map common provider errors to EmailError codes (best effort)
+      const message = 'Failed to send email';
+      throw new EmailError(message, EmailErrorCode.ProviderRejected, error);
     }
   }
 
@@ -140,22 +117,32 @@ export class SendgridAdapterService extends EmailService {
           subject: params.subject,
         });
       } else {
-        response = await this.sendMultipleTemplate(
-          params.to,
-          params.content.templateId || '',
-          params.content.params || {},
-          {
-            from: params.from,
-            subject: params.subject,
-          },
+        throw new EmailError(
+          'Template-based batch sending is not supported by this adapter. Provide HTML content.',
+          EmailErrorCode.InvalidParams,
         );
       }
 
-      return response;
+      const mailingResponse: MailingResponse = {
+        statusCode: response.statusCode,
+        body: response.body,
+        headers: response.headers as Record<string, string>,
+      };
+      this.logger?.info?.('SendGrid batch email sent', {
+        statusCode: mailingResponse.statusCode,
+        count: params.to.length,
+      });
+      return mailingResponse;
     } catch (error) {
-      // TODO: Integrate log provider
-      console.log(`Failed to send multiple emails:`, `Error: ${error}`);
-      throw error;
+      this.logger?.error?.('SendGrid sendEmailBatch failed', {
+        error: String(error),
+        count: params.to.length,
+      });
+      throw new EmailError(
+        'Failed to send multiple emails',
+        EmailErrorCode.ProviderRejected,
+        error,
+      );
     }
   }
 }
