@@ -45,6 +45,11 @@ src/email/
 │   ├── sendgrid-adapter.module.ts
 │   ├── sendgrid-adapter-config-provider.const.ts
 │   └── sendgrid-adapter-config.interface.ts
+├── resend-adapter/
+│   ├── resend-adapter.service.ts
+│   ├── resend-adapter.module.ts
+│   ├── resend-adapter-config-provider.const.ts
+│   └── resend-adapter-config.interface.ts
 ```
 
 ---
@@ -57,11 +62,19 @@ Install the required dependencies for your chosen provider and template engine. 
 npm install @sendgrid/mail pug
 ```
 
+For Resend:
+
+```bash
+npm install resend pug
+```
+
 ---
 
 ## Usage
 
 ### 1. Register the Email Module in your app
+
+#### SendGrid Example
 
 ```typescript
 @Module({
@@ -78,15 +91,47 @@ npm install @sendgrid/mail pug
 export class AppModule {}
 ```
 
-#### Async Registration Example
+#### Resend Example
 
+```typescript
+@Module({
+  imports: [
+    EmailAbstractModule.forRoot({
+      adapter: ResendAdapterModule.register({
+        resendApiKey: process.env.RESEND_API_KEY,
+        emailFrom: 'noreply@resend.dev',
+      }),
+      templateService: PugCompilerModule,
+    }),
+  ],
+})
+export class AppModule {}
+```
+
+#### Async Registration Examples
+
+**SendGrid:**
 ```typescript
 EmailAbstractModule.forRoot({
   adapter: SendgridAdapterModule.registerAsync({
     inject: [config.KEY],
     useFactory: (cfg: ConfigType<typeof config>) => ({
-      sendgridApiKey: cfg.sendgridApiKey,
-      emailFrom: cfg.emailFrom,
+      sendgridApiKey: cfg.sendgrid.apiKey,
+      emailFrom: cfg.from,
+    }),
+  }),
+  templateService: PugCompilerModule,
+})
+```
+
+**Resend:**
+```typescript
+EmailAbstractModule.forRoot({
+  adapter: ResendAdapterModule.registerAsync({
+    inject: [config.KEY],
+    useFactory: (cfg: ConfigType<typeof config>) => ({
+      resendApiKey: cfg.resend.apiKey,
+      emailFrom: cfg.resend.emailFrom,
     }),
   }),
   templateService: PugCompilerModule,
@@ -110,6 +155,39 @@ await this.emailService.sendEmail({
   },
 });
 ```
+
+---
+
+## Provider-Specific Notes
+
+### SendGrid vs Resend Template Systems
+
+**SendGrid Templates:**
+- Uses dashboard-managed templates with template IDs
+- Templates are created and managed in SendGrid's web interface
+- Dynamic content is populated using template variables
+- Template IDs are referenced when sending emails
+- Supports dynamic template data for personalization
+
+**Resend Templates:**
+- **Note: Resend does not support template IDs like SendGrid**
+- Resend's template system is React component-based only
+- Template methods (`sendTemplate` and `sendEmailBatchTemplate`) will throw errors: `"Template ID functionality not supported by Resend provider"`
+- For templating with Resend, use HTML content with your internal template service (e.g., Pug)
+- Resend's approach: pass React components directly via the `react` parameter
+
+**Template Method Behavior:**
+- **SendGrid:** Full support for template IDs and dynamic template data
+- **Resend:** Template ID methods throw errors - use HTML content instead
+
+**Resend Documentation Reference:**
+According to Resend's documentation, their template system is built around React Email components. Instead of template IDs, they recommend:
+- Creating email templates as React components
+- Using the `react` parameter in API calls
+- Managing templates in your codebase rather than a web dashboard
+- Leveraging React Email's component library for consistent styling
+
+For more details, see: [Resend React Email Documentation](https://resend.com/docs/send/with-react)
 
 ---
 

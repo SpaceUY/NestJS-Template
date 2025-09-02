@@ -1,9 +1,10 @@
-import { Controller, Get, Inject, UseGuards } from '@nestjs/common';
+import { Controller, Get, Inject } from '@nestjs/common';
 import { ConfigType } from '@nestjs/config';
 import { AppService } from './app.service';
 import baseConfig from './config/base.config';
 import emailConfig from './config/email.config';
 import { EmailService } from './email/abstract/email.service';
+import { TEMPLATES } from './templates';
 
 @Controller()
 export class AppController {
@@ -27,9 +28,12 @@ export class AppController {
       to: 'nestjstemplate@mailinator.com',
       subject: 'Test',
       from: this.emailConf.from,
-      content: {
-        html: '<p>Test</p>',
-      },
+      content: await this.emailService.renderTemplate({
+        name: TEMPLATES.WELCOME,
+        params: {
+          name: 'John Doe',
+        },
+      }),
     });
   }
 }

@@ -16,7 +16,8 @@ import expoConfig from './config/expo.config';
 import { EmailAbstractModule } from './email/abstract/email-abstract.module';
 import emailConfig from './config/email.config';
 import { SendgridAdapterModule } from './email/sendgrid-adapter/sendgrid-adapter.module';
-import { PugCompilerModule } from './template/pug-compiler/pug-compiler.module';
+import { ResendAdapterModule } from './email/resend-adapter/resend-adapter.module';
+import { PugCompilerModule } from './templates/pug-compiler/pug-compiler.module';
 
 @Module({
   imports: [
@@ -27,11 +28,11 @@ import { PugCompilerModule } from './template/pug-compiler/pug-compiler.module';
     PrismaModule,
     EmailAbstractModule.forRoot({
       templateService: PugCompilerModule,
-      adapter: SendgridAdapterModule.registerAsync({
+      adapter: ResendAdapterModule.registerAsync({
         inject: [emailConfig.KEY],
         useFactory: (email: ConfigType<typeof emailConfig>) => ({
-          sendgridApiKey: email.sendgrid.apiKey,
-          emailFrom: email.from,
+          resendApiKey: email.resend.apiKey,
+          emailFrom: email.resend.emailFrom,
         }),
       }),
       isGlobal: true,

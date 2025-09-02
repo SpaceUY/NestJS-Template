@@ -1,8 +1,8 @@
-import * as pug from "pug";
-import { EmailTemplateService } from "../../email/abstract/templates.abstract";
-import { TEMPLATE_PATHS } from "../index";
-import { Injectable } from "@nestjs/common";
-import { join } from "path";
+import * as pug from 'pug';
+import { EmailTemplateService } from '../../email/abstract/templates.abstract';
+import { TEMPLATE_PATHS } from '../index';
+import { Injectable } from '@nestjs/common';
+import { join } from 'path';
 
 @Injectable()
 export class PugCompilerService implements EmailTemplateService {

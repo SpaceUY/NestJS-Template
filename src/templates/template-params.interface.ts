@@ -1,6 +1,6 @@
-import { VerificationParams } from "./auth/verification.interface";
-import { WelcomeParams } from "./onboarding/welcome.interface";
-import { TEMPLATES } from "./template.const";
+import { VerificationParams } from './auth/verification.interface';
+import { WelcomeParams } from './onboarding/welcome.interface';
+import { TEMPLATES } from './template.const';
 
 export type Template = (typeof TEMPLATES)[keyof typeof TEMPLATES];
 

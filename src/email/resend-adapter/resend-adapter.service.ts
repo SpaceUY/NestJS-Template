@@ -40,20 +40,18 @@ export class ResendAdapterService extends EmailService {
     });
   }
 
+  // Resend doesn't support template IDs like SendGrid. Their system only supports
+  // HTML content or React components passed directly in the API call.
+  // Broadcasts exist but are for mass campaigns, not individual template rendering.
   private async sendTemplate(
     to: string,
     templateId: string,
     locals: Record<string, unknown>,
     options: Pick<SendRenderedEmailParams, 'from' | 'subject'>,
   ): Promise<CreateEmailResponse> {
-    const from = options.from || this.emailFrom;
-    const subject = options.subject || '';
-    return this.resend.emails.send({
-      from,
-      to,
-      subject,
-      html: '', // TODO: Implement template rendering
-    });
+    throw new Error(
+      'Template ID functionality not supported by Resend provider',
+    );
   }
 
   private async sendEmailBatchTemplate(
@@ -62,18 +60,10 @@ export class ResendAdapterService extends EmailService {
     locals: Record<string, unknown>,
     options: Pick<SendRenderedEmailParams, 'from' | 'subject'>,
   ): Promise<CreateBatchResponse> {
-    return Promise.resolve({
-      data: {
-        id: '123',
-      },
-      error: null,
-    } as unknown as CreateBatchResponse);
-    // const results = await Promise.all(
-    //   to.map((recipient) =>
-    //     this.sendTemplate(recipient, templateId, locals, options),
-    //   ),
-    // );
-    // return results;
+    // TODO: Make this a part of set errors for provider
+    throw new Error(
+      'Template ID functionality not supported by Resend provider',
+    );
   }
 
   private async sendEmailBatchHTML(
