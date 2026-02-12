@@ -44,6 +44,11 @@ src/email/
 │   ├── sendgrid-adapter.module.ts
 │   ├── sendgrid-adapter-config-provider.const.ts
 │   └── sendgrid-adapter-config.interface.ts
+├── aws-ses-adapter/
+│   ├── aws-ses-adapter.service.ts
+│   ├── aws-ses-adapter.module.ts
+│   ├── aws-ses-adapter-config-provider.const.ts
+│   └── aws-ses-adapter-config.interface.ts
 ├── resend-adapter/
 │   ├── resend-adapter.service.ts
 │   ├── resend-adapter.module.ts
@@ -178,8 +183,31 @@ await this.emailService.sendEmail({
   content: { html },
 });
 ```
-
 ---
+
+## AWS SES Integration
+
+Assuming that a `awsConfig` is registered using `@nestjs/common`'s `registerAs` method. 
+
+
+For a secure and scalable integration with AWS SES, it is recommended to **use IAM Roles instead of passing access keys explicitly**.  
+For this reason, the environment variables **AWS_ACCESS_KEY** and **AWS_SECRET_ACCESS_KEY** are optional in this project.
+
+```typescript
+  EmailAbstractModule.forRoot({
+      adapter: AwsSesAdapterModule.registerAsync({
+        inject: [awsConfig.KEY],
+        useFactory: (aws: ConfigType<typeof awsConfig>) => ({
+          region: aws.ses.region,
+          accessKeyId: aws.ses.accessKeyId,
+          secretAccessKey: aws.ses.secretAccessKey,
+          fromEmail: aws.ses.from,
+        }),
+      }),
+      useDefaultController: true,
+      isGlobal: true,
+  }),
+    ```
 
 ## Adding New Providers
 
