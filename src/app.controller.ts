@@ -1,9 +1,12 @@
-import { Controller, Get, Inject, UseGuards } from '@nestjs/common';
+import { Controller, Get, Inject } from '@nestjs/common';
 import { ConfigType } from '@nestjs/config';
 import { AppService } from './app.service';
 import baseConfig from './config/base.config';
 import emailConfig from './config/email.config';
 import { EmailService } from './email/abstract/email.service';
+import { TEMPLATES } from './templates';
+import { TEMPLATE_PATHS } from './templates/template.const';
+import { TemplateService } from './templating/abstract/template.service';
 
 @Controller()
 export class AppController {
@@ -14,6 +17,7 @@ export class AppController {
     @Inject(emailConfig.KEY)
     private readonly emailConf: ConfigType<typeof emailConfig>,
     private readonly emailService: EmailService,
+    private readonly templateService: TemplateService,
   ) {}
 
   @Get()
@@ -23,13 +27,18 @@ export class AppController {
 
   @Get('email')
   async sendEmail(): Promise<void> {
-    await this.emailService.sendEmail({
-      to: 'nestjstemplate@mailinator.com',
-      subject: 'Test',
-      from: this.emailConf.from,
-      content: {
-        html: '<p>Test</p>',
+    const html = await this.templateService.compile(
+      TEMPLATE_PATHS[TEMPLATES.WELCOME],
+      {
+        name: 'John Doe',
       },
+    );
+
+    await this.emailService.sendEmail({
+      to: 'johndoe@example.com',
+      subject: 'Welcome to our app',
+      from: this.emailConf.from,
+      content: { html },
     });
   }
 }

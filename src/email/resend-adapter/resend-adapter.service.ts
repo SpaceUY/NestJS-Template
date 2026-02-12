@@ -5,76 +5,70 @@ import {
   SendRenderedEmailParams,
   SendRenderedEmailMultipleParams,
 } from '../abstract/email.interface';
-import { SENDGRID_ADAPTER_PROVIDER_CONFIG } from './sendgrid-adapter-config-provider.const';
-import { SendgridAdapterConfig } from './sendgrid-adapter-config.interface';
-import * as sgMail from '@sendgrid/mail';
-import { ClientResponse } from '@sendgrid/mail';
+import { RESEND_ADAPTER_PROVIDER_CONFIG } from './resend-adapter-config-provider.const';
+import { ResendAdapterConfig } from './resend-adapter-config.interface';
+import { CreateBatchResponse, CreateEmailResponse, Resend } from 'resend';
 import { EmailLogger, EMAIL_LOGGER } from '../abstract/email-logger.interface';
 import { EmailError, EmailErrorCode } from '../abstract/email-error';
 
 @Injectable()
-export class SendgridAdapterService extends EmailService {
+export class ResendAdapterService extends EmailService {
   private emailFrom: string;
-  private logger?: EmailLogger;
+  private resend: Resend;
+  private logger: EmailLogger;
 
   constructor(
-    @Inject(SENDGRID_ADAPTER_PROVIDER_CONFIG)
-    config: SendgridAdapterConfig,
-    @Inject(EMAIL_LOGGER) logger?: EmailLogger,
+    @Inject(RESEND_ADAPTER_PROVIDER_CONFIG)
+    config: ResendAdapterConfig,
+    @Inject(EMAIL_LOGGER) logger: EmailLogger,
   ) {
     super();
     this.emailFrom = config.emailFrom;
+    this.resend = new Resend(config.resendApiKey);
     this.logger = logger;
-    sgMail.setApiKey(config.sendgridApiKey);
   }
 
   private async sendHTML(
     to: string,
     html: string,
     options: Pick<SendRenderedEmailParams, 'from' | 'subject'>,
-  ): Promise<ClientResponse> {
-    options.from = options.from || this.emailFrom;
-    options.subject = options.subject || '';
-    this.logger?.debug?.('SendGrid sending HTML', {
+  ): Promise<CreateEmailResponse> {
+    const from = options.from || this.emailFrom;
+    const subject = options.subject || '';
+    this.logger.debug?.('Resend sending HTML', { to, from, subject });
+    return this.resend.emails.send({
+      from,
       to,
-      from: options.from,
-      subject: options.subject,
+      subject,
+      html,
     });
-    return sgMail
-      .send({
-        to,
-        from: options.from,
-        subject: options.subject,
-        html,
-      })
-      .then((resp) => resp[0]);
   }
 
-  private async sendMultipleHTML(
+  private async sendEmailBatchHTML(
     to: string[],
     html: string,
     options: Pick<SendRenderedEmailParams, 'from' | 'subject'>,
-  ): Promise<ClientResponse> {
-    options.from = options.from || this.emailFrom;
-    options.subject = options.subject || '';
-    this.logger?.debug?.('SendGrid sending multiple HTML', {
+  ): Promise<CreateBatchResponse> {
+    this.logger.debug?.('Resend sending batch HTML', {
       toCount: to.length,
       from: options.from,
       subject: options.subject,
     });
-    return sgMail
-      .sendMultiple({
-        to,
-        from: options.from,
-        subject: options.subject,
+    const response = await this.resend.batch.send(
+      to.map((recipient) => ({
+        from: options.from!,
+        to: [recipient],
+        subject: options.subject!,
         html,
-      })
-      .then((resp) => resp[0]);
+      })),
+    );
+
+    return response;
   }
 
   async sendEmail(params: SendRenderedEmailParams): Promise<MailingResponse> {
     try {
-      let response: ClientResponse;
+      let response: CreateEmailResponse;
       if (params.content.html) {
         response = await this.sendHTML(params.to, params.content.html, {
           from: params.from,
@@ -88,21 +82,23 @@ export class SendgridAdapterService extends EmailService {
       }
 
       const mailingResponse: MailingResponse = {
-        statusCode: response.statusCode,
-        body: response.body,
-        headers: response.headers as Record<string, string>,
+        statusCode: response.error ? 500 : 200,
+        body: response,
+        headers: {},
       };
-      this.logger?.info?.('SendGrid email sent', {
+      this.logger.info?.('Resend email sent', {
         statusCode: mailingResponse.statusCode,
       });
       return mailingResponse;
-    } catch (error) {
-      this.logger?.error?.('SendGrid sendEmail failed', {
+    } catch (error: unknown) {
+      this.logger.error?.('Resend sendEmail failed', {
         error: String(error),
       });
-      // Map common provider errors to EmailError codes (best effort)
-      const message = 'Failed to send email';
-      throw new EmailError(message, EmailErrorCode.ProviderRejected, error);
+      throw new EmailError(
+        'Failed to send email',
+        EmailErrorCode.ProviderRejected,
+        error,
+      );
     }
   }
 
@@ -110,12 +106,16 @@ export class SendgridAdapterService extends EmailService {
     params: SendRenderedEmailMultipleParams,
   ): Promise<MailingResponse> {
     try {
-      let response: ClientResponse;
+      let response: CreateBatchResponse;
       if (params.content.html) {
-        response = await this.sendMultipleHTML(params.to, params.content.html, {
-          from: params.from,
-          subject: params.subject,
-        });
+        response = await this.sendEmailBatchHTML(
+          params.to,
+          params.content.html,
+          {
+            from: params.from,
+            subject: params.subject,
+          },
+        );
       } else {
         throw new EmailError(
           'Template-based batch sending is not supported by this adapter. Provide HTML content.',
@@ -124,17 +124,17 @@ export class SendgridAdapterService extends EmailService {
       }
 
       const mailingResponse: MailingResponse = {
-        statusCode: response.statusCode,
-        body: response.body,
-        headers: response.headers as Record<string, string>,
+        statusCode: response.error ? 500 : 200,
+        body: response,
+        headers: {},
       };
-      this.logger?.info?.('SendGrid batch email sent', {
+      this.logger.info?.('Resend batch email sent', {
         statusCode: mailingResponse.statusCode,
         count: params.to.length,
       });
       return mailingResponse;
-    } catch (error) {
-      this.logger?.error?.('SendGrid sendEmailBatch failed', {
+    } catch (error: unknown) {
+      this.logger.error?.('Resend sendEmailBatch failed', {
         error: String(error),
         count: params.to.length,
       });
