@@ -13,6 +13,12 @@ export default registerWithValidation(
       accessKeyId: process.env.AWS_ACCESS_KEY || '',
       secretAccessKey: process.env.AWS_SECRET_ACCESS_KEY || '',
     },
+    ses: {
+      region: process.env.AWS_SES_REGION || '',
+      accessKeyId: process.env.AWS_ACCESS_KEY || '',
+      secretAccessKey: process.env.AWS_SECRET_ACCESS_KEY || '',
+      from: process.env.EMAIL_FROM || 'fake@example.com',
+    },
   }),
   {
     AWS_S3_BUCKET_NAME: Joi.string(),
