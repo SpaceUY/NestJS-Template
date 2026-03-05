@@ -9,8 +9,8 @@ import { SendgridAdapterConfig } from './sendgrid-adapter-config.interface';
 import * as sgMail from '@sendgrid/mail';
 import { ClientResponse } from '@sendgrid/mail';
 import { EmailLogger } from '../abstract/email-logger.interface';
-import { createEmailError, EmailErrorCode } from '../abstract/email-error';
 import { createDefaultEmailLogger } from '../utils/email-logger.adapter';
+import { executeHtmlEmailSend } from '../utils/execute-html-email-send';
 
 @Injectable()
 export class SendgridAdapterService extends EmailService {
@@ -68,77 +68,57 @@ export class SendgridAdapterService extends EmailService {
       .then((resp) => resp[0]);
   }
 
+  private toMailingResponse(response: ClientResponse): MailingResponse {
+    return {
+      statusCode: response.statusCode,
+      body: response.body,
+      headers: response.headers as Record<string, string>,
+    };
+  }
+
   async sendEmail(params: SendRenderedEmailParams): Promise<MailingResponse> {
-    try {
-      let response: ClientResponse;
-      if (params.content.html) {
-        response = await this.sendHTML(params.to, params.content.html, {
+    return executeHtmlEmailSend({
+      content: params.content,
+      invalidContentMessage:
+        'Template-based sending is not supported by this adapter. Provide HTML content.',
+      providerErrorMessage: 'Failed to send email',
+      logger: this.logger,
+      successLogMessage: 'SendGrid email sent',
+      successMeta: (mailingResponse) => ({
+        statusCode: mailingResponse.statusCode,
+      }),
+      failureLogMessage: 'SendGrid sendEmail failed',
+      send: (html) =>
+        this.sendHTML(params.to, html, {
           from: params.from,
           subject: params.subject,
-        });
-      } else {
-        throw createEmailError(
-          'Template-based sending is not supported by this adapter. Provide HTML content.',
-          EmailErrorCode.InvalidParams,
-        );
-      }
-
-      const mailingResponse: MailingResponse = {
-        statusCode: response.statusCode,
-        body: response.body,
-        headers: response.headers as Record<string, string>,
-      };
-      this.logger?.info?.('SendGrid email sent', {
-        statusCode: mailingResponse.statusCode,
-      });
-      return mailingResponse;
-    } catch (error) {
-      this.logger?.error?.('SendGrid sendEmail failed', {
-        error: String(error),
-      });
-      // Map common provider errors to EmailError codes (best effort)
-      const message = 'Failed to send email';
-      throw createEmailError(message, EmailErrorCode.ProviderRejected, error);
-    }
+        }),
+      toMailingResponse: (response) => this.toMailingResponse(response),
+    });
   }
 
   async sendEmailBatch(
     params: SendRenderedEmailMultipleParams,
   ): Promise<MailingResponse> {
-    try {
-      let response: ClientResponse;
-      if (params.content.html) {
-        response = await this.sendMultipleHTML(params.to, params.content.html, {
-          from: params.from,
-          subject: params.subject,
-        });
-      } else {
-        throw createEmailError(
-          'Template-based batch sending is not supported by this adapter. Provide HTML content.',
-          EmailErrorCode.InvalidParams,
-        );
-      }
-
-      const mailingResponse: MailingResponse = {
-        statusCode: response.statusCode,
-        body: response.body,
-        headers: response.headers as Record<string, string>,
-      };
-      this.logger?.info?.('SendGrid batch email sent', {
+    return executeHtmlEmailSend({
+      content: params.content,
+      invalidContentMessage:
+        'Template-based batch sending is not supported by this adapter. Provide HTML content.',
+      providerErrorMessage: 'Failed to send multiple emails',
+      logger: this.logger,
+      successLogMessage: 'SendGrid batch email sent',
+      successMeta: (mailingResponse) => ({
         statusCode: mailingResponse.statusCode,
         count: params.to.length,
-      });
-      return mailingResponse;
-    } catch (error) {
-      this.logger?.error?.('SendGrid sendEmailBatch failed', {
-        error: String(error),
-        count: params.to.length,
-      });
-      throw createEmailError(
-        'Failed to send multiple emails',
-        EmailErrorCode.ProviderRejected,
-        error,
-      );
-    }
+      }),
+      failureLogMessage: 'SendGrid sendEmailBatch failed',
+      failureMeta: { count: params.to.length },
+      send: (html) =>
+        this.sendMultipleHTML(params.to, html, {
+          from: params.from,
+          subject: params.subject,
+        }),
+      toMailingResponse: (response) => this.toMailingResponse(response),
+    });
   }
 }

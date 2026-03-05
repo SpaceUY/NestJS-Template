@@ -21,7 +21,16 @@ export class ConsoleAdapterService extends EmailService {
     this.defaultFrom = this.resolveDefaultFrom(config);
   }
 
-  async sendEmail(params: SendRenderedEmailParams): Promise<MailingResponse> {
+  private sendMock(
+    params: {
+      to: string | string[];
+      from?: string;
+      subject?: string;
+      content: RenderedEmailContent;
+    },
+    logMessage: string,
+    resultMessage: string,
+  ): MailingResponse {
     const html = this.resolveHtmlContent(params.content);
     const from = params.from || this.defaultFrom;
 
@@ -36,7 +45,7 @@ export class ConsoleAdapterService extends EmailService {
     };
 
     this.logger.log(
-      `Mock email delivery (console adapter):\n${JSON.stringify(payload, null, 2)}`,
+      `${logMessage}\n${JSON.stringify(payload, null, 2)}`,
     );
 
     return {
@@ -44,41 +53,28 @@ export class ConsoleAdapterService extends EmailService {
       body: {
         delivered: false,
         provider: 'console',
-        message: 'Email was printed to logs, not delivered.',
+        message: resultMessage,
       },
       headers: {},
     };
   }
 
+  async sendEmail(params: SendRenderedEmailParams): Promise<MailingResponse> {
+    return this.sendMock(
+      params,
+      'Mock email delivery (console adapter):',
+      'Email was printed to logs, not delivered.',
+    );
+  }
+
   async sendEmailBatch(
     params: SendRenderedEmailMultipleParams,
   ): Promise<MailingResponse> {
-    const html = this.resolveHtmlContent(params.content);
-    const from = params.from || this.defaultFrom;
-
-    const payload = {
-      to: params.to,
-      from,
-      subject: params.subject,
-      content: {
-        ...params.content,
-        html,
-      },
-    };
-
-    this.logger.log(
-      `Mock email batch delivery (console adapter):\n${JSON.stringify(payload, null, 2)}`,
+    return this.sendMock(
+      params,
+      'Mock email batch delivery (console adapter):',
+      'Batch email was printed to logs, not delivered.',
     );
-
-    return {
-      statusCode: 200,
-      body: {
-        delivered: false,
-        provider: 'console',
-        message: 'Batch email was printed to logs, not delivered.',
-      },
-      headers: {},
-    };
   }
 
   private resolveHtmlContent(content: RenderedEmailContent): string {

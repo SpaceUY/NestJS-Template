@@ -8,8 +8,8 @@ import {
 import { ResendAdapterConfig } from './resend-adapter-config.interface';
 import { CreateBatchResponse, CreateEmailResponse, Resend } from 'resend';
 import { EmailLogger } from '../abstract/email-logger.interface';
-import { createEmailError, EmailErrorCode } from '../abstract/email-error';
 import { createDefaultEmailLogger } from '../utils/email-logger.adapter';
+import { executeHtmlEmailSend } from '../utils/execute-html-email-send';
 
 @Injectable()
 export class ResendAdapterService extends EmailService {
@@ -65,83 +65,59 @@ export class ResendAdapterService extends EmailService {
     return response;
   }
 
+  private toMailingResponse(
+    response: CreateEmailResponse | CreateBatchResponse,
+  ): MailingResponse {
+    return {
+      statusCode: response.error ? 500 : 200,
+      body: response,
+      headers: {},
+    };
+  }
+
   async sendEmail(params: SendRenderedEmailParams): Promise<MailingResponse> {
-    try {
-      let response: CreateEmailResponse;
-      if (params.content.html) {
-        response = await this.sendHTML(params.to, params.content.html, {
+    return executeHtmlEmailSend({
+      content: params.content,
+      invalidContentMessage:
+        'Template-based sending is not supported by this adapter. Provide HTML content.',
+      providerErrorMessage: 'Failed to send email',
+      logger: this.logger,
+      successLogMessage: 'Resend email sent',
+      successMeta: (mailingResponse) => ({
+        statusCode: mailingResponse.statusCode,
+      }),
+      failureLogMessage: 'Resend sendEmail failed',
+      send: (html) =>
+        this.sendHTML(params.to, html, {
           from: params.from,
           subject: params.subject,
-        });
-      } else {
-        throw createEmailError(
-          'Template-based sending is not supported by this adapter. Provide HTML content.',
-          EmailErrorCode.InvalidParams,
-        );
-      }
-
-      const mailingResponse: MailingResponse = {
-        statusCode: response.error ? 500 : 200,
-        body: response,
-        headers: {},
-      };
-      this.logger.info?.('Resend email sent', {
-        statusCode: mailingResponse.statusCode,
-      });
-      return mailingResponse;
-    } catch (error: unknown) {
-      this.logger.error?.('Resend sendEmail failed', {
-        error: String(error),
-      });
-      throw createEmailError(
-        'Failed to send email',
-        EmailErrorCode.ProviderRejected,
-        error,
-      );
-    }
+        }),
+      toMailingResponse: (response) => this.toMailingResponse(response),
+    });
   }
 
   async sendEmailBatch(
     params: SendRenderedEmailMultipleParams,
   ): Promise<MailingResponse> {
-    try {
-      let response: CreateBatchResponse;
-      if (params.content.html) {
-        response = await this.sendEmailBatchHTML(
-          params.to,
-          params.content.html,
-          {
-            from: params.from,
-            subject: params.subject,
-          },
-        );
-      } else {
-        throw createEmailError(
-          'Template-based batch sending is not supported by this adapter. Provide HTML content.',
-          EmailErrorCode.InvalidParams,
-        );
-      }
-
-      const mailingResponse: MailingResponse = {
-        statusCode: response.error ? 500 : 200,
-        body: response,
-        headers: {},
-      };
-      this.logger.info?.('Resend batch email sent', {
+    return executeHtmlEmailSend({
+      content: params.content,
+      invalidContentMessage:
+        'Template-based batch sending is not supported by this adapter. Provide HTML content.',
+      providerErrorMessage: 'Failed to send multiple emails',
+      logger: this.logger,
+      successLogMessage: 'Resend batch email sent',
+      successMeta: (mailingResponse) => ({
         statusCode: mailingResponse.statusCode,
         count: params.to.length,
-      });
-      return mailingResponse;
-    } catch (error: unknown) {
-      this.logger.error?.('Resend sendEmailBatch failed', {
-        error: String(error),
-        count: params.to.length,
-      });
-      throw createEmailError(
-        'Failed to send multiple emails',
-        EmailErrorCode.ProviderRejected,
-        error,
-      );
-    }
+      }),
+      failureLogMessage: 'Resend sendEmailBatch failed',
+      failureMeta: { count: params.to.length },
+      send: (html) =>
+        this.sendEmailBatchHTML(params.to, html, {
+          from: params.from,
+          subject: params.subject,
+        }),
+      toMailingResponse: (response) => this.toMailingResponse(response),
+    });
   }
 }
