@@ -4,5 +4,3 @@ export interface EmailLogger {
   warn?(message: string, meta?: Record<string, unknown>): void;
   error?(message: string, meta?: Record<string, unknown>): void;
 }
-
-export const EMAIL_LOGGER = Symbol('EMAIL_LOGGER');

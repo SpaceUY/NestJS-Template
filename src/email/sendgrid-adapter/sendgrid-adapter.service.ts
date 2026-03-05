@@ -1,30 +1,26 @@
-import { Inject, Injectable } from '@nestjs/common';
+import { Injectable } from '@nestjs/common';
 import { EmailService } from '../abstract/email.service';
 import {
   MailingResponse,
   SendRenderedEmailParams,
   SendRenderedEmailMultipleParams,
 } from '../abstract/email.interface';
-import { SENDGRID_ADAPTER_PROVIDER_CONFIG } from './sendgrid-adapter-config-provider.const';
 import { SendgridAdapterConfig } from './sendgrid-adapter-config.interface';
 import * as sgMail from '@sendgrid/mail';
 import { ClientResponse } from '@sendgrid/mail';
-import { EmailLogger, EMAIL_LOGGER } from '../abstract/email-logger.interface';
-import { EmailError, EmailErrorCode } from '../abstract/email-error';
+import { EmailLogger } from '../abstract/email-logger.interface';
+import { createEmailError, EmailErrorCode } from '../abstract/email-error';
+import { createDefaultEmailLogger } from '../utils/email-logger.adapter';
 
 @Injectable()
 export class SendgridAdapterService extends EmailService {
   private emailFrom: string;
-  private logger?: EmailLogger;
+  private logger: EmailLogger;
 
-  constructor(
-    @Inject(SENDGRID_ADAPTER_PROVIDER_CONFIG)
-    config: SendgridAdapterConfig,
-    @Inject(EMAIL_LOGGER) logger?: EmailLogger,
-  ) {
+  constructor(config: SendgridAdapterConfig, logger?: EmailLogger) {
     super();
     this.emailFrom = config.emailFrom;
-    this.logger = logger;
+    this.logger = logger || createDefaultEmailLogger();
     sgMail.setApiKey(config.sendgridApiKey);
   }
 
@@ -81,7 +77,7 @@ export class SendgridAdapterService extends EmailService {
           subject: params.subject,
         });
       } else {
-        throw new EmailError(
+        throw createEmailError(
           'Template-based sending is not supported by this adapter. Provide HTML content.',
           EmailErrorCode.InvalidParams,
         );
@@ -102,7 +98,7 @@ export class SendgridAdapterService extends EmailService {
       });
       // Map common provider errors to EmailError codes (best effort)
       const message = 'Failed to send email';
-      throw new EmailError(message, EmailErrorCode.ProviderRejected, error);
+      throw createEmailError(message, EmailErrorCode.ProviderRejected, error);
     }
   }
 
@@ -117,7 +113,7 @@ export class SendgridAdapterService extends EmailService {
           subject: params.subject,
         });
       } else {
-        throw new EmailError(
+        throw createEmailError(
           'Template-based batch sending is not supported by this adapter. Provide HTML content.',
           EmailErrorCode.InvalidParams,
         );
@@ -138,7 +134,7 @@ export class SendgridAdapterService extends EmailService {
         error: String(error),
         count: params.to.length,
       });
-      throw new EmailError(
+      throw createEmailError(
         'Failed to send multiple emails',
         EmailErrorCode.ProviderRejected,
         error,

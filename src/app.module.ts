@@ -14,10 +14,14 @@ import { PushNotificationAbstractModule } from './push-notification/abstract/pus
 import { ExpoAdapterModule } from './push-notification/expo-adapter/expo-adapter.module';
 import expoConfig from './config/expo.config';
 import { EmailAbstractModule } from './email/abstract/email-abstract.module';
-import emailConfig from './config/email.config';
-import { ResendAdapterModule } from './email/resend-adapter/resend-adapter.module';
+import emailConfig, { EMAIL_ADAPTERS } from './config/email.config';
 import { TemplateModule } from './templating/template.module';
 import { PugAdapterModule } from './templating/pug-adapter/pug-adapter.module';
+import { ConsoleAdapterService } from './email/console-adapter/console-adapter.service';
+import { AwsSesAdapterService } from './email/aws-ses-adapter/aws-ses-adapter.service';
+import { SendgridAdapterService } from './email/sendgrid-adapter/sendgrid-adapter.service';
+import { ResendAdapterService } from './email/resend-adapter/resend-adapter.service';
+import { createDefaultEmailLogger } from './email/utils/email-logger.adapter';
 
 @Module({
   imports: [
@@ -30,14 +34,48 @@ import { PugAdapterModule } from './templating/pug-adapter/pug-adapter.module';
       adapter: PugAdapterModule.register({}),
       isGlobal: true,
     }),
-    EmailAbstractModule.forRoot({
-      adapter: ResendAdapterModule.registerAsync({
-        inject: [emailConfig.KEY],
-        useFactory: (email: ConfigType<typeof emailConfig>) => ({
-          resendApiKey: email.resend.apiKey,
-          emailFrom: email.resend.emailFrom,
-        }),
-      }),
+    EmailAbstractModule.forRootAsync({
+      inject: [emailConfig.KEY, awsConfig.KEY],
+      useFactory: (
+        email: ConfigType<typeof emailConfig>,
+        aws: ConfigType<typeof awsConfig>,
+      ) => {
+        const logger = createDefaultEmailLogger();
+        const configuredAdapter = email.adapter?.toUpperCase();
+
+        if (configuredAdapter === EMAIL_ADAPTERS.SENDGRID) {
+          return new SendgridAdapterService(
+            {
+              sendgridApiKey: email.sendgrid.apiKey,
+              emailFrom: email.from,
+            },
+            logger,
+          );
+        }
+
+        if (configuredAdapter === EMAIL_ADAPTERS.RESEND) {
+          return new ResendAdapterService(
+            {
+              resendApiKey: email.resend.apiKey,
+              emailFrom: email.resend.emailFrom || email.from,
+            },
+            logger,
+          );
+        }
+
+        if (configuredAdapter === EMAIL_ADAPTERS.AWS_SES) {
+          return new AwsSesAdapterService({
+            region: aws.ses.region,
+            accessKeyId: aws.ses.accessKeyId,
+            secretAccessKey: aws.ses.secretAccessKey,
+            fromEmail: aws.ses.from || email.from,
+          });
+        }
+
+        return new ConsoleAdapterService({
+          fromEmail: email.from,
+        });
+      },
       isGlobal: true,
     }),
     CloudStorageAbstractModule.forRoot({
