@@ -1,6 +1,9 @@
-import { DynamicModule, Global, Module } from '@nestjs/common';
+import { DynamicModule, Global, Module, Logger } from '@nestjs/common';
 import { Cluster, Redis, RedisOptions } from 'ioredis';
 import { CacheService } from './redis.cache.service';
+import { adaptLogger, StandardLogger } from './utils/logger';
+
+export const REDIS_LOGGER_TOKEN = 'REDIS_LOGGER_TOKEN';
 
 interface RedisClusterOptions {
   scaleReads?: 'master' | 'slave' | 'all';
@@ -32,6 +35,7 @@ interface BaseRedisCacheModuleOptions {
   port: number;
   reconnectionDelayMs?: number;
   reconnectionMaxRetries?: number;
+  logger?: StandardLogger;
 }
 
 /**
@@ -58,10 +62,13 @@ type RedisCacheModuleOptions =
   | StandaloneRedisCacheModuleOptions
   | ClusterRedisCacheModuleOptions;
 
+// eslint-disable-next-line @typescript-eslint/no-explicit-any
 type AsyncFactoryFn<T> = (...args: any[]) => Promise<T> | T;
 
 interface BaseAsyncOptions {
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
   inject?: any[];
+  logger?: StandardLogger;
 }
 
 /**
@@ -159,9 +166,21 @@ export class RedisCacheModule {
   static forRoot(options: StandaloneRedisCacheModuleOptions): DynamicModule; // Overload for standalone mode
   static forRoot(options: ClusterRedisCacheModuleOptions): DynamicModule; // Overload for cluster mode
   static forRoot(options: RedisCacheModuleOptions): DynamicModule {
+    const { logger: providedLogger } = options;
+
     return {
       module: RedisCacheModule,
       providers: [
+        Logger,
+        {
+          provide: REDIS_LOGGER_TOKEN,
+          inject: [Logger],
+          useFactory: (defaultLogger: Logger) => {
+            const logger: StandardLogger =
+              providedLogger ?? adaptLogger(defaultLogger);
+            return logger;
+          },
+        },
         {
           provide: REDIS_CLIENT,
           useFactory: () => RedisCacheModule.createRedisClient(options),
@@ -180,11 +199,24 @@ export class RedisCacheModule {
   static forRootAsync(options: StandaloneAsyncOptions): DynamicModule; // Overload for standalone mode async
   static forRootAsync(options: ClusterAsyncOptions): DynamicModule; // Overload for cluster mode async
   static forRootAsync(options: RedisCacheModuleAsyncOptions): DynamicModule {
+    const { logger: providedLogger } = options;
+
     return {
       module: RedisCacheModule,
       providers: [
+        Logger,
+        {
+          provide: REDIS_LOGGER_TOKEN,
+          inject: [Logger],
+          useFactory: (defaultLogger: Logger) => {
+            const logger: StandardLogger =
+              providedLogger ?? adaptLogger(defaultLogger);
+            return logger;
+          },
+        },
         {
           provide: REDIS_CLIENT,
+          // eslint-disable-next-line @typescript-eslint/no-explicit-any
           useFactory: async (...args: any[]) => {
             const config = await options.useFactory(...args);
             return RedisCacheModule.createRedisClient(config);
