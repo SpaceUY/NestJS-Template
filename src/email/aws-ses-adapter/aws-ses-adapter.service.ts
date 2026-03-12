@@ -1,18 +1,16 @@
-import { Inject, Injectable, Logger } from '@nestjs/common';
+import { Injectable, Logger } from '@nestjs/common';
 import { EmailService } from '../abstract/email.service';
 import {
   MailingResponse,
   SendRenderedEmailParams,
   SendRenderedEmailMultipleParams,
 } from '../abstract/email.interface';
-import { AWS_SES_ADAPTER_PROVIDER_CONFIG } from './aws-ses-adapter-config-provider.const';
 import { AwsSesAdapterConfig } from './aws-ses-adapter-config.interface';
 import {
   SESClient,
   SendEmailCommand,
   SendEmailCommandOutput,
 } from '@aws-sdk/client-ses';
-import { EmailTemplateService } from '../abstract/templates.abstract';
 
 @Injectable()
 export class AwsSesAdapterService extends EmailService {
@@ -24,12 +22,8 @@ export class AwsSesAdapterService extends EmailService {
 
   private readonly sesClient: SESClient;
 
-  constructor(
-    @Inject(AWS_SES_ADAPTER_PROVIDER_CONFIG)
-    config: AwsSesAdapterConfig,
-    protected readonly templateService: EmailTemplateService,
-  ) {
-    super(templateService);
+  constructor(config: AwsSesAdapterConfig) {
+    super();
     this.fromEmail = config.fromEmail;
     this.sesClient = new SESClient({
       credentials: {
@@ -44,12 +38,14 @@ export class AwsSesAdapterService extends EmailService {
     to: string | string[],
     html: string,
     options: Pick<SendRenderedEmailParams, 'from' | 'subject'>,
-  ): Promise<SendEmailCommandOutput>  {
+  ): Promise<SendEmailCommandOutput> {
     const from = options.from || this.fromEmail;
     const subject = options.subject || '';
+    const toAddresses = Array.isArray(to) ? to : [to];
+
     const command = new SendEmailCommand({
       Source: from,
-      Destination: { ToAddresses: [...to] },
+      Destination: { ToAddresses: toAddresses },
       Message: {
         Subject: { Data: subject },
         Body: {
@@ -60,49 +56,43 @@ export class AwsSesAdapterService extends EmailService {
     return await this.sesClient.send(command);
   }
 
-  async sendEmail(
-    params: SendRenderedEmailParams,
+  private async sendWithHtmlContent(
+    params: {
+      to: string | string[];
+      from?: string;
+      subject?: string;
+      content: { html?: string };
+    },
+    failureLogMessage: string,
   ): Promise<MailingResponse> {
     try {
       if (!params.content.html) {
         throw new Error('HTML content is required to use AWS SES');
       }
-      let response: SendEmailCommandOutput = await this.sendHTML(params.to, params.content.html, {
+
+      const response = await this.sendHTML(params.to, params.content.html, {
         from: params.from,
         subject: params.subject,
       });
+
       return {
         statusCode: response.$metadata.httpStatusCode || 500,
         body: response,
         headers: {},
       };
     } catch (error) {
-      this.logger.error('Failed to send email:', error);
+      this.logger.error(failureLogMessage, error);
       throw error;
     }
   }
 
-  async sendEmailMultiple(
+  async sendEmail(params: SendRenderedEmailParams): Promise<MailingResponse> {
+    return this.sendWithHtmlContent(params, 'Failed to send email:');
+  }
+
+  async sendEmailBatch(
     params: SendRenderedEmailMultipleParams,
   ): Promise<MailingResponse> {
-    try {
-      if (!params.content.html) {
-        throw new Error('HTML content is required to use AWS SES');
-      }
-      let response: SendEmailCommandOutput = await this.sendHTML(params.to, params.content.html, {
-        from: params.from,
-        subject: params.subject,
-      });
-
-      return {
-        statusCode: response.$metadata.httpStatusCode || 500,
-        body: response,
-        headers: {},
-      };
-    } catch (error) {
-      // TODO: Integrate log provider
-      console.log(`AWS SES: Failed to send multiple emails:`, `Error: ${error}`);
-      throw error;
-    }
+    return this.sendWithHtmlContent(params, 'Failed to send multiple emails:');
   }
 }

@@ -10,18 +10,22 @@ export enum EmailErrorCode {
   QuotaExceeded = 'QUOTA_EXCEEDED',
 }
 
-export class EmailError extends Error {
-  readonly code: EmailErrorCode;
-  readonly cause?: unknown;
+export interface EmailError {
+  name: 'EmailError';
+  message: string;
+  code: EmailErrorCode;
+  cause?: unknown;
+}
 
-  constructor(
-    message: string,
-    code: EmailErrorCode = EmailErrorCode.Unknown,
-    cause?: unknown,
-  ) {
-    super(message);
-    this.name = 'EmailError';
-    this.code = code;
-    this.cause = cause;
-  }
+export function createEmailError(
+  message: string,
+  code: EmailErrorCode = EmailErrorCode.Unknown,
+  cause?: unknown,
+): EmailError {
+  return {
+    name: 'EmailError',
+    message,
+    code,
+    cause,
+  };
 }
