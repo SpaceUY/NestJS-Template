@@ -1,11 +1,23 @@
+import type { Buffer } from "node:buffer";
+
 /**
  * Interface for the file object returned by the Cloud Storage provider.
  * @property {string} url - The public URL where the file can be accessed.
  * @property {string} id - The unique identifier assigned to the file in the cloud provider.
  */
-interface CloudStorageFile {
+export interface CloudStorageFile {
   url: string;
   id: string;
+}
+
+/**
+ * File payload contract accepted by cloud storage adapters.
+ */
+export interface CloudStorageUploadFile {
+  buffer: Buffer;
+  mimetype?: string;
+  originalname?: string;
+  size?: number;
 }
 
 /**
@@ -14,12 +26,12 @@ interface CloudStorageFile {
 export abstract class CloudStorageService {
   /**
    * Uploads a file to the Cloud Storage provider.
-   * @param {Express.Multer.File} file - The file to upload.
+   * @param file - The file payload to upload.
    * @returns {Promise<CloudStorageFile>} An object containing:
    *   - `url`: The public URL where the file can be accessed.
    *   - `id`: The unique identifier assigned to the file in the cloud provider.
    */
-  abstract uploadFile(file: Express.Multer.File): Promise<CloudStorageFile>;
+  abstract uploadFile(file: CloudStorageUploadFile): Promise<CloudStorageFile>;
 
   /**
    * Delete a file from the Cloud Storage provider.

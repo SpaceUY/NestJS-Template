@@ -1,6 +1,6 @@
 import { HttpStatus } from '@nestjs/common';
 
-export const CLOUD_STORAGE_ERRORS: Record<string, IErrorDefinition> = {
+export const CLOUD_STORAGE_ERRORS: Record<string, ErrorDefinition> = {
   FILE_REQUIRED: {
     code: 'CLOUD_STORAGE_FILE_REQUIRED',
     status: HttpStatus.BAD_REQUEST,
@@ -18,7 +18,7 @@ export const CLOUD_STORAGE_ERRORS: Record<string, IErrorDefinition> = {
   },
 };
 
-export interface IErrorDefinition {
+export interface ErrorDefinition {
   code: string;
   status: HttpStatus;
   message: string;

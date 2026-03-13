@@ -1,315 +1,282 @@
 # Cloud Storage Module
 
-A NestJS module that provides Cloud Storage functionality with a clean, injectable service interface.
+Provider-agnostic cloud storage with emails-style adapter composition.
 
-## Overview
+This module supports two registration strategies:
 
-This module provides a cloud storage files solution for NestJS applications. It includes:
+1. `forRoot` (adapter class style)
+2. `forRootAsync` (service factory style, recommended for config-dependent adapters)
 
-- A configurable Cloud Storage module
-- A service wrapper for Cloud Storage operations
-- Endpoints upload, delete and get files from cloud storage provider
-- AWS S3 Integration
+---
+
+## Core Contract
+
+The public service is [`CloudStorageService`](./abstract/cloud-storage.service.ts):
+
+- `uploadFile(file)`
+- `deleteFile(fileKey)`
+- `getFile(fileKey)`
+
+---
 
 ## Directory Structure
 
-```
-cloud-storage/
+```text
+src/modules/infrastructure/cloud-storage/
+├── cloud-storage.config.ts
+├── cloud-storage.module.ts
+├── cloud-storage-orchestrator.service.ts
+├── cloud-storage.targets.ts
+├── cloud-storage.tokens.ts
 ├── abstract/
 │   ├── dto/
 │   ├── cloud-storage-abstract.module.ts
 │   ├── cloud-storage-error-codes.ts
-│   ├── cloud-storage-provider.const.ts
-│   ├── cloud-storage.controller.ts
 │   ├── cloud-storage.exception.ts
-│   ├── cloud-storage.service.ts
+│   └── cloud-storage.service.ts
 ├── s3-adapter/
-│   ├── s3-adapter-config.provider.const.ts
 │   ├── s3-adapter-config.interface.ts
-│   ├── s3-adapter.module.ts
-│   ├── s3-adapter.service.ts
+│   └── s3-adapter.service.ts
+├── local-adapter/
+│   └── local-adapter.service.ts
+├── storacha-adapter/
+│   ├── storacha-adapter.client.ts
+│   ├── storacha-adapter-config.interface.ts
+│   └── storacha-adapter.service.ts
 └── README.md
-
 ```
 
-## Features
+---
 
-- Configurable Cloud Storage connection
-- Cloud storage provider operations, upload, delete and get file
-- Easy-to-use service interface
-- AWS S3 support
-- Integration with NestJS dependency injection
+## Registration Options
 
-## Installation
+> The abstract registration options below are still available.  
+> The runtime app should typically consume [`CloudStorageModule`](./cloud-storage.module.ts), which composes adapters and exposes orchestration.
 
-Ensure you have the required dependencies:
+### 1) `CloudStorageAbstractModule.forRoot(...)`
 
-```bash
-npm install @aws-sdk/client-s3
-npm install @aws-sdk/s3-request-presigner
-npm install @types/multer
+Use this when the adapter can be instantiated by Nest without runtime constructor config.
+
+`forRoot` accepts:
+
+- `adapter: ClassConstructor<CloudStorageService>`
+- `isGlobal?`
+- `useDefaultController?` (default: `false`)
+
+Example (local adapter):
+
+```ts
+import { CloudStorageAbstractModule } from "./abstract/cloud-storage-abstract.module";
+import { LocalAdapterService } from "./local-adapter/local-adapter.service";
+
+export const CloudStorageModule = CloudStorageAbstractModule.forRoot({
+  adapter: LocalAdapterService,
+  isGlobal: true,
+  useDefaultController: true,
+});
 ```
 
-## Usage
+### 2) `CloudStorageAbstractModule.forRootAsync(...)`
 
-### 1. Import the Module
+Use this when adapter construction depends on runtime config (recommended for production adapters).
 
-#### Single Node Mode
+`forRootAsync` accepts:
 
-```typescript
-import { Module } from '@nestjs/common';
-import { S3AdapterModule } from './cloud-storage/s3-adapter/s3-adapter.module';
-import { CloudStorageAbstractModule } from './cloud-storage/abstract/cloud-storage-abstract.module.ts';
-import { ConfigType } from '@nestjs/config';
-import awsConfig from 'src/config/aws.config'; // Your aws config
+- `imports?`
+- `inject?`
+- `useFactory(...deps): CloudStorageService | Promise<CloudStorageService>`
+- `isGlobal?`
+- `useDefaultController?` (default: `false`)
 
-@Module({
-  imports: [
-    CloudStorageAbstractModule.forRoot({
-      adapter: S3AdapterModule.registerAsync({
-        inject: [awsConfig.KEY],
-        useFactory: (aws: ConfigType<typeof awsConfig>) => ({
-          bucket: aws.s3.bucket,
-          region: aws.base.region,
-          accessKeyId: aws.base.accessKeyId,
-          secretAccessKey: aws.base.secretAccessKey,
-          expiresInSeconds: aws.s3.expiresInSeconds,
-        }),
-      }),
+This means the factory returns the concrete service instance (`S3AdapterService`, `StorachaAdapterService`, etc).
+
+Current recommended composition with S3:
+
+```ts
+import type { ConfigType } from "@nestjs/config";
+import { CloudStorageAbstractModule } from "./abstract/cloud-storage-abstract.module";
+import { S3AdapterService } from "./s3-adapter/s3-adapter.service";
+import { awsConfig } from "@/modules/infrastructure/aws/aws.config";
+
+export const CloudStorageModule = CloudStorageAbstractModule.forRootAsync({
+  isGlobal: true,
+  useDefaultController: true,
+  inject: [awsConfig.KEY],
+  useFactory: (aws: ConfigType<typeof awsConfig>) =>
+    new S3AdapterService({
+      bucket: aws.rawDataBucket,
+      region: aws.region,
+      accessKeyId: aws.accessKeyId,
+      secretAccessKey: aws.secretAccessKey,
+      expiresInSeconds: 3600,
     }),
-  ],
-})
-export class AppModule {}
+});
 ```
 
-### 2. Use the Cloud Storage Service
+---
 
-```typescript
-import { Injectable } from '@nestjs/common';
-import { CloudStorageService } from './cloud-storage.service';
-import { CLOUD_STORAGE_PROVIDER } from './cloud-storage-provider.const';
+## Runtime Composition (`CloudStorageModule`)
 
-@Injectable()
-export class YourService {
-  constructor(private cloudStorageService: CloudStorageService) {}
+`CloudStorageModule` wires two lanes:
 
-   getFile(fileKey: string): Promise<CloudStorageFile> {
-    return this.storageProvider.getFile(fileKey);
-  }
+- **S3 lane** (`CloudStorageService`) using either:
+  - `LocalAdapterService` when `CLOUD_STORAGE_S3_BACKEND=LOCAL`
+  - `S3AdapterService` when `CLOUD_STORAGE_S3_BACKEND=AWS_S3`
+- **IPFS lane** using `StorachaAdapterService`
+
+and exports [`CloudStorageOrchestratorService`](./cloud-storage-orchestrator.service.ts) for developer-level target selection via [`CLOUD_STORAGE_TARGET`](./cloud-storage.targets.ts).
+
+---
+
+## Built-in Adapters
+
+### `LocalAdapterService`
+
+`LocalAdapterService` is intended for local development and stores files in the project-level `/files` directory.
+
+- `uploadFile` writes bytes to `/files` with a generated UUID-based filename.
+- `getFile` validates that the file exists and returns `/files/<fileKey>`.
+- `deleteFile` removes the file from `/files`.
+
+Because it has no runtime config dependencies, it can be used with **`forRoot(...)`**.
+
+---
+
+### `S3AdapterService`
+
+`S3AdapterService` is a plain service (no adapter-module token indirection) and requires `S3AdapterConfig` in its constructor.
+
+Because of this constructor requirement, **S3 should be registered through `forRootAsync(...)`**, where `useFactory` builds `new S3AdapterService(config)`.
+
+Configuration:
+
+```ts
+interface S3AdapterConfig {
+  bucket: string;
+  region: string;
+  accessKeyId?: string;
+  secretAccessKey?: string;
+  expiresInSeconds: number;
 }
 ```
 
-## Using the S3 Adapter with CloudStorageAbstractModule
+---
 
-To make the `CloudStorageAbstractModule` work with the S3 adapter, it's required to extend the `CloudStorageService` class. Specifically, in your `S3AdapterService` class that extends `CloudStorageService`. This extension is necessary for the CloudStorageAbstractModule to interact with the S3 storage provider.
+### `StorachaAdapterService`
 
-If your project only requires the S3 adapter and you know that you won't need to change the provider, you can skip using the abstract module and directly import the S3AdapterModule into your project.
+`StorachaAdapterService` adapts the existing Storacha/IPFS flow to the cloud storage contract.
 
-**Fix Import Paths Manually (If Needed)**:
+- `uploadFile` uploads to Storacha and returns a normalized CID-based public IPFS URL.
+- `getFile` builds a deterministic public IPFS URL from a CID.
+- `deleteFile` currently throws `NOT_IMPLEMENTED` (content-addressed storage is immutable in this flow).
 
-  After copying the files, you might need to fix the import paths manually. Ensure that the import paths for the CloudStorageService and the S3AdapterService are correct according to your project structure. If you encounter any errors related to the imports, double-check that the paths are resolved correctly.
+Because it requires runtime config (`storageKey`, `storageProof`), **Storacha should be registered through `forRootAsync(...)`**.
 
-  In your project, find a service that extends `CloudStorageService`, and adjust the import path if needed, like this:
+Configuration:
 
-  ```typescript
-  import { CloudStorageService } from 'path-to-cloud-storage-service'; // Adjust the import path
-  import { Injectable } from '@nestjs/common';
-
-  @Injectable()
-  export class S3AdapterService extends CloudStorageService {
-  }
-   
-```
-
-
-## Configuration Options
-
-The `CloudStorageAbstractModule.forRoot()` method accepts standard AWS S3 configuration options:
-
-```typescript
-static forRoot(options: { adapter: DynamicModule }): DynamicModule
-```
-
-There's also a `registerAsync` option which allows for dependency injection. For instance, the module can be used in the following fashion:
-
-```typescript
-CloudStorageAbstractModule.forRoot({
-  adapter: S3AdapterModule.registerAsync({
-    inject: [awsConfig.KEY],
-    useFactory: (aws: ConfigType<typeof awsConfig>) => ({
-      bucket: aws.s3.bucket,
-      region: aws.base.region,
-      accessKeyId: aws.base.accessKeyId,
-      secretAccessKey: aws.base.secretAccessKey,
-      expiresInSeconds: aws.s3.expiresInSeconds,
-    }),
-  }),
-}),
-```
-
-Assuming that a `awsConfig` is registered using `@nestjs/common`'s `registerAs` method. 
-
-
-For a secure and scalable integration with AWS S3, it is recommended to **use IAM Roles instead of passing access keys explicitly**.  
-For this reason, the environment variables **AWS_ACCESS_KEY** and **AWS_SECRET_ACCESS_KEY** are optional in this project.
-
-## API Reference
-
-The `CloudStorageAbstractModule` allows the optional registration of a default controller (`CloudStorageController`), which exposes endpoints for file management with the cloud storage provider.
-
-### CloudStorageController
-
-The main endpoints for interacting with cloud storage provider:
-
-```typescript
-class CloudStorageController {
-  // Upload a file buffer to cloud storage provider
-  async uploadFile(
-    @UploadedFile() file: Express.Multer.File,
-  ): Promise<FileResponseDto>
-
-  // Delete a file from cloud storage provider by fileKey
-  async deleteFile(@Param('fileKey') fileKey: string): Promise<void>
-
-  // Retrieve a file signed url from cloud storage provider by fileKey
-  async getFile(@Param('fileKey') fileKey: string): Promise<FileResponseDto>
+```ts
+interface StorachaAdapterConfig {
+  storageKey: string;
+  storageProof: string;
+  gatewayPrefix?: string; // default: https://ipfs.io/ipfs/
 }
 ```
 
-### **Enabling the Default Controller**
+Example composition:
 
-To use the default controller, set `useDefaultController: true` when registering the module:
+```ts
+import type { ConfigType } from "@nestjs/config";
+import { CloudStorageAbstractModule } from "./abstract/cloud-storage-abstract.module";
+import { cloudStorageConfig } from "./cloud-storage.config";
+import { StorachaAdapterService } from "./storacha-adapter/storacha-adapter.service";
 
-```typescript
-import { Module } from '@nestjs/common';
-import { CloudStorageAbstractModule } from './cloud-storage/cloud-storage-abstract.module';
-import { S3AdapterModule } from './adapters/s3-adapter.module';
-
-@Module({
-  imports: [
-    CloudStorageAbstractModule.forRoot({
-      adapter: S3AdapterModule.registerAsync({
-        inject: [awsConfig.KEY],
-        useFactory: (aws: ConfigType<typeof awsConfig>) => ({
-          bucket: aws.s3.bucket,
-          region: aws.base.region,
-          accessKeyId: aws.base.accessKeyId,
-          secretAccessKey: aws.base.secretAccessKey,
-          expiresInSeconds: aws.s3.expiresInSeconds,
-        }),
-      }),
-      useDefaultController: true, // Enables the default controller
-      isGlobal: true, // If you need, enables the module as global
+export const CloudStorageModule = CloudStorageAbstractModule.forRootAsync({
+  isGlobal: true,
+  inject: [cloudStorageConfig.KEY],
+  useFactory: (config: ConfigType<typeof cloudStorageConfig>) =>
+    new StorachaAdapterService({
+      storageKey: config.ipfsStorageKey,
+      storageProof: config.ipfsStorageProof,
     }),
-  ],
-})
-export class AppModule {}
+});
 ```
 
-### **Enabling a Custom Controller**
+---
 
-To use a custom controller, set `useDefaultController: false` when registering the module:
+## Default Controller
 
-```typescript
-import { Module } from '@nestjs/common';
-import { CloudStorageAbstractModule } from './cloud-storage/cloud-storage-abstract.module';
-import { S3AdapterModule } from './adapters/s3-adapter.module';
-import { CustomStorageController } from './custom-storage.controller';
+[`CloudStorageController`](./abstract/cloud-storage.controller.ts) is a fully-fledged controller that can be mounted by the abstract module when `useDefaultController: true`.
 
-@Module({
-  imports: [
-    CloudStorageAbstractModule.forRoot({
-      adapter: S3AdapterModule.registerAsync({
-        inject: [awsConfig.KEY],
-        useFactory: (aws: ConfigType<typeof awsConfig>) => ({
-          bucket: aws.s3.bucket,
-          region: aws.base.region,
-          accessKeyId: aws.base.accessKeyId,
-          secretAccessKey: aws.base.secretAccessKey,
-          expiresInSeconds: aws.s3.expiresInSeconds,
-        }),
-      }),
-      useDefaultController: false, // Disable the default controller
-      customController: [YourController], // Registers the custom controller
-      isGlobal: true, // If you need, enables the module as global
-    }),
-  ], 
-})
-export class AppModule {}
+Routes:
 
+- `POST /cloud-storage` (multipart field: `file`)
+- `DELETE /cloud-storage/:fileKey`
+- `GET /cloud-storage/:fileKey`
+
+By default, it is **disabled** and only registered when explicitly enabled via `useDefaultController`.
+
+---
+
+## Orchestration Service
+
+[`CloudStorageOrchestratorService`](./cloud-storage-orchestrator.service.ts) provides:
+
+- `uploadFile(target, file)`
+- `getFile(target, fileKey)`
+- `deleteFile(target, fileKey)`
+
+Where `target` is one of:
+
+```ts
+CLOUD_STORAGE_TARGET.S3
+CLOUD_STORAGE_TARGET.IPFS
 ```
 
-## Extending Functionality with Other Storage Providers
+Example usage:
 
-The `CloudStorageAbstractModule` is designed to be flexible and support multiple cloud storage providers. To add support for another provider, follow these steps:
+```ts
+import { CLOUD_STORAGE_TARGET } from "@/modules/infrastructure/cloud-storage/cloud-storage.targets";
 
-1. **Create a New Adapter**  
-   - Create a new directory inside `cloud-storage`, for example: `gcs-adapter/` for Google Cloud Storage.  
-   - Implement a service that extends the `CloudStorageService` abstract class defined in `cloud-storage/abstract/cloud-storage.service.ts`.
+await cloudStorageOrchestratorService.uploadFile(
+  CLOUD_STORAGE_TARGET.S3,
+  file,
+);
+```
 
-2. **Define the Adapter Module**  
-   - Create a module similar to `S3AdapterModule` to initialize the new provider.  
-   - Ensure it provides a configuration mechanism (e.g., `register` or `registerAsync` methods).
+---
 
-3. **Register the Adapter in the Abstract Module**  
-   - Modify `CloudStorageAbstractModule` to accept the new adapter as a dynamic module.  
-   - Example:  
-   ```typescript
-   CloudStorageAbstractModule.forRoot({
-     adapter: GCSAdapterModule.registerAsync({
-       inject: [gcsConfig.KEY],
-       useFactory: (gcs: ConfigType<typeof gcsConfig>) => ({
-         bucket: gcs.bucket,
-         projectId: gcs.projectId,
-         credentials: gcs.credentials,
-       }),
-     }),
-   }),
-   ```
-4. **Implement Provider-Specific Logic**
-  - Ensure the new adapter correctly implements methods such as uploadFile, deleteFile, and getFile.
-  - Use the respective SDK (e.g., @google-cloud/storage for Google Cloud Storage).
-  - By following this structure, you can easily extend the cloud storage module to support different providers like Google Cloud Storage, Azure Blob Storage, or others.
+## Config
 
-## Best Practices
+S3 composition typically reads from [`aws.config.ts`](../aws/aws.config.ts) in `useFactory`.
 
-1. **File Naming & Organization**
+Cloud storage runtime selection uses [`cloud-storage.config.ts`](./cloud-storage.config.ts):
 
-   - Use a consistent naming convention for stored files (e.g., user-avatars/{userId}.jpg).
-   - Include timestamps or UUIDs in filenames to prevent overwrites
-   - Organize files into logical directories (e.g., events/{eventId}/images/)
+- `CLOUD_STORAGE_S3_BACKEND` (`LOCAL` | `AWS_S3`)
+- `IPFS_STORAGE_KEY`
+- `IPFS_STORAGE_PROOF`
+- default: `LOCAL` when `NODE_ENV=local`, otherwise `AWS_S3`
 
-2. **Error Handling**
+S3 adapter constructor values (from [`aws.config.ts`](../aws/aws.config.ts)):
 
-   - Implement logging for file operations to track issues
-   - Handle upload failures and implement retry mechanisms
-   - Use try-catch blocks around cloud-storage operations
+- `bucket`
+- `region`
+- `accessKeyId?`
+- `secretAccessKey?`
+- `expiresInSeconds`
 
-3. **Security & Access Control**
+Storacha composition should consume validated values from [`cloud-storage.config.ts`](./cloud-storage.config.ts) in `useFactory`.
+Storacha configuration validation should happen at module/app composition level, not inside the adapter/client.
 
-   - Use signed URLs or pre-signed URLs for secure temporary access
-   - Restrict public access to storage unless necessary
-   - Apply bucket policies and IAM roles to limit access
-   - For a secure and scalable integration with AWS S3, it is recommended to use IAM Roles instead of passing access keys explicitly. IAM Roles allow applications (e.g., EC2, Lambda, ECS) to assume roles and gain the necessary permissions to access S3 without needing to manage access keys manually. By using IAM Roles, you reduce the risk of exposing sensitive credentials and simplify the management of access permissions. For this reason, the environment variables AWS_ACCESS_KEY and AWS_SECRET_ACCESS_KEY are optional in this project
+Expected values:
 
-4. **Performance Optimization**
+- `ipfsStorageKey`
+- `ipfsStorageProof`
+- `gatewayPrefix?`
 
-   - Enable content caching using a CDN (e.g., AWS CloudFront).
-   - Set appropriate cache-control headers for frequently accessed files.
-   - Consider multipart uploads for large files.
+---
 
-5. **Storage Cost Management**
+## Why Keep Both Patterns?
 
-   - Use lifecycle policies to move old files to lower-cost storage (e.g., S3 Glacier).
-   - Regularly audit and clean up unused or orphaned files.
-   - Monitor storage usage and costs to avoid unexpected charges.
-
-6. **If you need, using the S3 Endpoint Option for Local Cloud Storage**
-
-   - The endpoint option in AWS SDKs allows connecting to a custom S3-compatible storage service, such as a local MinIO server or an on-premise object storage system.
-   - By specifying a custom endpoint, data can be stored and accessed without routing through AWS public endpoints, improving performance and reducing data transfer costs.
-   - Ensure proper authentication and security settings when configuring the endpoint, especially when connecting to private or self-hosted storage solutions.
-
-## Contributing
-
-Feel free to submit issues and enhancement requests!
+- `forRoot` is useful for simple/no-config adapters (for example `LocalAdapterService`).
+- `forRootAsync` makes config-driven adapter selection and instantiation explicit.
+- For real cloud providers like S3 and Storacha/IPFS, `forRootAsync` is the standard path.
