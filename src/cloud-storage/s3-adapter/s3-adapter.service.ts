@@ -1,27 +1,35 @@
-import { Inject, Injectable } from '@nestjs/common';
+import { Injectable } from "@nestjs/common";
 import {
-  S3Client,
-  PutObjectCommand,
   DeleteObjectCommand,
   GetObjectCommand,
-} from '@aws-sdk/client-s3';
-import { getSignedUrl } from '@aws-sdk/s3-request-presigner';
-import { v4 as uuidv4 } from 'uuid';
-import { S3_ADAPTER_PROVIDER_CONFIG } from './s3-adapter-config-provider.const';
-import { S3AdapterConfig } from './s3-adapter-config.interface';
-import { CloudStorageService } from '../abstract/cloud-storage.service';
+  PutObjectCommand,
+  S3Client,
+} from "@aws-sdk/client-s3";
+import { v4 as uuidv4 } from "uuid";
+import {
+  CloudStorageFile,
+  CloudStorageService,
+  CloudStorageUploadFile,
+} from "../abstract/cloud-storage.service";
+import { getSignedUrl } from "@aws-sdk/s3-request-presigner";
+import { S3AdapterConfig } from "./s3-adapter-config.interface";
+
+type GetSignedUrlCompat = (
+  client: S3Client,
+  command: GetObjectCommand,
+  options: { expiresIn: number },
+) => Promise<string>;
+
+const getSignedUrlCompat = getSignedUrl as unknown as GetSignedUrlCompat;
 
 @Injectable()
 export class S3AdapterService extends CloudStorageService {
-  private s3: S3Client;
-  private region: string;
-  private bucket: string;
-  private expiresInSeconds: number;
+  private readonly region: string;
+  private readonly bucket: string;
+  private readonly expiresInSeconds: number;
+  readonly s3: S3Client;
 
-  constructor(
-    @Inject(S3_ADAPTER_PROVIDER_CONFIG)
-    config: S3AdapterConfig,
-  ) {
+  constructor(config: S3AdapterConfig) {
     super();
     this.expiresInSeconds = config.expiresInSeconds;
     this.bucket = config.bucket;
@@ -41,61 +49,39 @@ export class S3AdapterService extends CloudStorageService {
     });
   }
 
-  async uploadFile(
-    file: Express.Multer.File,
-  ): Promise<{ url: string; id: string }> {
-    try {
-      const id = uuidv4();
-      const params = {
-        Bucket: this.bucket,
-        Key: id,
-        Body: file.buffer,
-        ContentType: file.mimetype,
-      };
-      await this.s3.send(new PutObjectCommand(params));
-      const url = `https://${this.bucket}.s3.${this.region}.amazonaws.com/${params.Key}`;
-      return { url, id };
-    } catch (error) {
-      console.log(
-        `Failed to upload object to bucket ${this.bucket}:`,
-        `Error: ${error}`,
-      ); // TODO: Integrate log provider
-      throw error;
-    }
+  async uploadFile(file: CloudStorageUploadFile): Promise<CloudStorageFile> {
+    const id = uuidv4();
+    const params = {
+      Bucket: this.bucket,
+      Key: id,
+      Body: file.buffer,
+      ContentType: file.mimetype,
+    };
+    await this.s3.send(new PutObjectCommand(params));
+    const url = `https://${this.bucket}.s3.${this.region}.amazonaws.com/${params.Key}`;
+    return { url, id };
   }
 
   async deleteFile(fileKey: string): Promise<void> {
-    try {
-      const params = {
-        Bucket: this.bucket,
-        Key: fileKey,
-      };
-      await this.s3.send(new DeleteObjectCommand(params));
-    } catch (error) {
-      console.log(
-        `Failed to delete object ${fileKey} from bucket ${this.bucket}:`,
-        `Error: ${error}`,
-      );
-      throw error;
-    }
+    const params = {
+      Bucket: this.bucket,
+      Key: fileKey,
+    };
+    await this.s3.send(new DeleteObjectCommand(params));
   }
 
-  async getFile(fileKey: string): Promise<{ url: string; id: string }> {
-    try {
-      const params = {
-        Bucket: this.bucket,
-        Key: fileKey,
-      };
-      const url = await getSignedUrl(this.s3, new GetObjectCommand(params), {
-        expiresIn: this.expiresInSeconds,
-      });
-      return { url, id: fileKey };
-    } catch (error) {
-      console.log(
-        `Failed to get object ${fileKey} from bucket ${this.bucket}:`,
-        `Error: ${error}`,
-      );
-      throw error;
-    }
+  async getFile(fileKey: string): Promise<CloudStorageFile> {
+    const params = {
+      Bucket: this.bucket,
+      Key: fileKey,
+    };
+
+    // AWS SDK packages can pull different @smithy type instances in some installs.
+    // This keeps runtime behavior with the real helper while avoiding false type incompatibilities.
+    const url = await getSignedUrlCompat(this.s3, new GetObjectCommand(params), {
+      expiresIn: this.expiresInSeconds,
+    });
+
+    return { url, id: fileKey };
   }
 }

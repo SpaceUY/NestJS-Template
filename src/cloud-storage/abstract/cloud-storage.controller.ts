@@ -1,89 +1,69 @@
-import {
-  Controller,
-  Delete,
-  Get,
-  InternalServerErrorException,
-  Param,
-  Post,
-  UploadedFile,
-  UseInterceptors,
-} from '@nestjs/common';
-import {
-  ApiBody,
-  ApiConsumes,
-  ApiOperation,
-  ApiParam,
-  ApiResponse,
-  ApiTags,
-} from '@nestjs/swagger';
-import { FileInterceptor } from '@nestjs/platform-express';
-import { CloudStorageService } from './cloud-storage.service';
-import { UploadFileDto } from './dto/upload-file.dto';
-import { CloudStorageException } from './cloud-storage.exception';
-import { CLOUD_STORAGE_ERRORS } from './cloud-storage-error-codes';
-import { FileResponseDto } from './dto/file-response.dto';
+import { ERROR_CODES } from "@/common/enums";
+import { ApiException } from "@/common/expections/api.exception";
+import { Controller, Delete, Get, Param, Post, UploadedFile, UseInterceptors } from "@nestjs/common";
+import { FileInterceptor } from "@nestjs/platform-express";
+import { ApiBody, ApiConsumes, ApiOperation, ApiParam, ApiResponse, ApiTags } from "@nestjs/swagger";
+import { CloudStorageService, CloudStorageUploadFile } from "./cloud-storage.service";
+import { FileResponseDto } from "./dto/file-response.dto";
+import { UploadFileDto } from "./dto/upload-file.dto";
 
-@ApiTags('Cloud Storage')
-@Controller('cloud-storage')
-// Use an authentication guard if the project requires it.
+export interface UploadedFileWithBuffer extends CloudStorageUploadFile {}
+
+@ApiTags("Cloud Storage")
+@Controller("cloud-storage")
 export class CloudStorageController {
-  constructor(private readonly cloudStorageService: CloudStorageService) {}
+  constructor(
+    private readonly cloudStorageService: CloudStorageService,
+  ) {}
 
-  @Post('')
-  @UseInterceptors(FileInterceptor('file'))
-  @ApiConsumes('multipart/form-data')
+  @Post()
+  @UseInterceptors(FileInterceptor("file"))
+  @ApiConsumes("multipart/form-data")
   @ApiBody({ type: UploadFileDto })
   @ApiOperation({
-    summary: 'Upload new file to cloud storage',
+    summary: "Upload new file to cloud storage",
   })
-  @ApiResponse({ status: 200, description: 'Complete' })
+  @ApiResponse({ status: 200, description: "Complete", type: FileResponseDto })
   async uploadFile(
-    @UploadedFile() file: Express.Multer.File,
+    @UploadedFile() file: UploadedFileWithBuffer | undefined,
   ): Promise<FileResponseDto> {
-    try {
-      if (!file) {
-        throw new CloudStorageException(
-          CLOUD_STORAGE_ERRORS.FILE_REQUIRED.message,
-          CLOUD_STORAGE_ERRORS.FILE_REQUIRED.code,
-          CLOUD_STORAGE_ERRORS.FILE_REQUIRED.status,
-        );
-      }
-      return await this.cloudStorageService.uploadFile(file);
-    } catch (error) {
-      if (error instanceof CloudStorageException) {
-        throw error;
-      }
-      throw new InternalServerErrorException(error);
+    if (!file?.buffer || file.buffer.length === 0) {
+      throw new ApiException({
+        code: ERROR_CODES.INSUFFICIENT_INFORMATION,
+        message: "A non-empty file is required",
+      });
     }
+
+    return this.cloudStorageService.uploadFile(file);
   }
 
-  @Delete(':fileKey')
-  @ApiParam({ name: 'fileKey' })
-  @ApiOperation({ summary: 'Delete from cloud storage by file key' })
-  @ApiResponse({ status: 200, description: 'Complete', type: String })
-  async deleteFile(@Param('fileKey') fileKey: string): Promise<void> {
-    try {
-      await this.cloudStorageService.deleteFile(fileKey);
-    } catch (error) {
-      if (error instanceof CloudStorageException) {
-        throw error;
-      }
-      throw new InternalServerErrorException(error);
+  @Delete(":fileKey")
+  @ApiParam({ name: "fileKey" })
+  @ApiOperation({ summary: "Delete from cloud storage by file key" })
+  @ApiResponse({ status: 200, description: "Complete", type: String })
+  async deleteFile(@Param("fileKey") fileKey: string): Promise<void> {
+    if (!fileKey?.trim()) {
+      throw new ApiException({
+        code: ERROR_CODES.INSUFFICIENT_INFORMATION,
+        message: "A valid file key is required",
+      });
     }
+
+    await this.cloudStorageService.deleteFile(fileKey);
   }
 
-  @Get(':fileKey')
-  @ApiParam({ name: 'fileKey' })
-  @ApiOperation({ summary: 'Get file from cloud storage by file key' })
-  @ApiResponse({ status: 200, description: 'Complete', type: FileResponseDto })
-  async getFile(@Param('fileKey') fileKey: string): Promise<FileResponseDto> {
-    try {
-      return await this.cloudStorageService.getFile(fileKey);
-    } catch (error) {
-      if (error instanceof CloudStorageException) {
-        throw error;
-      }
-      throw new InternalServerErrorException(error);
+  @Get(":fileKey")
+  @ApiParam({ name: "fileKey" })
+  @ApiOperation({ summary: "Get file from cloud storage by file key" })
+  @ApiResponse({ status: 200, description: "Complete", type: FileResponseDto })
+  async getFile(@Param("fileKey") fileKey: string): Promise<FileResponseDto> {
+    if (!fileKey?.trim()) {
+      throw new ApiException({
+        code: ERROR_CODES.INSUFFICIENT_INFORMATION,
+        message: "A valid file key is required",
+      });
     }
+
+    return this.cloudStorageService.getFile(fileKey);
   }
 }
