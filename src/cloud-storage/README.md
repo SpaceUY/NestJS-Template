@@ -23,6 +23,11 @@ The public service is [`CloudStorageService`](./abstract/cloud-storage.service.t
 
 ```text
 src/modules/infrastructure/cloud-storage/
+├── cloud-storage.config.ts
+├── cloud-storage.module.ts
+├── cloud-storage-orchestrator.service.ts
+├── cloud-storage.targets.ts
+├── cloud-storage.tokens.ts
 ├── abstract/
 │   ├── dto/
 │   ├── cloud-storage-abstract.module.ts
@@ -35,6 +40,7 @@ src/modules/infrastructure/cloud-storage/
 ├── local-adapter/
 │   └── local-adapter.service.ts
 ├── storacha-adapter/
+│   ├── storacha-adapter.client.ts
 │   ├── storacha-adapter-config.interface.ts
 │   └── storacha-adapter.service.ts
 └── README.md
@@ -43,6 +49,9 @@ src/modules/infrastructure/cloud-storage/
 ---
 
 ## Registration Options
+
+> The abstract registration options below are still available.  
+> The runtime app should typically consume [`CloudStorageModule`](./cloud-storage.module.ts), which composes adapters and exposes orchestration.
 
 ### 1) `CloudStorageAbstractModule.forRoot(...)`
 
@@ -106,6 +115,19 @@ export const CloudStorageModule = CloudStorageAbstractModule.forRootAsync({
 
 ---
 
+## Runtime Composition (`CloudStorageModule`)
+
+`CloudStorageModule` wires two lanes:
+
+- **S3 lane** (`CloudStorageService`) using either:
+  - `LocalAdapterService` when `CLOUD_STORAGE_S3_BACKEND=LOCAL`
+  - `S3AdapterService` when `CLOUD_STORAGE_S3_BACKEND=AWS_S3`
+- **IPFS lane** using `StorachaAdapterService`
+
+and exports [`CloudStorageOrchestratorService`](./cloud-storage-orchestrator.service.ts) for developer-level target selection via [`CLOUD_STORAGE_TARGET`](./cloud-storage.targets.ts).
+
+---
+
 ## Built-in Adapters
 
 ### `LocalAdapterService`
@@ -165,16 +187,16 @@ Example composition:
 ```ts
 import type { ConfigType } from "@nestjs/config";
 import { CloudStorageAbstractModule } from "./abstract/cloud-storage-abstract.module";
+import { cloudStorageConfig } from "./cloud-storage.config";
 import { StorachaAdapterService } from "./storacha-adapter/storacha-adapter.service";
-import { dataStorageConfig } from "@/modules/infrastructure/data-storage/storacha/storacha.config";
 
 export const CloudStorageModule = CloudStorageAbstractModule.forRootAsync({
   isGlobal: true,
-  inject: [dataStorageConfig.KEY],
-  useFactory: (config: ConfigType<typeof dataStorageConfig>) =>
+  inject: [cloudStorageConfig.KEY],
+  useFactory: (config: ConfigType<typeof cloudStorageConfig>) =>
     new StorachaAdapterService({
-      storageKey: config.storageKey,
-      storageProof: config.storageProof,
+      storageKey: config.ipfsStorageKey,
+      storageProof: config.ipfsStorageProof,
     }),
 });
 ```
@@ -195,11 +217,46 @@ By default, it is **disabled** and only registered when explicitly enabled via `
 
 ---
 
+## Orchestration Service
+
+[`CloudStorageOrchestratorService`](./cloud-storage-orchestrator.service.ts) provides:
+
+- `uploadFile(target, file)`
+- `getFile(target, fileKey)`
+- `deleteFile(target, fileKey)`
+
+Where `target` is one of:
+
+```ts
+CLOUD_STORAGE_TARGET.S3
+CLOUD_STORAGE_TARGET.IPFS
+```
+
+Example usage:
+
+```ts
+import { CLOUD_STORAGE_TARGET } from "@/modules/infrastructure/cloud-storage/cloud-storage.targets";
+
+await cloudStorageOrchestratorService.uploadFile(
+  CLOUD_STORAGE_TARGET.S3,
+  file,
+);
+```
+
+---
+
 ## Config
 
 S3 composition typically reads from [`aws.config.ts`](../aws/aws.config.ts) in `useFactory`.
 
-Expected values:
+Cloud storage runtime selection uses [`cloud-storage.config.ts`](./cloud-storage.config.ts):
+
+- `CLOUD_STORAGE_S3_BACKEND` (`LOCAL` | `AWS_S3`)
+- `IPFS_STORAGE_KEY`
+- `IPFS_STORAGE_PROOF`
+- default: `LOCAL` when `NODE_ENV=local`, otherwise `AWS_S3`
+
+S3 adapter constructor values (from [`aws.config.ts`](../aws/aws.config.ts)):
 
 - `bucket`
 - `region`
@@ -207,12 +264,13 @@ Expected values:
 - `secretAccessKey?`
 - `expiresInSeconds`
 
-Storacha composition can reuse [`storacha.config.ts`](../data-storage/storacha/storacha.config.ts) in `useFactory`.
+Storacha composition should consume validated values from [`cloud-storage.config.ts`](./cloud-storage.config.ts) in `useFactory`.
+Storacha configuration validation should happen at module/app composition level, not inside the adapter/client.
 
 Expected values:
 
-- `storageKey`
-- `storageProof`
+- `ipfsStorageKey`
+- `ipfsStorageProof`
 - `gatewayPrefix?`
 
 ---

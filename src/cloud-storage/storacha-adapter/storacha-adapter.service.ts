@@ -1,9 +1,8 @@
 import { ERROR_CODES } from "@/common/enums";
 import { ApiException } from "@/common/expections/api.exception";
-import type { DataStorageConfig } from "@/modules/infrastructure/data-storage/storacha/storacha.config";
-import { StorachaClient } from "@/modules/infrastructure/data-storage/storacha/storacha.client";
 import { Injectable } from "@nestjs/common";
 import { CloudStorageService, CloudStorageUploadFile } from "../abstract/cloud-storage.service";
+import { StorachaClient } from "./storacha-adapter.client";
 import { StorachaAdapterConfig } from "./storacha-adapter-config.interface";
 
 interface StorachaUploadClient {
@@ -49,7 +48,7 @@ export class StorachaAdapterService extends CloudStorageService {
         ?? new StorachaClient({
           storageKey: config.storageKey,
           storageProof: config.storageProof,
-        } as DataStorageConfig);
+        });
   }
 
   async uploadFile(file: CloudStorageUploadFile): Promise<{ url: string; id: string }> {
