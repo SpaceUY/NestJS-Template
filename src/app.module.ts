@@ -5,7 +5,7 @@ import { AuthModule } from './auth/auth.module';
 import { ConfigModule } from './config/config.module';
 import { MiddlewareModule } from './common/middleware/middleware.module';
 import { SpaceshipModule } from './spaceship/spaceship.module';
-import { PrismaModule } from './prisma/prisma.module';
+import { DatabaseModule } from './database/database.module';
 import { S3AdapterModule } from './cloud-storage/s3-adapter/s3-adapter.module';
 import { CloudStorageAbstractModule } from './cloud-storage/abstract/cloud-storage-abstract.module.ts';
 import { ConfigType } from '@nestjs/config';
@@ -29,7 +29,7 @@ import { createDefaultEmailLogger } from './email/utils/email-logger.adapter';
     AuthModule,
     MiddlewareModule,
     SpaceshipModule,
-    PrismaModule,
+    DatabaseModule,
     TemplateModule.forRoot({
       adapter: PugAdapterModule.register({}),
       isGlobal: true,

@@ -1,41 +1,48 @@
 import { Injectable } from '@nestjs/common';
-import { Spaceship } from '@prisma/client';
-import { PrismaService } from '../prisma/prisma.service';
+import { InjectRepository } from '@nestjs/typeorm';
+import { Repository } from 'typeorm';
+import { Spaceship } from './spaceship.entity';
 import { CreateSpaceshipDto } from './dto/create-spaceship.dto';
 import { UpdateSpaceshipDto } from './dto/update-spaceship.dto';
 
 @Injectable()
 export class SpaceshipService {
-  constructor(private readonly prisma: PrismaService) {}
+  constructor(
+    @InjectRepository(Spaceship)
+    private readonly spaceshipRepository: Repository<Spaceship>,
+  ) {}
 
   async createSpaceship(
     data: CreateSpaceshipDto,
     userId: string,
   ): Promise<Spaceship> {
-    return this.prisma.spaceship.create({
-      data: { ...data, captainId: userId },
+    const spaceship = this.spaceshipRepository.create({
+      ...data,
+      captainId: userId,
     });
+    return this.spaceshipRepository.save(spaceship);
   }
 
   async getAllSpaceships(): Promise<Spaceship[]> {
-    return this.prisma.spaceship.findMany();
+    return this.spaceshipRepository.find();
   }
 
   async getSpaceshipById(id: string): Promise<Spaceship | null> {
-    return this.prisma.spaceship.findUnique({ where: { id } });
+    return this.spaceshipRepository.findOne({ where: { id } });
   }
 
   async updateSpaceship(
     id: string,
     data: UpdateSpaceshipDto,
   ): Promise<Spaceship> {
-    return this.prisma.spaceship.update({
-      where: { id },
-      data,
-    });
+    await this.spaceshipRepository.update(id, data);
+    return this.spaceshipRepository.findOneOrFail({ where: { id } });
   }
 
   async deleteSpaceship(id: string): Promise<Spaceship> {
-    return this.prisma.spaceship.delete({ where: { id } });
+    const spaceship = await this.spaceshipRepository.findOneOrFail({
+      where: { id },
+    });
+    return this.spaceshipRepository.softRemove(spaceship);
   }
 }
