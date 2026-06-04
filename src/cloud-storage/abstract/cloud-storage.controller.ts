@@ -3,11 +3,10 @@ import { ApiException } from "@/common/expections/api.exception";
 import { Controller, Delete, Get, Param, Post, UploadedFile, UseInterceptors } from "@nestjs/common";
 import { FileInterceptor } from "@nestjs/platform-express";
 import { ApiBody, ApiConsumes, ApiOperation, ApiParam, ApiResponse, ApiTags } from "@nestjs/swagger";
-import { CloudStorageService, CloudStorageUploadFile } from "./cloud-storage.service";
+import { CloudStorageService } from "./cloud-storage.service";
 import { FileResponseDto } from "./dto/file-response.dto";
 import { UploadFileDto } from "./dto/upload-file.dto";
-
-export interface UploadedFileWithBuffer extends CloudStorageUploadFile {}
+import { UploadedFileWithBuffer } from "./cloud-storage.interfaces";
 
 @ApiTags("Cloud Storage")
 @Controller("cloud-storage")
