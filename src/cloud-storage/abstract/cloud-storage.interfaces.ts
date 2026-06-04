@@ -19,5 +19,3 @@ export interface CloudStorageUploadFile {
   originalname?: string;
   size?: number;
 }
-
-export interface UploadedFileWithBuffer extends CloudStorageUploadFile {}

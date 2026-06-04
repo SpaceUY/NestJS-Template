@@ -6,7 +6,7 @@ import { ApiBody, ApiConsumes, ApiOperation, ApiParam, ApiResponse, ApiTags } fr
 import { CloudStorageService } from "./cloud-storage.service";
 import { FileResponseDto } from "./dto/file-response.dto";
 import { UploadFileDto } from "./dto/upload-file.dto";
-import { UploadedFileWithBuffer } from "./cloud-storage.interfaces";
+import { CloudStorageUploadFile } from "./cloud-storage.interfaces";
 
 @ApiTags("Cloud Storage")
 @Controller("cloud-storage")
@@ -24,7 +24,7 @@ export class CloudStorageController {
   })
   @ApiResponse({ status: 200, description: "Complete", type: FileResponseDto })
   async uploadFile(
-    @UploadedFile() file: UploadedFileWithBuffer | undefined,
+    @UploadedFile() file: CloudStorageUploadFile | undefined,
   ): Promise<FileResponseDto> {
     if (!file?.buffer || file.buffer.length === 0) {
       throw new ApiException({

@@ -6,13 +6,10 @@ import {
   S3Client,
 } from "@aws-sdk/client-s3";
 import { v4 as uuidv4 } from "uuid";
-import {
-  CloudStorageFile,
-  CloudStorageService,
-  CloudStorageUploadFile,
-} from "../abstract/cloud-storage.service";
+import { CloudStorageService } from "../abstract/cloud-storage.service";
 import { getSignedUrl } from "@aws-sdk/s3-request-presigner";
 import { S3AdapterConfig } from "./s3-adapter-config.interface";
+import { CloudStorageFile, CloudStorageUploadFile } from "../abstract/cloud-storage.interfaces";
 
 type GetSignedUrlCompat = (
   client: S3Client,
