@@ -39,10 +39,6 @@ src/modules/infrastructure/cloud-storage/
 │   └── s3-adapter.service.ts
 ├── local-adapter/
 │   └── local-adapter.service.ts
-├── storacha-adapter/
-│   ├── storacha-adapter.client.ts
-│   ├── storacha-adapter-config.interface.ts
-│   └── storacha-adapter.service.ts
 └── README.md
 ```
 
@@ -88,7 +84,7 @@ Use this when adapter construction depends on runtime config (recommended for pr
 - `isGlobal?`
 - `useDefaultController?` (default: `false`)
 
-This means the factory returns the concrete service instance (`S3AdapterService`, `StorachaAdapterService`, etc).
+This means the factory returns the concrete service instance (i.e. `S3AdapterService`).
 
 Current recommended composition with S3:
 
@@ -122,7 +118,7 @@ export const CloudStorageModule = CloudStorageAbstractModule.forRootAsync({
 - **S3 lane** (`CloudStorageService`) using either:
   - `LocalAdapterService` when `CLOUD_STORAGE_S3_BACKEND=LOCAL`
   - `S3AdapterService` when `CLOUD_STORAGE_S3_BACKEND=AWS_S3`
-- **IPFS lane** using `StorachaAdapterService`
+- **IPFS lane** using `IPFSAdapterService` (coming soon)
 
 and exports [`CloudStorageOrchestratorService`](./cloud-storage-orchestrator.service.ts) for developer-level target selection via [`CLOUD_STORAGE_TARGET`](./cloud-storage.targets.ts).
 
@@ -158,47 +154,6 @@ interface S3AdapterConfig {
   secretAccessKey?: string;
   expiresInSeconds: number;
 }
-```
-
----
-
-### `StorachaAdapterService`
-
-`StorachaAdapterService` adapts the existing Storacha/IPFS flow to the cloud storage contract.
-
-- `uploadFile` uploads to Storacha and returns a normalized CID-based public IPFS URL.
-- `getFile` builds a deterministic public IPFS URL from a CID.
-- `deleteFile` currently throws `NOT_IMPLEMENTED` (content-addressed storage is immutable in this flow).
-
-Because it requires runtime config (`storageKey`, `storageProof`), **Storacha should be registered through `forRootAsync(...)`**.
-
-Configuration:
-
-```ts
-interface StorachaAdapterConfig {
-  storageKey: string;
-  storageProof: string;
-  gatewayPrefix?: string; // default: https://ipfs.io/ipfs/
-}
-```
-
-Example composition:
-
-```ts
-import type { ConfigType } from "@nestjs/config";
-import { CloudStorageAbstractModule } from "./abstract/cloud-storage-abstract.module";
-import { cloudStorageConfig } from "./cloud-storage.config";
-import { StorachaAdapterService } from "./storacha-adapter/storacha-adapter.service";
-
-export const CloudStorageModule = CloudStorageAbstractModule.forRootAsync({
-  isGlobal: true,
-  inject: [cloudStorageConfig.KEY],
-  useFactory: (config: ConfigType<typeof cloudStorageConfig>) =>
-    new StorachaAdapterService({
-      storageKey: config.ipfsStorageKey,
-      storageProof: config.ipfsStorageProof,
-    }),
-});
 ```
 
 ---
@@ -264,8 +219,8 @@ S3 adapter constructor values (from [`aws.config.ts`](../aws/aws.config.ts)):
 - `secretAccessKey?`
 - `expiresInSeconds`
 
-Storacha composition should consume validated values from [`cloud-storage.config.ts`](./cloud-storage.config.ts) in `useFactory`.
-Storacha configuration validation should happen at module/app composition level, not inside the adapter/client.
+IPFS composition should consume validated values from [`cloud-storage.config.ts`](./cloud-storage.config.ts) in `useFactory`.
+IPFS configuration validation should happen at module/app composition level, not inside the adapter/client.
 
 Expected values:
 
@@ -279,4 +234,4 @@ Expected values:
 
 - `forRoot` is useful for simple/no-config adapters (for example `LocalAdapterService`).
 - `forRootAsync` makes config-driven adapter selection and instantiation explicit.
-- For real cloud providers like S3 and Storacha/IPFS, `forRootAsync` is the standard path.
+- For real cloud providers like S3 and IPFS, `forRootAsync` is the standard path.

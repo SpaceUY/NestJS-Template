@@ -11,7 +11,7 @@ class MockCloudStorageAdapter extends CloudStorageService {
   }
 
   async deleteFile(_: string): Promise<void> {
-    return Promise.resolve();
+    return undefined;
   }
 
   async getFile(fileKey: string): Promise<{ url: string; id: string }> {
