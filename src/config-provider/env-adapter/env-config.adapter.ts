@@ -1,5 +1,5 @@
 import * as dotenv from 'dotenv';
-import * as fs from 'fs';
+import * as fs from 'node:fs';
 import { Injectable } from '@nestjs/common';
 import { ConfigProviderService } from '../abstract/config-provider.service';
 import { CONFIG_PROVIDER_ERRORS } from '../abstract/config-provider-error-codes';

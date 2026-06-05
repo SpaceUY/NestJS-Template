@@ -44,7 +44,7 @@ async function resolveScope(
   if (!scope.validate) return raw;
 
   try {
-    return scope.validate(raw) as Record<string, unknown>;
+    return scope.validate(raw);
   } catch (error) {
     throw new ConfigProviderError(
       CONFIG_PROVIDER_ERRORS.SCOPE_VALIDATION_FAILED,
@@ -103,23 +103,26 @@ function assertSourcesRegistered(
 function buildLiveProxy(ref: {
   current: Record<string, unknown>;
 }): Record<string, unknown> {
-  return new Proxy({} as Record<string, unknown>, {
-    get: (_, key: string | symbol) => {
-      if (typeof key === 'symbol') return undefined;
-      return ref.current[key as string];
+  return new Proxy(
+    {},
+    {
+      get: (_, key: string | symbol) => {
+        if (typeof key === 'symbol') return undefined;
+        return ref.current[key];
+      },
+      has: (_, key: string | symbol) => {
+        if (typeof key === 'symbol') return false;
+        return key in (ref.current as object);
+      },
+      ownKeys: () => Object.keys(ref.current),
+      getOwnPropertyDescriptor: (_, key) => ({
+        value: ref.current[key as string],
+        writable: false,
+        enumerable: true,
+        configurable: true,
+      }),
     },
-    has: (_, key: string | symbol) => {
-      if (typeof key === 'symbol') return false;
-      return key in (ref.current as object);
-    },
-    ownKeys: () => Object.keys(ref.current),
-    getOwnPropertyDescriptor: (_, key) => ({
-      value: ref.current[key as string],
-      writable: false,
-      enumerable: true,
-      configurable: true,
-    }),
-  });
+  );
 }
 
 /**

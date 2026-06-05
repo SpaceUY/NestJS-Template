@@ -1,4 +1,4 @@
-import * as fs from 'fs';
+import * as fs from 'node:fs';
 import * as dotenv from 'dotenv';
 import { EnvConfigAdapter } from './env-config.adapter';
 import { CONFIG_PROVIDER_ERRORS } from '../abstract/config-provider-error-codes';
