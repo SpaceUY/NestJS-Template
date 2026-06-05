@@ -8,6 +8,12 @@ export type JwtScopeConfig = {
   ignoreExpiration: boolean;
 };
 
+const schema = Joi.object<JwtScopeConfig>({
+  secret: Joi.string().default('Not A Safe Secret'),
+  expiresIn: Joi.string().default('7d'),
+  ignoreExpiration: Joi.boolean().default(false),
+});
+
 export const jwtScope = defineConfigScope<JwtScopeConfig>(
   'jwt',
   {
@@ -15,9 +21,9 @@ export const jwtScope = defineConfigScope<JwtScopeConfig>(
     expiresIn: from.env('JWT_EXPIRES_IN'),
     ignoreExpiration: from.env('JWT_IGNORE_EXPIRATION'),
   },
-  Joi.object<JwtScopeConfig>({
-    secret: Joi.string().default('Not A Safe Secret'),
-    expiresIn: Joi.string().default('7d'),
-    ignoreExpiration: Joi.boolean().default(false),
-  }),
+  (raw) => {
+    const { error, value } = schema.validate(raw, { abortEarly: false });
+    if (error) throw new Error(error.message);
+    return value;
+  },
 );

@@ -22,7 +22,7 @@ function sourceToken(name: string): string {
 
 /**
  * Fetches every field declared in a scope from its respective source adapter,
- * then runs the result through the scope's Joi schema (coercion + validation).
+ * then runs the result through the scope's validate callback (coercion + validation).
  * Returns the validated plain object that will be injected as the scope value.
  * @param {ConfigScopeDefinition<Record<string, unknown>>} scope - The scope to resolve.
  * @param {Record<string, ConfigProviderService>} sourceMap - The map of source adapters.
@@ -41,22 +41,17 @@ async function resolveScope(
     raw[field] = await sourceMap[mapping.source].get(mapping.key);
   }
 
-  if (!scope.schema) return raw;
+  if (!scope.validate) return raw;
 
-  const { error, value } = scope.schema.validate(raw, {
-    abortEarly: false,
-    allowUnknown: false,
-  });
-
-  if (error) {
+  try {
+    return scope.validate(raw) as Record<string, unknown>;
+  } catch (error) {
     throw new ConfigProviderError(
       CONFIG_PROVIDER_ERRORS.SCOPE_VALIDATION_FAILED,
       `Scope "${scope.name}" failed validation`,
-      { scope: scope.name, details: error.message },
+      { scope: scope.name, details: (error as Error).message },
     );
   }
-
-  return value;
 }
 
 /**
@@ -104,7 +99,6 @@ function assertSourcesRegistered(
  * ownKeys + getOwnPropertyDescriptor are forwarded to ref.current.
  * @param {Record<string, unknown>} ref - The mutable reference.
  * @returns {Record<string, unknown>} - The live proxy.
- * @throws {ConfigProviderError} - If the key is a symbol.
  */
 function buildLiveProxy(ref: {
   current: Record<string, unknown>;

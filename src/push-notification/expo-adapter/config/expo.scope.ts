@@ -6,12 +6,18 @@ export type ExpoScopeConfig = {
   accessToken: string;
 };
 
+const schema = Joi.object<ExpoScopeConfig>({
+  accessToken: Joi.string().optional().default(''),
+});
+
 export const expoScope = defineConfigScope<ExpoScopeConfig>(
   'expo',
   {
     accessToken: from.env('EXPO_ACCESS_TOKEN'),
   },
-  Joi.object<ExpoScopeConfig>({
-    accessToken: Joi.string().optional().default(''),
-  }),
+  (raw) => {
+    const { error, value } = schema.validate(raw, { abortEarly: false });
+    if (error) throw new Error(error.message);
+    return value;
+  },
 );

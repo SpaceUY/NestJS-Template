@@ -11,6 +11,32 @@ export type GoogleScopeConfig = {
   selfUrl: string;
 };
 
+const schema = Joi.object({
+  enabled: Joi.boolean().default(false),
+  clientId: Joi.string().when('enabled', {
+    is: true,
+    then: Joi.required(),
+    otherwise: Joi.optional(),
+  }),
+  clientSecret: Joi.string().when('enabled', {
+    is: true,
+    then: Joi.required(),
+    otherwise: Joi.optional(),
+  }),
+  audience: Joi.string().when('enabled', {
+    is: true,
+    then: Joi.required(),
+    otherwise: Joi.optional(),
+  }),
+  callbackUrl: Joi.string().optional(),
+  selfUrl: Joi.string().default('http://localhost:5000'),
+}).custom((value) => {
+  if (!value.callbackUrl) {
+    value.callbackUrl = `${value.selfUrl}/auth/google/callback`;
+  }
+  return value;
+});
+
 export const googleScope = defineConfigScope<GoogleScopeConfig>(
   'google',
   {
@@ -21,29 +47,9 @@ export const googleScope = defineConfigScope<GoogleScopeConfig>(
     callbackUrl: from.env('GOOGLE_OAUTH_CALLBACK_URL'),
     selfUrl: from.env('SELF_URL'),
   },
-  Joi.object({
-    enabled: Joi.boolean().default(false),
-    clientId: Joi.string().when('enabled', {
-      is: true,
-      then: Joi.required(),
-      otherwise: Joi.optional(),
-    }),
-    clientSecret: Joi.string().when('enabled', {
-      is: true,
-      then: Joi.required(),
-      otherwise: Joi.optional(),
-    }),
-    audience: Joi.string().when('enabled', {
-      is: true,
-      then: Joi.required(),
-      otherwise: Joi.optional(),
-    }),
-    callbackUrl: Joi.string().optional(),
-    selfUrl: Joi.string().default('http://localhost:5000'),
-  }).custom((value) => {
-    if (!value.callbackUrl) {
-      value.callbackUrl = `${value.selfUrl}/auth/google/callback`;
-    }
+  (raw) => {
+    const { error, value } = schema.validate(raw, { abortEarly: false });
+    if (error) throw new Error(error.message);
     return value;
-  }),
+  },
 );

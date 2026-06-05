@@ -20,6 +20,19 @@ export type EmailScopeConfig = {
   sesSecretAccessKey: string;
 };
 
+const schema = Joi.object<EmailScopeConfig>({
+  adapter: Joi.string()
+    .valid(...Object.values(EMAIL_ADAPTERS))
+    .default(EMAIL_ADAPTERS.CONSOLE),
+  from: Joi.string().email().optional().default('fake@example.com'),
+  sendgridApiKey: Joi.string().optional().default(''),
+  resendApiKey: Joi.string().optional().default(''),
+  resendEmailFrom: Joi.string().email().optional().default(''),
+  sesRegion: Joi.string().optional().default(''),
+  sesAccessKeyId: Joi.string().optional().default(''),
+  sesSecretAccessKey: Joi.string().optional().default(''),
+});
+
 export const emailScope = defineConfigScope<EmailScopeConfig>(
   'email',
   {
@@ -32,16 +45,9 @@ export const emailScope = defineConfigScope<EmailScopeConfig>(
     sesAccessKeyId: from.env('AWS_ACCESS_KEY'),
     sesSecretAccessKey: from.env('AWS_SECRET_ACCESS_KEY'),
   },
-  Joi.object<EmailScopeConfig>({
-    adapter: Joi.string()
-      .valid(...Object.values(EMAIL_ADAPTERS))
-      .default(EMAIL_ADAPTERS.CONSOLE),
-    from: Joi.string().email().optional().default('fake@example.com'),
-    sendgridApiKey: Joi.string().optional().default(''),
-    resendApiKey: Joi.string().optional().default(''),
-    resendEmailFrom: Joi.string().email().optional().default(''),
-    sesRegion: Joi.string().optional().default(''),
-    sesAccessKeyId: Joi.string().optional().default(''),
-    sesSecretAccessKey: Joi.string().optional().default(''),
-  }),
+  (raw) => {
+    const { error, value } = schema.validate(raw, { abortEarly: false });
+    if (error) throw new Error(error.message);
+    return value;
+  },
 );

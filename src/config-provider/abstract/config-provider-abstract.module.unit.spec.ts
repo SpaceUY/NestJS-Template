@@ -1,4 +1,3 @@
-import Joi = require('joi');
 import { ConfigProviderAbstractModule } from './config-provider-abstract.module';
 import { CONFIG_PROVIDER_ERRORS } from './config-provider-error-codes';
 import { ConfigScopeDefinition } from './config-provider.interfaces';
@@ -55,10 +54,13 @@ const testScope = defineConfigScope<TestScope>(
     secret: { source: SOURCES.AWS_SECRETS_MANAGER, key: 'APP_SECRET' },
     timeout: { source: SOURCES.ENVIRONMENT, key: 'TIMEOUT' },
   },
-  Joi.object<TestScope>({
-    secret: Joi.string().required(),
-    timeout: Joi.string().default('30s'),
-  }),
+  (raw) => {
+    if (!raw.secret) throw new Error('"secret" is required');
+    return {
+      secret: raw.secret as string,
+      timeout: (raw.timeout as string) ?? '30s',
+    };
+  },
 );
 
 describe('ConfigProviderAbstractModule', () => {
@@ -89,7 +91,7 @@ describe('ConfigProviderAbstractModule', () => {
           },
           scopes: [testScope], // testScope uses 'sm' which is not registered
         }),
-      ).toThrow(CONFIG_PROVIDER_ERRORS.UNKNOWN_SOURCE);
+      ).toThrow(expect.objectContaining({ code: CONFIG_PROVIDER_ERRORS.UNKNOWN_SOURCE }));
     });
   });
 
@@ -158,7 +160,7 @@ describe('ConfigProviderAbstractModule', () => {
       expect(result).toMatchObject({ secret: 'super-secret', timeout: '60s' });
     });
 
-    it('should apply Joi defaults for missing optional fields', async () => {
+    it('should apply defaults for missing optional fields', async () => {
       const envAdapter = new MockEnvAdapter({});
       const smAdapter = new MockReloadableAdapter({ APP_SECRET: 'super-secret' });
 
@@ -173,10 +175,10 @@ describe('ConfigProviderAbstractModule', () => {
 
       await expect(
         resolveScopeFactory(testScope, { env: envAdapter, sm: smAdapter }),
-      ).rejects.toThrow(CONFIG_PROVIDER_ERRORS.SCOPE_VALIDATION_FAILED);
+      ).rejects.toMatchObject({ code: CONFIG_PROVIDER_ERRORS.SCOPE_VALIDATION_FAILED });
     });
 
-    it('should return raw values when no schema is provided', async () => {
+    it('should return raw values when no validate callback is provided', async () => {
       const noSchemaScope = defineConfigScope('noop', {
         token: { source: 'env', key: 'TOKEN' },
       });
@@ -194,7 +196,10 @@ describe('ConfigProviderAbstractModule', () => {
     const liveScope = defineConfigScope<LiveScope>(
       'live',
       { secret: { source: 'sm', key: 'APP_SECRET' } },
-      Joi.object<LiveScope>({ secret: Joi.string().required() }),
+      (raw) => {
+        if (!raw.secret) throw new Error('"secret" is required');
+        return { secret: raw.secret as string };
+      },
       { live: true },
     );
 
@@ -262,7 +267,7 @@ describe('ConfigProviderAbstractModule', () => {
           },
           scopes: [testScope, dupeScope],
         }),
-      ).toThrow(CONFIG_PROVIDER_ERRORS.DUPLICATE_SCOPE_KEY);
+      ).toThrow(expect.objectContaining({ code: CONFIG_PROVIDER_ERRORS.DUPLICATE_SCOPE_KEY }));
     });
   });
 });

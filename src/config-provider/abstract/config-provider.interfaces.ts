@@ -1,6 +1,5 @@
 import { InjectionToken, ModuleMetadata } from '@nestjs/common';
 import { ClassConstructor } from 'class-transformer';
-import Joi = require('joi');
 import { ConfigProviderService } from './config-provider.service';
 
 export interface ConfigScopeFieldMapping {
@@ -12,7 +11,7 @@ export interface ConfigScopeDefinition<T> {
   KEY: string;
   name: string;
   fields: Record<string, ConfigScopeFieldMapping>;
-  schema?: Joi.ObjectSchema<T>;
+  validate?: (raw: Record<string, unknown>) => T;
   live?: boolean;
 }
 

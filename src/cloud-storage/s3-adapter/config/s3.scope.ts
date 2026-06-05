@@ -10,6 +10,14 @@ export type S3ScopeConfig = {
   expiresInSeconds: number;
 };
 
+const schema = Joi.object<S3ScopeConfig>({
+  bucket: Joi.string().optional().default(''),
+  region: Joi.string().optional().default(''),
+  accessKeyId: Joi.string().optional().default(''),
+  secretAccessKey: Joi.string().optional().default(''),
+  expiresInSeconds: Joi.number().integer().default(3600),
+});
+
 export const s3Scope = defineConfigScope<S3ScopeConfig>(
   's3',
   {
@@ -19,11 +27,9 @@ export const s3Scope = defineConfigScope<S3ScopeConfig>(
     secretAccessKey: from.env('AWS_SECRET_ACCESS_KEY'),
     expiresInSeconds: from.env('AWS_S3_EXPIRES_IN_SECONDS'),
   },
-  Joi.object<S3ScopeConfig>({
-    bucket: Joi.string().optional().default(''),
-    region: Joi.string().optional().default(''),
-    accessKeyId: Joi.string().optional().default(''),
-    secretAccessKey: Joi.string().optional().default(''),
-    expiresInSeconds: Joi.number().integer().default(3600),
-  }),
+  (raw) => {
+    const { error, value } = schema.validate(raw, { abortEarly: false });
+    if (error) throw new Error(error.message);
+    return value;
+  },
 );

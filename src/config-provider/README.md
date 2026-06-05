@@ -26,7 +26,7 @@ src/config-provider/
 │   ├── config-source.util.ts                configSources helper (from.env / from.sm / from.from)
 │   └── define-config-scope.util.ts          defineConfigScope() utility
 ├── env-adapter/
-│   └── env-config.adapter.ts                Wraps NestJS ConfigService
+│   └── env-config.adapter.ts                Reads process.env and optional .env files
 └── secrets-manager-adapter/
     ├── secrets-manager-config.adapter.ts    Fetches + caches an AWS Secrets Manager secret
     └── secrets-manager-config.interfaces.ts SecretsManagerAdapterOptions
@@ -85,7 +85,7 @@ export class AppModule {}
 
 ## Defining Scopes
 
-Use `defineConfigScope` alongside `configSources` to declare what to fetch and from where.
+Use `defineConfigScope` alongside `configSources` to declare what to fetch and from where. The third argument is an optional `validate` callback that receives the raw `Record<string, unknown>` and must return the typed config object — or throw if validation fails. Use any library you like (Joi, Zod, class-validator, plain conditionals).
 
 ```ts
 // src/auth/config/jwt.scope.ts
@@ -99,6 +99,12 @@ export type JwtScopeConfig = {
   ignoreExpiration: boolean;
 };
 
+const schema = Joi.object<JwtScopeConfig>({
+  secret:           Joi.string().default('Not A Safe Secret'),
+  expiresIn:        Joi.string().default('7d'),
+  ignoreExpiration: Joi.boolean().default(false),
+});
+
 export const jwtScope = defineConfigScope<JwtScopeConfig>(
   'jwt',
   {
@@ -106,13 +112,15 @@ export const jwtScope = defineConfigScope<JwtScopeConfig>(
     expiresIn:        from.env('JWT_EXPIRES_IN'),
     ignoreExpiration: from.env('JWT_IGNORE_EXPIRATION'),
   },
-  Joi.object<JwtScopeConfig>({
-    secret:           Joi.string().default('Not A Safe Secret'),
-    expiresIn:        Joi.string().default('7d'),
-    ignoreExpiration: Joi.boolean().default(false),
-  }),
+  (raw) => {
+    const { error, value } = schema.validate(raw, { abortEarly: false });
+    if (error) throw new Error(error.message);
+    return value;
+  },
 );
 ```
+
+If no `validate` callback is provided, the raw values are injected as-is.
 
 ### Injecting a scope
 
@@ -163,7 +171,7 @@ export const serviceScope = defineConfigScope<ServiceScopeConfig>(
     apiSecret: from.sm('API_SECRET'),    // sensitive → Secrets Manager
     dbUrl:     from.sm('DATABASE_URL'),  // sensitive → Secrets Manager
   },
-  Joi.object({ ... }),
+  (raw) => { /* validate and return typed value */ },
 );
 ```
 
@@ -171,7 +179,7 @@ export const serviceScope = defineConfigScope<ServiceScopeConfig>(
 
 ## Transformations
 
-All raw values arrive as `string | undefined`. Joi coerces them before the validated object is returned, so consuming code always receives the correct type.
+All raw values arrive as `string | undefined`. The `validate` callback is responsible for coercing them to the correct types before returning. The following examples use Joi, but the same patterns apply with any library.
 
 ### Boolean coercion
 
@@ -208,7 +216,7 @@ clientId: Joi.string().when('enabled', {
 
 ### Derived fields
 
-Use `.custom()` to compute a field from other values in the same scope:
+Compute a field from other values in the same scope:
 
 ```ts
 Joi.object({
@@ -226,10 +234,11 @@ Joi.object({
 
 ```ts
 // ALLOWED_ORIGINS=http://a.com,http://b.com → allowedOrigins: string[]
-allowedOrigins: Joi.string()
-  .default('')
-  .custom((val) => val ? val.split(',').map((s: string) => s.trim()) : [])
-  .default([])
+(raw) => ({
+  allowedOrigins: raw.allowedOrigins
+    ? (raw.allowedOrigins as string).split(',').map((s) => s.trim())
+    : [],
+})
 ```
 
 ---
@@ -335,10 +344,11 @@ export const featureScope = defineConfigScope<FeatureScopeConfig>(
     rateLimit: from.sm('RATE_LIMIT'),
     flagEnabled: from.sm('FLAG_ENABLED'),
   },
-  Joi.object<FeatureScopeConfig>({
-    rateLimit: Joi.number().integer().default(100),
-    flagEnabled: Joi.boolean().default(false),
-  }),
+  (raw) => {
+    const { error, value } = schema.validate(raw, { abortEarly: false });
+    if (error) throw new Error(error.message);
+    return value;
+  },
   { live: true }, // ← opt-in
 );
 ```
@@ -370,7 +380,7 @@ For most application config (JWT secrets, DB URLs, adapter options) the default 
 | Constant | Meaning |
 |---|---|
 | `CONFIG_PROVIDER_KEY_NOT_FOUND` | `getOrThrow` called for a key absent from the source |
-| `CONFIG_PROVIDER_SCOPE_VALIDATION_FAILED` | Joi validation rejected the resolved scope values |
+| `CONFIG_PROVIDER_SCOPE_VALIDATION_FAILED` | The `validate` callback threw for the resolved scope values |
 | `CONFIG_PROVIDER_SECRET_FETCH_FAILED` | SecretsManager network/auth error |
 | `CONFIG_PROVIDER_UNKNOWN_SOURCE` | A scope references a source name not registered in the module |
 
