@@ -1,22 +1,28 @@
-import { Inject, Injectable } from '@nestjs/common';
+import { Injectable, Logger } from '@nestjs/common';
 import { Cluster, Redis } from 'ioredis';
 
 import { CacheService } from '../abstract/cache.service';
 import {
-  CACHE_ADAPTER_CLIENT,
-  REDIS_ADAPTER_LOGGER_TOKEN,
-} from '../abstract/cache.tokens';
-import type { StandardLogger } from './utils/logger';
+  ClusterRedisAdapterConfig,
+  RedisAdapterConfig,
+} from './redis-adapter-config.interface';
+import { StandardLogger, adaptLogger } from './utils/logger';
 
 @Injectable()
 export class RedisCacheAdapterService extends CacheService {
-  constructor(
-    @Inject(CACHE_ADAPTER_CLIENT) private readonly _redis: Redis | Cluster,
-    @Inject(REDIS_ADAPTER_LOGGER_TOKEN)
-    private readonly _logger: StandardLogger,
-  ) {
+  private readonly _redis: Redis | Cluster;
+  private readonly _logger: StandardLogger;
+
+  constructor(config: RedisAdapterConfig) {
     super();
+    const nestLogger = new Logger(RedisCacheAdapterService.name);
+    this._logger = config.logger ?? adaptLogger(nestLogger);
+    this._redis = RedisCacheAdapterService._createClient(config);
     this._verifyConnection();
+  }
+
+  get client(): Redis | Cluster {
+    return this._redis;
   }
 
   async get(key: string): Promise<string | null> {
@@ -37,6 +43,38 @@ export class RedisCacheAdapterService extends CacheService {
 
   async clear(): Promise<void> {
     await this._redis.flushall();
+  }
+
+  private static _createClient(config: RedisAdapterConfig): Redis | Cluster {
+    const {
+      clusterMode = false,
+      protocol,
+      password,
+      host,
+      port,
+      reconnectionDelayMs = 5000,
+      reconnectionMaxRetries = 10,
+    } = config;
+
+    const retryStrategy = (times: number) => {
+      if (times < reconnectionMaxRetries) return reconnectionDelayMs;
+      return null;
+    };
+
+    if (clusterMode) {
+      const { clusterOptions = {} } = config as ClusterRedisAdapterConfig;
+      return new Cluster([{ host, port }], {
+        dnsLookup:
+          clusterOptions.dnsLookup ||
+          ((address, callback) => callback(null, address)),
+        scaleReads: clusterOptions.scaleReads || 'master',
+        maxRedirections: clusterOptions.maxRedirections || 16,
+        redisOptions: clusterOptions.redisOptions,
+      });
+    }
+
+    const redisUrl = `${protocol}://:${password}@${host}:${port}`;
+    return new Redis(redisUrl, { retryStrategy });
   }
 
   private async _verifyConnection(): Promise<void> {
@@ -66,18 +104,14 @@ export class RedisCacheAdapterService extends CacheService {
     testValue: string,
   ): Promise<void> {
     const startTime = Date.now();
-
     await this._redis.set(testKey, testValue);
-
     const retrievedValue = await this._redis.get(testKey);
     if (retrievedValue !== testValue) {
       throw new Error(
         `Redis read/write test failed. Expected: ${testValue}, Got: ${retrievedValue}`,
       );
     }
-
     await this._redis.del(testKey);
-
     const responseTime = Date.now() - startTime;
     console.log(`✅ Redis operations completed in ${responseTime}ms`);
   }

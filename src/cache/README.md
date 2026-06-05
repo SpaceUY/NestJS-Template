@@ -34,7 +34,6 @@ src/cache/
 │       └── cache-keys.extension.mock.ts
 ├── redis-adapter/
 │   ├── redis-adapter-config.interface.ts
-│   ├── redis-adapter.module.ts
 │   ├── redis-adapter.service.ts
 │   ├── extensions/
 │   │   ├── redis-cache-list.extension.ts
@@ -48,88 +47,65 @@ src/cache/
 
 ## Registration
 
-`CacheAbstractModule.forRoot` accepts an adapter module and an optional list of extension tokens to re-export.
+Adapters are plain classes — no adapter module required. `CacheAbstractModule.forRootAsync` receives a factory that returns a `CacheAdapterBundle` (service + raw client), and extension implementation classes to wire as NestJS-managed services.
 
 ```ts
-CacheAbstractModule.forRoot({
-  adapter: RedisAdapterModule.registerAsync({ ... }),
+import { CacheAbstractModule, CacheAdapterBundle } from './abstract/cache-abstract.module';
+import { RedisCacheAdapterService } from './redis-adapter/redis-adapter.service';
+import { RedisCacheListExtension } from './redis-adapter/extensions/redis-cache-list.extension';
+import { RedisCacheKeysExtension } from './redis-adapter/extensions/redis-cache-keys.extension';
+import { Redis } from 'ioredis';
+
+CacheAbstractModule.forRootAsync<Redis>({
   isGlobal: true,
-  extensions: [CacheListExtension, CacheKeysExtension],
+  inject: [redisConfig.KEY],
+  imports: [ConfigModule],
+  useFactory: (cfg: ConfigType<typeof redisConfig>): CacheAdapterBundle<Redis> => {
+    const adapter = new RedisCacheAdapterService(cfg);
+    return { service: adapter, client: adapter.client as Redis };
+  },
+  extensions: {
+    list: RedisCacheListExtension,
+    keys: RedisCacheKeysExtension,
+  },
 })
 ```
 
-The adapter module is responsible for providing `CACHE_PROVIDER` (the bridge token) and any extension tokens it supports. The abstract module imports it, aliases `CACHE_PROVIDER` to `CacheService`, and re-exports whichever extension tokens you declare.
+The generic type parameter (`<Redis>`) is optional — TypeScript infers it from the factory return. The `extensions` object maps abstract extension tokens to concrete implementation classes; NestJS manages their lifecycle and injects the client automatically.
+
+Omit `extensions` (or individual keys) to skip those providers entirely:
+
+```ts
+CacheAbstractModule.forRootAsync({
+  isGlobal: true,
+  useFactory: (cfg) => {
+    const adapter = new RedisCacheAdapterService(cfg);
+    return { service: adapter, client: adapter.client };
+  },
+  // no extensions — only CacheService is provided
+})
+```
+
+For simple class-based (sync) registration with no extensions:
+
+```ts
+CacheAbstractModule.forRoot({
+  isGlobal: true,
+  adapter: MyCustomCacheService,
+})
+```
 
 ---
 
 ## Built-in Adapters
 
-### `RedisAdapterModule`
+### `RedisCacheAdapterService`
 
-Supports both standalone and cluster Redis (including AWS ElastiCache).
-
-**Sync registration:**
+Supports both standalone and cluster Redis (including AWS ElastiCache). Constructor takes config only — extensions are handled at the module level.
 
 ```ts
-import { CacheAbstractModule } from './abstract/cache-abstract.module';
-import { RedisAdapterModule } from './redis-adapter/redis-adapter.module';
-
-CacheAbstractModule.forRoot({
-  isGlobal: true,
-  adapter: RedisAdapterModule.register({
-    config: {
-      protocol: 'redis',
-      host: 'localhost',
-      port: 6379,
-      password: 'secret',
-    },
-  }),
-})
-```
-
-**Async registration (recommended for production):**
-
-```ts
-import type { ConfigType } from '@nestjs/config';
-import { CacheAbstractModule } from './abstract/cache-abstract.module';
-import { RedisAdapterModule } from './redis-adapter/redis-adapter.module';
-import { CacheListExtension } from './abstract/extensions/cache-list.extension';
-import { CacheKeysExtension } from './abstract/extensions/cache-keys.extension';
-import { redisConfig } from '@/config/redis.config';
-
-CacheAbstractModule.forRoot({
-  isGlobal: true,
-  adapter: RedisAdapterModule.registerAsync({
-    inject: [redisConfig.KEY],
-    imports: [ConfigModule],
-    useFactory: (cfg: ConfigType<typeof redisConfig>) => ({
-      protocol: cfg.protocol,
-      host: cfg.host,
-      port: cfg.port,
-      password: cfg.password,
-    }),
-    extensions: { list: true, keys: true },
-  }),
-  extensions: [CacheListExtension, CacheKeysExtension],
-})
-```
-
-**Cluster mode:**
-
-```ts
-RedisAdapterModule.registerAsync({
-  useFactory: (cfg) => ({
-    protocol: 'rediss',
-    host: cfg.host,
-    port: cfg.port,
-    clusterMode: true,
-    clusterOptions: {
-      scaleReads: 'slave',
-      maxRedirections: 16,
-    },
-  }),
-  // ...
-})
+const adapter = new RedisCacheAdapterService(config);
+// adapter.client exposes the underlying Redis | Cluster instance for the bundle
 ```
 
 **Configuration:**
@@ -154,17 +130,29 @@ interface RedisAdapterConfig {
 }
 ```
 
+**Cluster mode:**
+
+```ts
+const adapter = new RedisCacheAdapterService({
+  protocol: 'rediss',
+  host: cfg.host,
+  port: cfg.port,
+  clusterMode: true,
+  clusterOptions: { scaleReads: 'slave', maxRedirections: 16 },
+});
+```
+
 The adapter performs a startup connection check and hard-stops the application (`process.exit(1)`) if Redis is unreachable within 5 seconds.
 
 ---
 
 ## Extensions
 
-Extensions expose provider-specific operations as independently injectable services. Consumers inject only what they need; adapters opt in to what they support.
+Extensions expose provider-specific operations as independently injectable NestJS services. Pass the implementation class to `forRootAsync` to enable it; the abstract module wires `CACHE_ADAPTER_CLIENT` and creates the service via `useClass`.
 
 ### `CacheListExtension`
 
-Redis list operations. Enable with `extensions: { list: true }` in `RedisAdapterModule`.
+Redis list operations. Enable with `extensions: { list: RedisCacheListExtension }`.
 
 ```ts
 abstract class CacheListExtension {
@@ -180,7 +168,7 @@ abstract class CacheListExtension {
 
 ### `CacheKeysExtension`
 
-Pattern-based key scanning. Enable with `extensions: { keys: true }` in `RedisAdapterModule`.
+Pattern-based key scanning. Enable with `extensions: { keys: RedisCacheKeysExtension }`.
 
 ```ts
 abstract class CacheKeysExtension {
@@ -225,9 +213,11 @@ constructor(
 ) {}
 ```
 
-**Raw client (advanced use cases):**
+**Raw client (advanced):**
 
 ```ts
+import { CACHE_ADAPTER_CLIENT } from 'src/cache/abstract/cache.tokens';
+
 constructor(
   @Inject(CACHE_ADAPTER_CLIENT) private readonly redis: Redis | Cluster,
 ) {}
@@ -244,7 +234,6 @@ import { MockCacheService } from 'src/cache/abstract/mocks/cache.service.mock';
 import { MockCacheListExtension } from 'src/cache/abstract/mocks/cache-list.extension.mock';
 import { MockCacheKeysExtension } from 'src/cache/abstract/mocks/cache-keys.extension.mock';
 
-// In your testing module:
 providers: [
   { provide: CacheService, useClass: MockCacheService },
   { provide: CacheListExtension, useClass: MockCacheListExtension },
