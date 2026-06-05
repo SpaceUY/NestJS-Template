@@ -1,4 +1,4 @@
-image: node:lts-alpine
+image: node:24.15.0
 
 definitions:
   caches:
@@ -17,7 +17,7 @@ definitions:
         artifacts:
           - dist/**
     - step: &build_publish_and_deploy
-        image: node:alpine
+        image: node:24.15.0
         name: Backend build/publish docker to ECR, deploy to ECS, and lambda build/deploy.
         services:
           # Enable Docker for your repository
