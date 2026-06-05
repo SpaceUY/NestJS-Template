@@ -16,7 +16,7 @@ export class GoogleService {
   constructor(
     private oauthClient: OAuth2Client,
     @Inject(googleScope.KEY)
-    private googleConf: GoogleScopeConfig,
+    private readonly googleConf: GoogleScopeConfig,
     private prisma: PrismaService,
     private authTokenService: AuthTokenService,
   ) {}
