@@ -1,6 +1,6 @@
 import { DynamicModule, InjectionToken, Module, Provider } from '@nestjs/common';
 
-import { CACHE_ADAPTER_CLIENT } from './cache.tokens';
+import { CACHE_ADAPTER_CLIENT, CACHE_LOGGER } from './cache.tokens';
 import { CacheKeysExtension } from './extensions/cache-keys.extension';
 import { CacheListExtension } from './extensions/cache-list.extension';
 import { CacheService } from './cache.service';
@@ -52,6 +52,11 @@ export class CacheAbstractModule {
           useFactory: (svc: CacheService) => svc.client,
           inject: [CacheService],
         },
+        {
+          provide: CACHE_LOGGER,
+          useFactory: (svc: CacheService) => svc.logger,
+          inject: [CacheService],
+        },
         ...extProviders,
       );
       exports.push(...extExports);
@@ -82,6 +87,11 @@ export class CacheAbstractModule {
         {
           provide: CACHE_ADAPTER_CLIENT,
           useFactory: (svc: CacheService) => svc.client,
+          inject: [CacheService],
+        },
+        {
+          provide: CACHE_LOGGER,
+          useFactory: (svc: CacheService) => svc.logger,
           inject: [CacheService],
         },
         ...extProviders,
