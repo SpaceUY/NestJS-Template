@@ -15,8 +15,13 @@ export class EnvConfigAdapter extends ConfigProviderService {
     this.env = this._load(options.envFilePath);
   }
 
-  private _load(envFilePath: string | string[] | undefined): Record<string, string> {
-    const merged: Record<string, string> = { ...process.env } as Record<string, string>;
+  private _load(
+    envFilePath: string | string[] | undefined,
+  ): Record<string, string> {
+    const merged: Record<string, string> = { ...process.env } as Record<
+      string,
+      string
+    >;
 
     if (!envFilePath) return merged;
 

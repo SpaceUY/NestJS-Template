@@ -9,8 +9,15 @@ export abstract class ReloadableConfigProviderService extends ConfigProviderServ
     this._reloadListeners.push(listener);
   }
 
+  /**
+   * Notifies all reload listeners.
+   * @returns {Promise<void>} - A promise that resolves when all reload listeners have completed.
+   * @throws {ConfigProviderError} - If any reload listener fails.
+   */
   protected async notifyReload(): Promise<void> {
-    const results = await Promise.allSettled(this._reloadListeners.map((l) => l()));
+    const results = await Promise.allSettled(
+      this._reloadListeners.map((l) => l()),
+    );
     const errors = results
       .filter((r): r is PromiseRejectedResult => r.status === 'rejected')
       .map((r) => r.reason);
