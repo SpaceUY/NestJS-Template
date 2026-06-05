@@ -1,21 +1,20 @@
 import { Inject } from '@nestjs/common';
-import { ConfigType } from '@nestjs/config';
 import { PassportStrategy } from '@nestjs/passport';
 import { AuthType } from '@prisma/client';
 import { Strategy, VerifyCallback } from 'passport-google-oauth20';
-import googleConfig from 'src/config/google.config';
+import { googleScope, GoogleScopeConfig } from './config/google.scope';
 import { PrismaService } from '../../prisma/prisma.service';
 
 export class GoogleStrategy extends PassportStrategy(Strategy, 'google') {
   constructor(
-    @Inject(googleConfig.KEY)
-    private readonly googleConf: ConfigType<typeof googleConfig>,
+    @Inject(googleScope.KEY)
+    private readonly googleConf: GoogleScopeConfig,
     private readonly prisma: PrismaService,
   ) {
     super({
-      clientID: googleConf.oauth.clientId,
-      clientSecret: googleConf.oauth.secret,
-      callbackURL: googleConf.oauth.callbackURL,
+      clientID: googleConf.clientId,
+      clientSecret: googleConf.clientSecret,
+      callbackURL: googleConf.callbackUrl,
       scope: ['email', 'profile'],
     });
   }

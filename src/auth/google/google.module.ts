@@ -1,8 +1,7 @@
 import { Inject, Logger, Module } from '@nestjs/common';
-import { ConfigType } from '@nestjs/config';
 import { PassportModule } from '@nestjs/passport';
 import { OAuth2Client } from 'google-auth-library';
-import googleConfig from 'src/config/google.config';
+import { googleScope, GoogleScopeConfig } from './config/google.scope';
 import { PrismaModule } from '../../prisma/prisma.module';
 import { AuthTokenModule } from '../core/auth-token/auth-token.module';
 import { GoogleController } from './google.controller';
@@ -17,19 +16,19 @@ import { GoogleStrategy } from './google.strategy';
     GoogleService,
     {
       provide: OAuth2Client,
-      inject: [googleConfig.KEY],
-      useFactory: (googleConf: ConfigType<typeof googleConfig>) =>
-        new OAuth2Client(googleConf.oauth.clientId),
+      inject: [googleScope.KEY],
+      useFactory: (googleConf: GoogleScopeConfig) =>
+        new OAuth2Client(googleConf.clientId),
     },
   ],
 })
 export class GoogleModule {
   private readonly logger = new Logger('GoogleModule', { timestamp: true });
   constructor(
-    @Inject(googleConfig.KEY)
-    private readonly googleConf: ConfigType<typeof googleConfig>,
+    @Inject(googleScope.KEY)
+    private readonly googleConf: GoogleScopeConfig,
   ) {
-    if (!googleConf.oauth.enabled) {
+    if (!googleConf.enabled) {
       this.logger.error(
         "Google OAuth was marked as disabled but GoogleModule is still present; Please remove it from AuthModule's Imports",
       );
