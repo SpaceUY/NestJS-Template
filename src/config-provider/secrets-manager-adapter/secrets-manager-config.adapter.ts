@@ -4,6 +4,7 @@ import {
 } from '@aws-sdk/client-secrets-manager';
 import { Injectable } from '@nestjs/common';
 import { CONFIG_PROVIDER_ERRORS } from '../abstract/config-provider-error-codes';
+import { ConfigProviderError } from '../abstract/config-provider.error';
 import { ReloadableConfigProviderService } from '../abstract/reloadable-config-provider.service';
 import { SecretsManagerAdapterOptions } from './secrets-manager-config.interfaces';
 
@@ -29,20 +30,30 @@ export class SecretsManagerConfigAdapter extends ReloadableConfigProviderService
     });
   }
 
+  /**
+   * Fetches secret from secrets manager if not present in the cache.
+   * @returns {Promise<Record<string, string>>} - The fetched and parsed secret.
+   */
   private async _fetchSecret(): Promise<Record<string, string>> {
     if (this.options.cacheSecret !== false && this.cachedSecret) {
       return this.cachedSecret;
     }
 
     let secretString: string;
+
     try {
       const response = await this.client.send(
         new GetSecretValueCommand({ SecretId: this.options.secretName }),
       );
       secretString = response.SecretString ?? '{}';
     } catch (error) {
-      throw new Error(
-        `[${CONFIG_PROVIDER_ERRORS.SECRET_FETCH_FAILED}] Failed to fetch secret "${this.options.secretName}": ${(error as Error).message}`,
+      throw new ConfigProviderError(
+        CONFIG_PROVIDER_ERRORS.SECRET_FETCH_FAILED,
+        `Failed to fetch secret "${this.options.secretName}"`,
+        {
+          secretName: this.options.secretName,
+          cause: (error as Error).message,
+        },
       );
     }
 
@@ -50,8 +61,10 @@ export class SecretsManagerConfigAdapter extends ReloadableConfigProviderService
     try {
       parsed = JSON.parse(secretString);
     } catch (e) {
-      throw new Error(
-        `[${CONFIG_PROVIDER_ERRORS.SECRET_FETCH_FAILED}] Secret "${this.options.secretName}" is not valid JSON: ${(e as Error).message}`,
+      throw new ConfigProviderError(
+        CONFIG_PROVIDER_ERRORS.SECRET_FETCH_FAILED,
+        `Secret "${this.options.secretName}" is not valid JSON`,
+        { secretName: this.options.secretName, cause: (e as Error).message },
       );
     }
 
@@ -70,8 +83,10 @@ export class SecretsManagerConfigAdapter extends ReloadableConfigProviderService
   async getOrThrow(key: string): Promise<string> {
     const value = await this.get(key);
     if (value === undefined) {
-      throw new Error(
-        `[${CONFIG_PROVIDER_ERRORS.KEY_NOT_FOUND}] Key "${key}" not found in secret "${this.options.secretName}"`,
+      throw new ConfigProviderError(
+        CONFIG_PROVIDER_ERRORS.KEY_NOT_FOUND,
+        `Key "${key}" not found in secret "${this.options.secretName}"`,
+        { key, secretName: this.options.secretName },
       );
     }
     return value;

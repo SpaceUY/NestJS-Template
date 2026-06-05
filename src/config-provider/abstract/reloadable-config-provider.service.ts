@@ -1,4 +1,6 @@
 import { ConfigProviderService } from './config-provider.service';
+import { CONFIG_PROVIDER_ERRORS } from './config-provider-error-codes';
+import { ConfigProviderError } from './config-provider.error';
 
 export abstract class ReloadableConfigProviderService extends ConfigProviderService {
   private readonly _reloadListeners: Array<() => Promise<void>> = [];
@@ -13,8 +15,10 @@ export abstract class ReloadableConfigProviderService extends ConfigProviderServ
       .filter((r): r is PromiseRejectedResult => r.status === 'rejected')
       .map((r) => r.reason);
     if (errors.length > 0) {
-      throw new Error(
-        `${errors.length} reload listener(s) failed:\n${errors.map((e: Error) => e?.message ?? String(e)).join('\n')}`,
+      throw new ConfigProviderError(
+        CONFIG_PROVIDER_ERRORS.RELOAD_FAILED,
+        `${errors.length} reload listener(s) failed`,
+        { errors: errors.map((e: Error) => e?.message ?? String(e)) },
       );
     }
   }

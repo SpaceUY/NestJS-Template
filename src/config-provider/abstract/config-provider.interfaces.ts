@@ -24,7 +24,7 @@ export interface ConfigProviderSourceSync {
 export interface ConfigProviderModuleOptions {
   isGlobal?: boolean;
   sources: Record<string, ConfigProviderSourceSync>;
-  scopes?: ConfigScopeDefinition<any>[];
+  scopes?: ConfigScopeDefinition<Record<string, unknown>>[];
 }
 
 export interface ConfigProviderSourceAsync {
@@ -36,5 +36,5 @@ export interface ConfigProviderSourceAsync {
 export interface ConfigProviderModuleAsyncOptions {
   isGlobal?: boolean;
   sources: Record<string, ConfigProviderSourceAsync>;
-  scopes?: ConfigScopeDefinition<any>[];
+  scopes?: ConfigScopeDefinition<Record<string, unknown>>[];
 }

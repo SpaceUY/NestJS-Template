@@ -254,6 +254,11 @@ sources: {
 
 ### `SecretsManagerConfigAdapter`
 
+> **Requires** `@aws-sdk/client-secrets-manager` to be installed:
+> ```sh
+> pnpm add @aws-sdk/client-secrets-manager
+> ```
+
 Fetches a single AWS Secrets Manager secret (JSON object) and resolves individual keys from it. The secret is cached in memory after the first fetch by default.
 
 ```ts
