@@ -1,5 +1,4 @@
 import { Module } from '@nestjs/common';
-import { ConfigModule, ConfigService } from '@nestjs/config';
 import { AppController } from './app.controller';
 import { AppService } from './app.service';
 import { appScope } from './app.scope';
@@ -29,13 +28,11 @@ import { PugAdapterModule } from './templating/pug-adapter/pug-adapter.module';
 
 @Module({
   imports: [
-    ConfigModule.forRoot({ isGlobal: true }),
     ConfigProviderAbstractModule.forRootAsync({
       isGlobal: true,
       sources: {
         env: {
-          inject: [ConfigService],
-          useFactory: (cs: ConfigService) => new EnvConfigAdapter(cs),
+          useFactory: () => new EnvConfigAdapter(),
         },
       },
       scopes: [appScope, jwtScope, googleScope, s3Scope, emailScope, expoScope],

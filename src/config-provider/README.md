@@ -50,7 +50,6 @@ src/app.scope.ts
 Register once in `AppModule`. All scopes become globally available.
 
 ```ts
-import { ConfigModule, ConfigService } from '@nestjs/config';
 import { ConfigProviderAbstractModule } from './config-provider/abstract/config-provider-abstract.module';
 import { EnvConfigAdapter } from './config-provider/env-adapter/env-config.adapter';
 import { SecretsManagerConfigAdapter } from './config-provider/secrets-manager-adapter/secrets-manager-config.adapter';
@@ -59,13 +58,11 @@ import { jwtScope } from './auth/config/jwt.scope';
 
 @Module({
   imports: [
-    ConfigModule.forRoot({ isGlobal: true }),
     ConfigProviderAbstractModule.forRootAsync({
       isGlobal: true,
       sources: {
         env: {
-          inject: [ConfigService],
-          useFactory: (cs: ConfigService) => new EnvConfigAdapter(cs),
+          useFactory: () => new EnvConfigAdapter(),
         },
         sm: {
           useFactory: () =>
@@ -241,16 +238,22 @@ allowedOrigins: Joi.string()
 
 ### `EnvConfigAdapter`
 
-Wraps NestJS `ConfigService`. Requires `ConfigModule.forRoot({ isGlobal: true })` to be registered.
+Reads from `process.env` by default. Optionally loads one or more `.env` files directly via `dotenv` — no `ConfigModule` required.
 
 ```ts
 sources: {
-  env: {
-    inject: [ConfigService],
-    useFactory: (cs: ConfigService) => new EnvConfigAdapter(cs),
-  },
+  // process.env only
+  env: { useFactory: () => new EnvConfigAdapter() },
+
+  // single file
+  env: { useFactory: () => new EnvConfigAdapter({ envFilePath: '.env' }) },
+
+  // multiple files — later files take precedence over earlier ones
+  env: { useFactory: () => new EnvConfigAdapter({ envFilePath: ['.env', '.env.local'] }) },
 }
 ```
+
+Values from files are merged on top of `process.env`, so OS-level environment variables are always available as a base.
 
 ### `SecretsManagerConfigAdapter`
 
