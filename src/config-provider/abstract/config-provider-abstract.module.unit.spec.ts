@@ -1,3 +1,4 @@
+/* eslint-disable @typescript-eslint/no-explicit-any */
 import { ConfigProviderAbstractModule } from './config-provider-abstract.module';
 import { CONFIG_PROVIDER_ERRORS } from './config-provider-error-codes';
 import { ConfigScopeDefinition } from './config-provider.interfaces';
@@ -91,7 +92,11 @@ describe('ConfigProviderAbstractModule', () => {
           },
           scopes: [testScope], // testScope uses 'sm' which is not registered
         }),
-      ).toThrow(expect.objectContaining({ code: CONFIG_PROVIDER_ERRORS.UNKNOWN_SOURCE }));
+      ).toThrow(
+        expect.objectContaining({
+          code: CONFIG_PROVIDER_ERRORS.UNKNOWN_SOURCE,
+        }),
+      );
     });
   });
 
@@ -116,8 +121,14 @@ describe('ConfigProviderAbstractModule', () => {
 
       const moduleRef = ConfigProviderAbstractModule.forRootAsync({
         sources: {
-          env: { imports: [SomeModule], useFactory: () => new MockEnvAdapter({}) },
-          sm: { imports: [OtherModule], useFactory: () => new MockReloadableAdapter({}) },
+          env: {
+            imports: [SomeModule],
+            useFactory: () => new MockEnvAdapter({}),
+          },
+          sm: {
+            imports: [OtherModule],
+            useFactory: () => new MockReloadableAdapter({}),
+          },
         },
       });
 
@@ -133,7 +144,10 @@ describe('ConfigProviderAbstractModule', () => {
     ): Promise<unknown> {
       const moduleRef = ConfigProviderAbstractModule.forRoot({
         sources: Object.fromEntries(
-          Object.entries(adapters).map(([name, adapter]) => [name, { useValue: adapter }]),
+          Object.entries(adapters).map(([name, adapter]) => [
+            name,
+            { useValue: adapter },
+          ]),
         ),
         scopes: [scope],
       });
@@ -143,28 +157,38 @@ describe('ConfigProviderAbstractModule', () => {
       );
 
       return provider.useFactory(
-        ...scope.fields
-          ? [...new Set(Object.values(scope.fields).map((f: any) => f.source))].map(
-              (name) => adapters[name as string],
-            )
-          : [],
+        ...(scope.fields
+          ? [
+              ...new Set(Object.values(scope.fields).map((f: any) => f.source)),
+            ].map((name) => adapters[name as string])
+          : []),
       );
     }
 
     it('should map fields from the correct source adapters', async () => {
       const envAdapter = new MockEnvAdapter({ TIMEOUT: '60s' });
-      const smAdapter = new MockReloadableAdapter({ APP_SECRET: 'super-secret' });
+      const smAdapter = new MockReloadableAdapter({
+        APP_SECRET: 'super-secret',
+      });
 
-      const result = await resolveScopeFactory(testScope, { env: envAdapter, sm: smAdapter });
+      const result = await resolveScopeFactory(testScope, {
+        env: envAdapter,
+        sm: smAdapter,
+      });
 
       expect(result).toMatchObject({ secret: 'super-secret', timeout: '60s' });
     });
 
     it('should apply defaults for missing optional fields', async () => {
       const envAdapter = new MockEnvAdapter({});
-      const smAdapter = new MockReloadableAdapter({ APP_SECRET: 'super-secret' });
+      const smAdapter = new MockReloadableAdapter({
+        APP_SECRET: 'super-secret',
+      });
 
-      const result = await resolveScopeFactory(testScope, { env: envAdapter, sm: smAdapter });
+      const result = await resolveScopeFactory(testScope, {
+        env: envAdapter,
+        sm: smAdapter,
+      });
 
       expect(result).toMatchObject({ secret: 'super-secret', timeout: '30s' });
     });
@@ -175,7 +199,9 @@ describe('ConfigProviderAbstractModule', () => {
 
       await expect(
         resolveScopeFactory(testScope, { env: envAdapter, sm: smAdapter }),
-      ).rejects.toMatchObject({ code: CONFIG_PROVIDER_ERRORS.SCOPE_VALIDATION_FAILED });
+      ).rejects.toMatchObject({
+        code: CONFIG_PROVIDER_ERRORS.SCOPE_VALIDATION_FAILED,
+      });
     });
 
     it('should return raw values when no validate callback is provided', async () => {
@@ -184,7 +210,9 @@ describe('ConfigProviderAbstractModule', () => {
       });
 
       const envAdapter = new MockEnvAdapter({ TOKEN: 'raw-value' });
-      const result = await resolveScopeFactory(noSchemaScope, { env: envAdapter });
+      const result = await resolveScopeFactory(noSchemaScope, {
+        env: envAdapter,
+      });
 
       expect(result).toEqual({ token: 'raw-value' });
     });
@@ -263,11 +291,17 @@ describe('ConfigProviderAbstractModule', () => {
         ConfigProviderAbstractModule.forRoot({
           sources: {
             [SOURCES.ENVIRONMENT]: { useValue: new MockEnvAdapter({}) },
-            [SOURCES.AWS_SECRETS_MANAGER]: { useValue: new MockReloadableAdapter({}) },
+            [SOURCES.AWS_SECRETS_MANAGER]: {
+              useValue: new MockReloadableAdapter({}),
+            },
           },
           scopes: [testScope, dupeScope],
         }),
-      ).toThrow(expect.objectContaining({ code: CONFIG_PROVIDER_ERRORS.DUPLICATE_SCOPE_KEY }));
+      ).toThrow(
+        expect.objectContaining({
+          code: CONFIG_PROVIDER_ERRORS.DUPLICATE_SCOPE_KEY,
+        }),
+      );
     });
   });
 });

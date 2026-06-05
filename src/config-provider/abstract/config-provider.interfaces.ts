@@ -29,7 +29,10 @@ export interface ConfigProviderModuleOptions {
 export interface ConfigProviderSourceAsync {
   imports?: ModuleMetadata['imports'];
   inject?: InjectionToken[];
-  useFactory: (...args: any[]) => Promise<ConfigProviderService> | ConfigProviderService;
+  useFactory: (
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    ...args: any[]
+  ) => Promise<ConfigProviderService> | ConfigProviderService;
 }
 
 export interface ConfigProviderModuleAsyncOptions {

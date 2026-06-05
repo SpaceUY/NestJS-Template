@@ -89,7 +89,7 @@ Use `defineConfigScope` alongside `configSources` to declare what to fetch and f
 
 ```ts
 // src/auth/config/jwt.scope.ts
-import Joi = require('joi');
+import Joi from 'joi';
 import { configSources as from } from '../../config-provider/abstract/config-source.util';
 import { defineConfigScope } from '../../config-provider/abstract/define-config-scope.util';
 
@@ -100,16 +100,16 @@ export type JwtScopeConfig = {
 };
 
 const schema = Joi.object<JwtScopeConfig>({
-  secret:           Joi.string().default('Not A Safe Secret'),
-  expiresIn:        Joi.string().default('7d'),
+  secret: Joi.string().default('Not A Safe Secret'),
+  expiresIn: Joi.string().default('7d'),
   ignoreExpiration: Joi.boolean().default(false),
 });
 
 export const jwtScope = defineConfigScope<JwtScopeConfig>(
   'jwt',
   {
-    secret:           from.env('JWT_SECRET'),
-    expiresIn:        from.env('JWT_EXPIRES_IN'),
+    secret: from.env('JWT_SECRET'),
+    expiresIn: from.env('JWT_EXPIRES_IN'),
     ignoreExpiration: from.env('JWT_IGNORE_EXPIRATION'),
   },
   (raw) => {
@@ -167,11 +167,13 @@ A scope can pull fields from different sources. The module resolves each indepen
 export const serviceScope = defineConfigScope<ServiceScopeConfig>(
   'service',
   {
-    port:      from.env('PORT'),         // non-sensitive → env
-    apiSecret: from.sm('API_SECRET'),    // sensitive → Secrets Manager
-    dbUrl:     from.sm('DATABASE_URL'),  // sensitive → Secrets Manager
+    port: from.env('PORT'), // non-sensitive → env
+    apiSecret: from.sm('API_SECRET'), // sensitive → Secrets Manager
+    dbUrl: from.sm('DATABASE_URL'), // sensitive → Secrets Manager
   },
-  (raw) => { /* validate and return typed value */ },
+  (raw) => {
+    /* validate and return typed value */
+  },
 );
 ```
 
@@ -185,21 +187,21 @@ All raw values arrive as `string | undefined`. The `validate` callback is respon
 
 ```ts
 // JWT_IGNORE_EXPIRATION=true → ignoreExpiration: true (boolean)
-ignoreExpiration: Joi.boolean().default(false)
+ignoreExpiration: Joi.boolean().default(false);
 ```
 
 ### Number coercion
 
 ```ts
 // PORT=3000 → port: 3000 (number)
-port: Joi.number().integer().min(1024).max(65535).default(5000)
+port: Joi.number().integer().min(1024).max(65535).default(5000);
 ```
 
 ### Enum validation
 
 ```ts
 // NODE_ENV=PROD → nodeEnv: 'PROD' (string, validated)
-nodeEnv: Joi.string().valid('DEV', 'TEST', 'PROD').default('DEV')
+nodeEnv: Joi.string().valid('DEV', 'TEST', 'PROD').default('DEV');
 ```
 
 ### Conditional requirements
@@ -220,14 +222,14 @@ Compute a field from other values in the same scope:
 
 ```ts
 Joi.object({
-  selfUrl:     Joi.string().default('http://localhost:5000'),
+  selfUrl: Joi.string().default('http://localhost:5000'),
   callbackUrl: Joi.string().optional(),
 }).custom((value) => {
   if (!value.callbackUrl) {
     value.callbackUrl = `${value.selfUrl}/auth/callback`;
   }
   return value;
-})
+});
 ```
 
 ### Custom parsing
@@ -238,7 +240,7 @@ Joi.object({
   allowedOrigins: raw.allowedOrigins
     ? (raw.allowedOrigins as string).split(',').map((s) => s.trim())
     : [],
-})
+});
 ```
 
 ---
@@ -267,6 +269,7 @@ Values from files are merged on top of `process.env`, so OS-level environment va
 ### `SecretsManagerConfigAdapter`
 
 > **Requires** `@aws-sdk/client-secrets-manager` to be installed:
+>
 > ```sh
 > pnpm add @aws-sdk/client-secrets-manager
 > ```
@@ -377,11 +380,11 @@ For most application config (JWT secrets, DB URLs, adapter options) the default 
 
 ## Error Codes
 
-| Constant | Meaning |
-|---|---|
-| `CONFIG_PROVIDER_KEY_NOT_FOUND` | `getOrThrow` called for a key absent from the source |
-| `CONFIG_PROVIDER_SCOPE_VALIDATION_FAILED` | The `validate` callback threw for the resolved scope values |
-| `CONFIG_PROVIDER_SECRET_FETCH_FAILED` | SecretsManager network/auth error |
-| `CONFIG_PROVIDER_UNKNOWN_SOURCE` | A scope references a source name not registered in the module |
+| Constant                                  | Meaning                                                       |
+| ----------------------------------------- | ------------------------------------------------------------- |
+| `CONFIG_PROVIDER_KEY_NOT_FOUND`           | `getOrThrow` called for a key absent from the source          |
+| `CONFIG_PROVIDER_SCOPE_VALIDATION_FAILED` | The `validate` callback threw for the resolved scope values   |
+| `CONFIG_PROVIDER_SECRET_FETCH_FAILED`     | SecretsManager network/auth error                             |
+| `CONFIG_PROVIDER_UNKNOWN_SOURCE`          | A scope references a source name not registered in the module |
 
 The last error (`UNKNOWN_SOURCE`) is thrown **at registration time** (module init), not at runtime, so misconfiguration is caught immediately on app startup.
