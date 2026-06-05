@@ -37,8 +37,7 @@ interface BaseRedisCacheModuleOptions {
 /**
  * Standalone mode options
  */
-interface StandaloneRedisCacheModuleOptions
-  extends BaseRedisCacheModuleOptions {
+interface StandaloneRedisCacheModuleOptions extends BaseRedisCacheModuleOptions {
   clusterMode?: false | undefined;
   clusterOptions?: never;
 }

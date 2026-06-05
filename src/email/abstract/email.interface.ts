@@ -77,8 +77,7 @@ export interface SendRenderedEmailParams extends BaseEmailParams {
 /**
  * Parameters for sending multiple emails with pre-rendered content
  */
-export interface SendRenderedEmailMultipleParams
-  extends BaseEmailMultipleParams {
+export interface SendRenderedEmailMultipleParams extends BaseEmailMultipleParams {
   /** The rendered email content */
   content: RenderedEmailContent;
 }
