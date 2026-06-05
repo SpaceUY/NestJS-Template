@@ -47,22 +47,20 @@ src/cache/
 
 ## Registration
 
-Adapters are plain classes — no adapter module required. `CacheAbstractModule.forRootAsync` receives a factory that returns a `CacheAdapterBundle` (service + raw client), and extension implementation classes to wire as NestJS-managed services.
+Adapters are plain classes — no adapter module required. `CacheAbstractModule.forRootAsync` receives a factory that returns a `CacheService` instance, and optional extension implementation classes to wire as NestJS-managed services.
 
 ```ts
-import { CacheAbstractModule, CacheAdapterBundle } from './abstract/cache-abstract.module';
+import { CacheAbstractModule } from './abstract/cache-abstract.module';
 import { RedisCacheAdapterService } from './redis-adapter/redis-adapter.service';
 import { RedisCacheListExtension } from './redis-adapter/extensions/redis-cache-list.extension';
 import { RedisCacheKeysExtension } from './redis-adapter/extensions/redis-cache-keys.extension';
-import { Redis } from 'ioredis';
 
-CacheAbstractModule.forRootAsync<Redis>({
+CacheAbstractModule.forRootAsync({
   isGlobal: true,
   inject: [redisConfig.KEY],
   imports: [ConfigModule],
-  useFactory: (cfg: ConfigType<typeof redisConfig>): CacheAdapterBundle<Redis> => {
-    const adapter = new RedisCacheAdapterService(cfg);
-    return { service: adapter, client: adapter.client as Redis };
+  useFactory: (cfg: ConfigType<typeof redisConfig>): RedisCacheAdapterService => {
+    return new RedisCacheAdapterService(cfg);
   },
   extensions: {
     list: RedisCacheListExtension,
@@ -71,18 +69,14 @@ CacheAbstractModule.forRootAsync<Redis>({
 })
 ```
 
-The generic type parameter (`<Redis>`) is optional — TypeScript infers it from the factory return. The `extensions` object maps abstract extension tokens to concrete implementation classes; NestJS manages their lifecycle and injects the client automatically.
+The `extensions` object maps abstract extension tokens to concrete implementation classes; NestJS manages their lifecycle and injects the raw client (via `adapter.client`) automatically.
 
 Omit `extensions` (or individual keys) to skip those providers entirely:
 
 ```ts
 CacheAbstractModule.forRootAsync({
   isGlobal: true,
-  useFactory: (cfg) => {
-    const adapter = new RedisCacheAdapterService(cfg);
-    return { service: adapter, client: adapter.client };
-  },
-  // no extensions — only CacheService is provided
+  useFactory: (cfg) => new RedisCacheAdapterService(cfg),
 })
 ```
 
