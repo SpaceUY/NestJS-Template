@@ -1,4 +1,4 @@
-FROM node:lts-alpine
+FROM node:24.15.0
 # RUN as root
 RUN apk add dumb-init
 RUN corepack enable && corepack prepare pnpm@10.15.1 --activate
