@@ -102,6 +102,9 @@ export type RedisClient = Redis | Cluster;
 export const REDIS_CLIENT = 'REDIS_CLIENT_PROVIDER';
 
 /**
+ * @deprecated Use `CacheAbstractModule` from `src/cache/abstract/cache-abstract.module` with
+ * `RedisAdapterModule` from `src/cache/redis-adapter/redis-adapter.module` instead.
+ *
  * CacheModule
  *
  * A simple wrapper for the `RedisModule` or `ClusterModule` instantiation.

@@ -4,6 +4,10 @@ import { Inject, Injectable } from '@nestjs/common';
 import { REDIS_CLIENT, REDIS_LOGGER_TOKEN } from './redis.cache.module';
 import { StandardLogger } from './utils/logger';
 
+/**
+ * @deprecated Use `CacheService` from `src/cache/abstract/cache.service` and
+ * `RedisAdapterModule` from `src/cache/redis-adapter/redis-adapter.module` instead.
+ */
 @Injectable()
 export class CacheService {
   constructor(
