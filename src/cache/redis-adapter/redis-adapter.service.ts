@@ -1,4 +1,4 @@
-import { Injectable, Logger } from '@nestjs/common';
+import { Injectable, Logger, OnModuleInit } from '@nestjs/common';
 import { Cluster, Redis } from 'ioredis';
 
 import { CacheService } from '../abstract/cache.service';
@@ -7,7 +7,7 @@ import { RedisAdapterConfig } from './redis-adapter-config.interface';
 import { StandardLogger, adaptLogger } from './utils/logger';
 
 @Injectable()
-export class RedisCacheAdapterService extends CacheService {
+export class RedisCacheAdapterService extends CacheService implements OnModuleInit {
   private readonly _redis: Redis | Cluster;
   private readonly _logger: StandardLogger;
 
@@ -16,7 +16,10 @@ export class RedisCacheAdapterService extends CacheService {
     const nestLogger = new Logger(RedisCacheAdapterService.name);
     this._logger = config.logger ?? adaptLogger(nestLogger);
     this._redis = createRedisClient(config);
-    verifyConnection(this._redis, this._logger);
+  }
+
+  async onModuleInit(): Promise<void> {
+    await verifyConnection(this._redis, this._logger);
   }
 
   get client(): Redis | Cluster {
