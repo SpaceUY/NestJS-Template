@@ -71,6 +71,7 @@ function buildScopeProviders(
     return {
       provide: scope.KEY,
       useFactory: async (...adapters: ConfigProviderService[]) => {
+        // inject order mirrors usedSources order, so adapters[i] === source usedSources[i].
         const sourceMap: Record<string, ConfigProviderService> = {};
         usedSources.forEach((name, i) => {
           sourceMap[name] = adapters[i];
@@ -78,8 +79,11 @@ function buildScopeProviders(
 
         const initialValue = await resolveScope(scope, sourceMap);
 
+        // Static scope: resolved once at startup; plain object snapshot injected everywhere.
         if (!scope.live) return initialValue;
 
+        // Live scope: wrap in a mutable ref so onReload listeners can swap the value in place.
+        // Returning ref directly wouldn't work — consumers would hold a stale object reference.
         const ref = { current: initialValue };
 
         for (const adapter of adapters) {
@@ -90,6 +94,8 @@ function buildScopeProviders(
           }
         }
 
+        // Proxy forwards all reads to ref.current so consumers always see the latest value
+        // without needing to be re-injected.
         return new Proxy({} as any, {
           get: (_, key: string | symbol) => {
             if (typeof key === 'symbol') return undefined;
@@ -100,6 +106,7 @@ function buildScopeProviders(
             return key in (ref.current as object);
           },
           ownKeys: () => Object.keys(ref.current),
+          // Required for Object.keys() and spread ({ ...conf }) to enumerate proxy keys correctly.
           getOwnPropertyDescriptor: (_, key) => ({
             value: ref.current[key as string],
             writable: false,
