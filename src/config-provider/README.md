@@ -282,6 +282,81 @@ The secret stored in AWS must be a JSON object where each key maps to a string v
 
 ---
 
+## Hot Reload
+
+`SecretsManagerConfigAdapter` extends `ReloadableConfigProviderService`, which adds a `reload()` method. Calling it clears the in-memory cache and immediately re-fetches the secret from AWS, so subsequent reads return the updated values.
+
+`EnvConfigAdapter` does not implement this interface — environment variables do not change at runtime.
+
+### Per-source reload tokens
+
+For every registered source the module exports a `reloadableSourceToken(name)` provider, mirroring the same spread pattern as the source providers themselves. The provider resolves to the adapter instance if it is reloadable, or `null` if not.
+
+```ts
+import { Controller, Post } from '@nestjs/common';
+import { Inject } from '@nestjs/common';
+import { reloadableSourceToken } from './config-provider/abstract/config-provider-tokens';
+import { ReloadableConfigProviderService } from './config-provider/abstract/reloadable-config-provider.service';
+
+@Controller('config')
+export class ConfigController {
+  constructor(
+    @Inject(reloadableSourceToken('sm'))
+    private readonly smAdapter: ReloadableConfigProviderService,
+  ) {}
+
+  @Post('reload')
+  async reload(): Promise<void> {
+    await this.smAdapter.reload();
+  }
+}
+```
+
+Injecting a non-reloadable source (e.g. `reloadableSourceToken('env')`) resolves to `null` — guard accordingly if needed.
+
+### Live scopes
+
+By default scopes resolve once at app startup — the factory runs, returns a plain object, and that snapshot is injected everywhere. Hot reload refreshes the adapter cache but plain scopes never see the new values.
+
+Pass `{ live: true }` to `defineConfigScope` to opt in. The scope resolves to a `Proxy` backed by a mutable reference. When any reloadable source adapter fires `reload()`, the proxy's reference is updated in place — the injected object in consuming services automatically reflects the new values without any re-injection.
+
+```ts
+export const featureScope = defineConfigScope<FeatureScopeConfig>(
+  'feature',
+  {
+    rateLimit: from.sm('RATE_LIMIT'),
+    flagEnabled: from.sm('FLAG_ENABLED'),
+  },
+  Joi.object<FeatureScopeConfig>({
+    rateLimit: Joi.number().integer().default(100),
+    flagEnabled: Joi.boolean().default(false),
+  }),
+  { live: true }, // ← opt-in
+);
+```
+
+The consuming service is unchanged — property access just always reads the current value:
+
+```ts
+@Injectable()
+export class FeatureService {
+  constructor(
+    @Inject(featureScope.KEY)
+    private readonly conf: FeatureScopeConfig,
+  ) {}
+
+  isEnabled(): boolean {
+    return this.conf.flagEnabled; // reflects the latest reloaded value
+  }
+}
+```
+
+`Object.keys()` and spread (`{ ...conf }`) also reflect the current state at the moment of the call.
+
+For most application config (JWT secrets, DB URLs, adapter options) the default static scope is correct and desirable. Reserve `live: true` for config that genuinely changes at runtime — feature flags, rate limits, rotating credentials.
+
+---
+
 ## Error Codes
 
 | Constant | Meaning |

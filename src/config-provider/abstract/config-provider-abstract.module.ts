@@ -1,4 +1,5 @@
 import { DynamicModule, Module, Provider } from '@nestjs/common';
+import { reloadableSourceToken } from './config-provider-tokens';
 import { CONFIG_PROVIDER_ERRORS } from './config-provider-error-codes';
 import {
   ConfigProviderModuleAsyncOptions,
@@ -7,9 +8,35 @@ import {
   ConfigScopeFieldMapping,
 } from './config-provider.interfaces';
 import { ConfigProviderService } from './config-provider.service';
+import { ReloadableConfigProviderService } from './reloadable-config-provider.service';
 
 function sourceToken(name: string): string {
   return `CONFIG_PROVIDER_SOURCE_${name.toUpperCase()}`;
+}
+
+async function resolveScope(
+  scope: ConfigScopeDefinition<any>,
+  sourceMap: Record<string, ConfigProviderService>,
+): Promise<Record<string, unknown>> {
+  const raw: Record<string, unknown> = {};
+  for (const [field, mapping] of Object.entries(scope.fields) as [string, ConfigScopeFieldMapping][]) {
+    raw[field] = await sourceMap[mapping.source].get(mapping.key);
+  }
+
+  if (!scope.schema) return raw;
+
+  const { error, value } = scope.schema.validate(raw, {
+    abortEarly: false,
+    allowUnknown: false,
+  });
+
+  if (error) {
+    throw new Error(
+      `[${CONFIG_PROVIDER_ERRORS.SCOPE_VALIDATION_FAILED}] Scope "${scope.name}": ${error.message}`,
+    );
+  }
+
+  return value;
 }
 
 function buildScopeProviders(
@@ -41,32 +68,46 @@ function buildScopeProviders(
           sourceMap[name] = adapters[i];
         });
 
-        const raw: Record<string, unknown> = {};
-        for (const [field, mapping] of Object.entries(scope.fields) as [
-          string,
-          ConfigScopeFieldMapping,
-        ][]) {
-          raw[field] = await sourceMap[mapping.source].get(mapping.key);
+        const initialValue = await resolveScope(scope, sourceMap);
+
+        if (!scope.live) return initialValue;
+
+        const ref = { current: initialValue };
+
+        for (const adapter of adapters) {
+          if (adapter instanceof ReloadableConfigProviderService) {
+            adapter.onReload(async () => {
+              ref.current = await resolveScope(scope, sourceMap);
+            });
+          }
         }
 
-        if (!scope.schema) return raw;
-
-        const { error, value } = scope.schema.validate(raw, {
-          abortEarly: false,
-          allowUnknown: false,
+        return new Proxy({} as any, {
+          get: (_, key: string | symbol) => {
+            if (typeof key === 'symbol') return undefined;
+            return ref.current[key as string];
+          },
+          ownKeys: () => Object.keys(ref.current),
+          getOwnPropertyDescriptor: (_, key) => ({
+            value: ref.current[key as string],
+            writable: false,
+            enumerable: true,
+            configurable: true,
+          }),
         });
-
-        if (error) {
-          throw new Error(
-            `[${CONFIG_PROVIDER_ERRORS.SCOPE_VALIDATION_FAILED}] Scope "${scope.name}": ${error.message}`,
-          );
-        }
-
-        return value;
       },
       inject: usedSources.map(sourceToken),
     };
   });
+}
+
+function buildReloadableProviders(sourceNames: string[]): Provider[] {
+  return sourceNames.map((name) => ({
+    provide: reloadableSourceToken(name),
+    useFactory: (adapter: ConfigProviderService): ReloadableConfigProviderService | null =>
+      adapter instanceof ReloadableConfigProviderService ? adapter : null,
+    inject: [sourceToken(name)],
+  }));
 }
 
 @Module({})
@@ -86,13 +127,15 @@ export class ConfigProviderAbstractModule {
     );
 
     const scopeProviders = buildScopeProviders(scopes, sourceNames);
+    const reloadableProviders = buildReloadableProviders(sourceNames);
     const scopeExports = scopes.map((s) => s.KEY);
+    const reloadableExports = sourceNames.map(reloadableSourceToken);
 
     return {
       module: ConfigProviderAbstractModule,
       global: isGlobal,
-      providers: [...sourceProviders, ...scopeProviders],
-      exports: scopeExports,
+      providers: [...sourceProviders, ...scopeProviders, ...reloadableProviders],
+      exports: [...scopeExports, ...reloadableExports],
     };
   }
 
@@ -115,14 +158,16 @@ export class ConfigProviderAbstractModule {
     );
 
     const scopeProviders = buildScopeProviders(scopes, sourceNames);
+    const reloadableProviders = buildReloadableProviders(sourceNames);
     const scopeExports = scopes.map((s) => s.KEY);
+    const reloadableExports = sourceNames.map(reloadableSourceToken);
 
     return {
       module: ConfigProviderAbstractModule,
       global: isGlobal,
       imports: allImports,
-      providers: [...sourceProviders, ...scopeProviders],
-      exports: scopeExports,
+      providers: [...sourceProviders, ...scopeProviders, ...reloadableProviders],
+      exports: [...scopeExports, ...reloadableExports],
     };
   }
 }

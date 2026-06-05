@@ -3,10 +3,10 @@ import {
   SecretsManagerClient,
 } from '@aws-sdk/client-secrets-manager';
 import { CONFIG_PROVIDER_ERRORS } from '../abstract/config-provider-error-codes';
-import { ConfigProviderService } from '../abstract/config-provider.service';
+import { ReloadableConfigProviderService } from '../abstract/reloadable-config-provider.service';
 import { SecretsManagerAdapterOptions } from './secrets-manager-config.interfaces';
 
-export class SecretsManagerConfigAdapter extends ConfigProviderService {
+export class SecretsManagerConfigAdapter extends ReloadableConfigProviderService {
   private readonly client: SecretsManagerClient;
   private cachedSecret: Record<string, string> | null = null;
 
@@ -66,5 +66,11 @@ export class SecretsManagerConfigAdapter extends ConfigProviderService {
       );
     }
     return value;
+  }
+
+  async reload(): Promise<void> {
+    this.cachedSecret = null;
+    await this._fetchSecret();
+    await this.notifyReload();
   }
 }

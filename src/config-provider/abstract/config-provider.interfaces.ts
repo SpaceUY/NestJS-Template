@@ -13,6 +13,7 @@ export interface ConfigScopeDefinition<T> {
   name: string;
   fields: Record<string, ConfigScopeFieldMapping>;
   schema?: Joi.ObjectSchema<T>;
+  live?: boolean;
 }
 
 export interface ConfigProviderSourceSync {
