@@ -1,6 +1,6 @@
 import { ConfigScopeFieldMapping } from './config-provider.interfaces';
 
-const SOURCES = {
+export const SOURCES = {
   ENVIRONMENT: 'env',
   AWS_SECRETS_MANAGER: 'sm'
 } as const;

@@ -5,6 +5,7 @@ import { ConfigScopeDefinition } from './config-provider.interfaces';
 import { ConfigProviderService } from './config-provider.service';
 import { ReloadableConfigProviderService } from './reloadable-config-provider.service';
 import { defineConfigScope } from './define-config-scope.util';
+import { SOURCES } from './config-source.util';
 
 class MockEnvAdapter extends ConfigProviderService {
   constructor(private readonly store: Record<string, string>) {
@@ -51,8 +52,8 @@ type TestScope = { secret: string; timeout: string };
 const testScope = defineConfigScope<TestScope>(
   'test',
   {
-    secret: { source: 'sm', key: 'APP_SECRET' },
-    timeout: { source: 'env', key: 'TIMEOUT' },
+    secret: { source: SOURCES.AWS_SECRETS_MANAGER, key: 'APP_SECRET' },
+    timeout: { source: SOURCES.ENVIRONMENT, key: 'TIMEOUT' },
   },
   Joi.object<TestScope>({
     secret: Joi.string().required(),
@@ -235,6 +236,33 @@ describe('ConfigProviderAbstractModule', () => {
 
       expect(Object.keys(conf)).toEqual(['secret']);
       expect({ ...conf }).toEqual({ secret: 'value' });
+    });
+
+    it('should return true for `in` operator on valid fields', async () => {
+      const adapter = new MockReloadableAdapter({ APP_SECRET: 'value' });
+      const conf = await resolveLiveScope(adapter);
+
+      expect('secret' in conf).toBe(true);
+      expect('nonexistent' in conf).toBe(false);
+    });
+  });
+
+  describe('duplicate scope keys', () => {
+    it('should throw at registration when two scopes share the same name', () => {
+      const dupeScope = defineConfigScope<TestScope>('test', {
+        secret: { source: SOURCES.AWS_SECRETS_MANAGER, key: 'APP_SECRET' },
+        timeout: { source: SOURCES.ENVIRONMENT, key: 'TIMEOUT' },
+      });
+
+      expect(() =>
+        ConfigProviderAbstractModule.forRoot({
+          sources: {
+            [SOURCES.ENVIRONMENT]: { useValue: new MockEnvAdapter({}) },
+            [SOURCES.AWS_SECRETS_MANAGER]: { useValue: new MockReloadableAdapter({}) },
+          },
+          scopes: [testScope, dupeScope],
+        }),
+      ).toThrow(CONFIG_PROVIDER_ERRORS.DUPLICATE_SCOPE_KEY);
     });
   });
 });

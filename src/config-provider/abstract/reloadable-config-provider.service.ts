@@ -8,7 +8,15 @@ export abstract class ReloadableConfigProviderService extends ConfigProviderServ
   }
 
   protected async notifyReload(): Promise<void> {
-    await Promise.all(this._reloadListeners.map((l) => l()));
+    const results = await Promise.allSettled(this._reloadListeners.map((l) => l()));
+    const errors = results
+      .filter((r): r is PromiseRejectedResult => r.status === 'rejected')
+      .map((r) => r.reason);
+    if (errors.length > 0) {
+      throw new Error(
+        `${errors.length} reload listener(s) failed:\n${errors.map((e: Error) => e?.message ?? String(e)).join('\n')}`,
+      );
+    }
   }
 
   abstract reload(): Promise<void>;

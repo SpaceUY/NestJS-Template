@@ -2,10 +2,12 @@ import {
   GetSecretValueCommand,
   SecretsManagerClient,
 } from '@aws-sdk/client-secrets-manager';
+import { Injectable } from '@nestjs/common';
 import { CONFIG_PROVIDER_ERRORS } from '../abstract/config-provider-error-codes';
 import { ReloadableConfigProviderService } from '../abstract/reloadable-config-provider.service';
 import { SecretsManagerAdapterOptions } from './secrets-manager-config.interfaces';
 
+@Injectable()
 export class SecretsManagerConfigAdapter extends ReloadableConfigProviderService {
   private readonly client: SecretsManagerClient;
   private cachedSecret: Record<string, string> | null = null;
@@ -44,7 +46,14 @@ export class SecretsManagerConfigAdapter extends ReloadableConfigProviderService
       );
     }
 
-    const parsed: Record<string, string> = JSON.parse(secretString);
+    let parsed: Record<string, string>;
+    try {
+      parsed = JSON.parse(secretString);
+    } catch (e) {
+      throw new Error(
+        `[${CONFIG_PROVIDER_ERRORS.SECRET_FETCH_FAILED}] Secret "${this.options.secretName}" is not valid JSON: ${(e as Error).message}`,
+      );
+    }
 
     if (this.options.cacheSecret !== false) {
       this.cachedSecret = parsed;

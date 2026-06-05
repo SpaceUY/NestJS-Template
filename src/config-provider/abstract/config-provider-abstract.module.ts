@@ -43,6 +43,14 @@ function buildScopeProviders(
   scopes: ConfigScopeDefinition<any>[],
   registeredSourceNames: string[],
 ): Provider[] {
+  const keys = scopes.map((s) => s.KEY);
+  const duplicates = keys.filter((k, i) => keys.indexOf(k) !== i);
+  if (duplicates.length > 0) {
+    throw new Error(
+      `[${CONFIG_PROVIDER_ERRORS.DUPLICATE_SCOPE_KEY}] Duplicate scope keys: ${[...new Set(duplicates)].join(', ')}`,
+    );
+  }
+
   return scopes.map((scope) => {
     const usedSources = [
       ...new Set(
@@ -86,6 +94,10 @@ function buildScopeProviders(
           get: (_, key: string | symbol) => {
             if (typeof key === 'symbol') return undefined;
             return ref.current[key as string];
+          },
+          has: (_, key: string | symbol) => {
+            if (typeof key === 'symbol') return false;
+            return key in (ref.current as object);
           },
           ownKeys: () => Object.keys(ref.current),
           getOwnPropertyDescriptor: (_, key) => ({
