@@ -24,6 +24,8 @@ src/cache/
 ├── abstract/
 │   ├── cache.tokens.ts
 │   ├── cache.service.ts
+│   ├── cache.interfaces.ts
+│   ├── cache.error.ts
 │   ├── cache-abstract.module.ts
 │   ├── extensions/
 │   │   ├── cache-list.extension.ts
@@ -35,6 +37,7 @@ src/cache/
 ├── redis-adapter/
 │   ├── redis-adapter-config.interface.ts
 │   ├── redis-adapter.service.ts
+│   ├── client.ts
 │   ├── extensions/
 │   │   ├── redis-cache-list.extension.ts
 │   │   └── redis-cache-keys.extension.ts
@@ -69,7 +72,7 @@ CacheAbstractModule.forRootAsync({
 })
 ```
 
-The `extensions` object maps abstract extension tokens to concrete implementation classes; NestJS manages their lifecycle and injects the raw client (via `adapter.client`) automatically.
+The `extensions` object maps abstract extension tokens to concrete implementation classes; NestJS manages their lifecycle and injects the raw client (via `adapter.client`) and shared logger (via `adapter.logger`) automatically.
 
 Omit `extensions` (or individual keys) to skip those providers entirely:
 
@@ -96,11 +99,6 @@ CacheAbstractModule.forRoot({
 ### `RedisCacheAdapterService`
 
 Supports both standalone and cluster Redis (including AWS ElastiCache). Constructor takes config only — extensions are handled at the module level.
-
-```ts
-const adapter = new RedisCacheAdapterService(config);
-// adapter.client exposes the underlying Redis | Cluster instance for the bundle
-```
 
 **Configuration:**
 
@@ -136,13 +134,13 @@ const adapter = new RedisCacheAdapterService({
 });
 ```
 
-The adapter performs a startup connection check and hard-stops the application (`process.exit(1)`) if Redis is unreachable within 5 seconds.
+The adapter performs a startup connection check during `onModuleInit` and hard-stops the application (`process.exit(1)`) if Redis is unreachable within 5 seconds.
 
 ---
 
 ## Extensions
 
-Extensions expose provider-specific operations as independently injectable NestJS services. Pass the implementation class to `forRootAsync` to enable it; the abstract module wires `CACHE_ADAPTER_CLIENT` and creates the service via `useClass`.
+Extensions expose provider-specific operations as independently injectable NestJS services. Pass the implementation class to `forRootAsync` to enable it; the abstract module wires `CACHE_ADAPTER_CLIENT` and `CACHE_LOGGER` and creates the service via `useClass`.
 
 ### `CacheListExtension`
 
@@ -171,6 +169,45 @@ abstract class CacheKeysExtension {
 ```
 
 > **Note:** Avoid `keys(*)` on large keyspaces in production — prefer `SCAN`-based approaches. This extension is suitable for low-volume or development use.
+
+---
+
+## Error Handling
+
+All cache operations throw `CacheError` on failure, wrapping the underlying provider error so callers never depend on ioredis internals.
+
+```ts
+import { CacheError, CACHE_ERRORS } from 'src/cache/abstract/cache.error';
+
+try {
+  await this.cache.set('key', value);
+} catch (error) {
+  if (error instanceof CacheError) {
+    // error.code — one of the CACHE_ERRORS string constants
+    // error.message — human-readable description
+    // error.data — operation context (key, keys, pattern, etc.)
+  }
+}
+```
+
+Error codes follow the pattern `CACHE_<OPERATION>_FAILED`. Available codes:
+
+| Code | Operation |
+|------|-----------|
+| `CACHE_GET_FAILED` | `get` |
+| `CACHE_SET_FAILED` | `set` |
+| `CACHE_DEL_FAILED` | `del` |
+| `CACHE_CLEAR_FAILED` | `clear` |
+| `CACHE_LPUSH_FAILED` | `lpush` |
+| `CACHE_RPUSH_FAILED` | `rpush` |
+| `CACHE_LPOP_FAILED` | `lpop` |
+| `CACHE_RPOP_FAILED` | `rpop` |
+| `CACHE_LRANGE_FAILED` | `lrange` |
+| `CACHE_LLEN_FAILED` | `llen` |
+| `CACHE_LREM_FAILED` | `lrem` |
+| `CACHE_KEYS_FAILED` | `keys` |
+
+Startup connection failures are not thrown — the adapter calls `process.exit(1)` directly.
 
 ---
 
