@@ -4,7 +4,8 @@ const mockRedisService = { getOrThrow: jest.fn() };
 
 export class MockRedisCacheService extends CacheService {
   constructor() {
-    super(mockRedisService as any);
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    super(mockRedisService as any, {} as any);
   }
 
   public get = jest.fn();
