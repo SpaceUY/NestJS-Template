@@ -44,9 +44,7 @@ export class ConsoleAdapterService extends EmailService {
       },
     };
 
-    this.logger.log(
-      `${logMessage}\n${JSON.stringify(payload, null, 2)}`,
-    );
+    this.logger.log(`${logMessage}\n${JSON.stringify(payload, null, 2)}`);
 
     return {
       statusCode: 200,

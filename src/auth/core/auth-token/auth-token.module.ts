@@ -11,7 +11,7 @@ import { AuthTokenService } from './auth-token.service';
         secret: jwtConf.secret,
         signOptions: jwtConf.ignoreExpiration
           ? {}
-          : { expiresIn: jwtConf.expiresIn },
+          : { expiresIn: jwtConf.expiresIn as import('ms').StringValue },
       }),
       inject: [jwtConfig.KEY],
     }),

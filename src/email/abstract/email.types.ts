@@ -1,7 +1,7 @@
 import {
   SendRenderedEmailParams,
   RenderedEmailContent,
-} from "../abstract/email.interface";
+} from '../abstract/email.interface';
 
 /**
  * Type helper to create a type-safe email configuration.
@@ -20,7 +20,7 @@ export type EmailConfig<
  * Type helper to create a type-safe email sending params with rendered content.
  * @typeParam C - The email configuration type
  */
-export type TemplateSendParams = Omit<SendRenderedEmailParams, "content"> & {
+export type TemplateSendParams = Omit<SendRenderedEmailParams, 'content'> & {
   content: RenderedEmailContent;
 };
 

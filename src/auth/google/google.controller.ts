@@ -14,7 +14,6 @@ export class GoogleController {
 
   @Get('web')
   @UseGuards(AuthGuard('google'))
-  // eslint-disable-next-line @typescript-eslint/no-empty-function
   web(): void {}
 
   @Get('callback')
