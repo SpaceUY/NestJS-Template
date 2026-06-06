@@ -1,4 +1,4 @@
-import type { Logger } from "@nestjs/common";
+import type { Logger } from '@nestjs/common';
 
 export interface LoggerInput {
   message: string;
@@ -13,11 +13,6 @@ export interface StandardLogger {
   debug: (input: LoggerInput) => void;
 }
 
-/**
- * Function used to format the log message.
- * @param {LoggerInput} input - The logger input.
- * @returns {string} The formatted log message.
- */
 function formatLogMessage(input: LoggerInput): string {
   if (!input.data || Object.keys(input.data).length === 0) {
     return input.message;
@@ -25,11 +20,6 @@ function formatLogMessage(input: LoggerInput): string {
   return `${input.message} - ${JSON.stringify(input.data)}`;
 }
 
-/**
- * Function used to adapt the logger to the StandardLogger interface.
- * @param {Logger} logger - The logger to adapt.
- * @returns {StandardLogger} The adapted logger.
- */
 export function adaptLogger(logger: Logger): StandardLogger {
   return {
     // eslint-disable-next-line ts/no-explicit-any
