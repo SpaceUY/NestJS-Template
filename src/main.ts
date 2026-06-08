@@ -1,8 +1,7 @@
 import { ValidationPipe } from '@nestjs/common';
-import { ConfigType } from '@nestjs/config';
 import { NestFactory } from '@nestjs/core';
 import { AppModule } from './app.module';
-import baseConfig from './config/base.config';
+import { appScope, AppScopeConfig } from './app.scope';
 import { DocumentBuilder, SwaggerModule } from '@nestjs/swagger';
 
 async function bootstrap(): Promise<void> {
@@ -29,7 +28,7 @@ async function bootstrap(): Promise<void> {
   const document = SwaggerModule.createDocument(app, config);
   SwaggerModule.setup('api', app, document);
 
-  const baseConf: ConfigType<typeof baseConfig> = app.get(baseConfig.KEY);
-  await app.listen(baseConf.port);
+  const appConf = app.get<AppScopeConfig>(appScope.KEY);
+  await app.listen(appConf.port);
 }
 bootstrap();
