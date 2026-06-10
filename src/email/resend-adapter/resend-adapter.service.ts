@@ -7,21 +7,21 @@ import {
 } from '../abstract/email.interface';
 import { ResendAdapterConfig } from './resend-adapter-config.interface';
 import { CreateBatchResponse, CreateEmailResponse, Resend } from 'resend';
-import { EmailLogger } from '../abstract/email-logger.interface';
-import { createDefaultEmailLogger } from '../utils/email-logger.adapter';
+import { LoggerService } from '../../common/logger/abstract/logger.service';
+import { NestLoggerAdapter } from '../../common/logger/nest-adapter/nest-logger.adapter';
 import { executeHtmlEmailSend } from '../utils/execute-html-email-send';
 
 @Injectable()
 export class ResendAdapterService extends EmailService {
   private emailFrom: string;
   private resend: Resend;
-  private logger: EmailLogger;
+  private logger: LoggerService;
 
-  constructor(config: ResendAdapterConfig, logger?: EmailLogger) {
+  constructor(config: ResendAdapterConfig, logger?: LoggerService) {
     super();
     this.emailFrom = config.emailFrom;
     this.resend = new Resend(config.resendApiKey);
-    this.logger = logger || createDefaultEmailLogger();
+    this.logger = logger ?? new NestLoggerAdapter(ResendAdapterService.name);
   }
 
   private async sendHTML(
@@ -31,7 +31,7 @@ export class ResendAdapterService extends EmailService {
   ): Promise<CreateEmailResponse> {
     const from = options.from || this.emailFrom;
     const subject = options.subject || '';
-    this.logger.debug?.('Resend sending HTML', { to, from, subject });
+    this.logger.debug({ message: 'Resend sending HTML', data: { to, from, subject } });
     return this.resend.emails.send({
       from,
       to,
@@ -48,11 +48,7 @@ export class ResendAdapterService extends EmailService {
     const from = options.from || this.emailFrom;
     const subject = options.subject || '';
 
-    this.logger.debug?.('Resend sending batch HTML', {
-      toCount: to.length,
-      from,
-      subject,
-    });
+    this.logger.debug({ message: 'Resend sending batch HTML', data: { toCount: to.length, from, subject } });
     const response = await this.resend.batch.send(
       to.map((recipient) => ({
         from,
