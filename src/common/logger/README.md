@@ -39,15 +39,21 @@ interface LogInput {
 ```
 src/common/logger/
 ├── abstract/
-│   ├── logger-abstract.module.ts   ← forRoot / forRootAsync
-│   ├── logger.service.ts           ← abstract class (the DI token)
-│   └── logger.interfaces.ts        ← LogInput, LogTelemetryHook
+│   ├── logger-abstract.module.ts      ← forRoot / forRootAsync
+│   ├── logger.service.ts              ← abstract class (the DI token)
+│   └── logger.interfaces.ts           ← LogInput, LogTelemetryHook
 ├── nest-adapter/
-│   └── nest-logger.adapter.ts      ← wraps NestJS Logger (zero extra deps)
+│   └── nest-logger.adapter.ts         ← wraps NestJS Logger (zero extra deps)
 ├── pino-adapter/
-│   └── pino-logger.adapter.ts      ← wraps pino (peer dep: pino)
+│   ├── pino-logger.adapter.ts         ← wraps pino directly (peer dep: pino)
+│   └── configs/
+│       ├── json-logs.config.ts        ← structured JSON preset (production)
+│       └── pretty-logs.config.ts      ← colourised preset (local dev, needs pino-pretty)
 ├── winston-adapter/
-│   └── winston-logger.adapter.ts   ← wraps winston (peer dep: winston)
+│   └── winston-logger.adapter.ts      ← wraps winston directly (peer dep: winston)
+├── pino-http/                         ← nestjs-pino bootstrap presets (not part of the adapter model)
+│   ├── json-logs.config.ts
+│   └── pretty-logs.config.ts
 └── README.md
 ```
 
@@ -113,6 +119,31 @@ For example, to use Pino as the underlying engine via
 [`nestjs-pino`](https://github.com/iamolegga/nestjs-pino):
 
 ```ts
+// app.module.ts — add LoggerModule alongside LoggerAbstractModule
+import { LoggerModule } from 'nestjs-pino';
+import { prettyLogsConfig } from './common/logger/pino-http/pretty-logs.config';
+import { jsonLogsConfig } from './common/logger/pino-http/json-logs.config';
+
+const isLocal = process.env.NODE_ENV === 'local';
+
+@Module({
+  imports: [
+    LoggerModule.forRoot({
+      pinoHttp: isLocal
+        ? prettyLogsConfig('debug')
+        : jsonLogsConfig('info'),
+    }),
+    LoggerAbstractModule.forRoot({
+      adapter: NestLoggerAdapter,
+      isGlobal: true,
+    }),
+    // ...
+  ],
+})
+export class AppModule {}
+```
+
+```ts
 // main.ts
 import { NestFactory } from '@nestjs/core';
 import { Logger } from 'nestjs-pino';
@@ -128,6 +159,15 @@ bootstrap();
 
 `NestLoggerAdapter` (and every service injecting `LoggerService`) continues to
 work identically — the Pino engine is invisible to application code.
+
+Two pre-built `nestjs-pino` config presets live in `pino-http/`:
+
+- **`prettyLogsConfig(logLevel)`** — colourised, human-readable output for
+  local development. Requires `pino-pretty` (`pnpm add -D pino-pretty`).
+- **`jsonLogsConfig(logLevel)`** — structured JSON output for remote
+  environments, stripping `req`/`res` and normalising level labels.
+
+Both require `nestjs-pino` to be installed (`pnpm add nestjs-pino pino`).
 
 The other adapters (`PinoLoggerAdapter`, `WinstonLoggerAdapter`) exist for
 cases where you want to drive a logging library **directly**, bypassing
@@ -187,13 +227,43 @@ for projects that haven't chosen a logging library yet.
 
 ### `PinoLoggerAdapter`
 
-Wraps [pino](https://github.com/pinojs/pino). Emits structured JSON logs. Pino
-is a **peer dependency** — install it separately:
+Wraps [pino](https://github.com/pinojs/pino) directly — no NestJS logger
+pipeline involved. Use this when you want pino as a standalone logger, bypassing
+`nestjs-pino` entirely.
+
+Pino is a **peer dependency** — install it separately:
 
 ```
 pnpm add pino
 pnpm add -D @types/pino
 ```
+
+The constructor accepts an optional pino options object. Two presets are
+provided in `pino-adapter/configs/`:
+
+```ts
+import { PinoLoggerAdapter } from './pino-adapter/pino-logger.adapter';
+import { prettyLogsConfig } from './pino-adapter/configs/pretty-logs.config';
+import { jsonLogsConfig } from './pino-adapter/configs/json-logs.config';
+
+const isLocal = process.env.NODE_ENV === 'local';
+
+LoggerAbstractModule.forRoot({
+  adapter: ..., // can't use forRoot here — use forRootAsync
+})
+
+// With forRootAsync:
+LoggerAbstractModule.forRootAsync({
+  isGlobal: true,
+  useFactory: () =>
+    new PinoLoggerAdapter(
+      'App',
+      isLocal ? prettyLogsConfig('debug') : jsonLogsConfig('info'),
+    ),
+})
+```
+
+`pretty-logs.config.ts` requires `pino-pretty` (`pnpm add -D pino-pretty`).
 
 ### `WinstonLoggerAdapter`
 
