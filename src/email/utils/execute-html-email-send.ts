@@ -2,14 +2,14 @@ import {
   MailingResponse,
   RenderedEmailContent,
 } from '../abstract/email.interface';
-import { EmailLogger } from '../abstract/email-logger.interface';
+import { LoggerService } from '../../common/logger/abstract/logger.service';
 import { createEmailError, EmailErrorCode } from '../abstract/email-error';
 
 interface ExecuteHtmlEmailSendOptions<TProviderResponse> {
   content: RenderedEmailContent;
   invalidContentMessage: string;
   providerErrorMessage: string;
-  logger: EmailLogger;
+  logger: LoggerService;
   successLogMessage: string;
   successMeta?: (mailingResponse: MailingResponse) => Record<string, unknown>;
   failureLogMessage: string;
@@ -31,15 +31,15 @@ export async function executeHtmlEmailSend<TProviderResponse>(
   try {
     const providerResponse = await options.send(options.content.html);
     const mailingResponse = options.toMailingResponse(providerResponse);
-    options.logger.info?.(
-      options.successLogMessage,
-      options.successMeta?.(mailingResponse),
-    );
+    options.logger.log({
+      message: options.successLogMessage,
+      data: options.successMeta?.(mailingResponse),
+    });
     return mailingResponse;
   } catch (error) {
-    options.logger.error?.(options.failureLogMessage, {
-      ...options.failureMeta,
-      error: String(error),
+    options.logger.error({
+      message: options.failureLogMessage,
+      data: { ...options.failureMeta, error: String(error) },
     });
     throw createEmailError(
       options.providerErrorMessage,

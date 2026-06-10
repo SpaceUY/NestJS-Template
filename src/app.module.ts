@@ -21,8 +21,6 @@ import { ConsoleAdapterService } from './email/console-adapter/console-adapter.s
 import { AwsSesAdapterService } from './email/aws-ses-adapter/aws-ses-adapter.service';
 import { SendgridAdapterService } from './email/sendgrid-adapter/sendgrid-adapter.service';
 import { ResendAdapterService } from './email/resend-adapter/resend-adapter.service';
-import { createDefaultEmailLogger } from './email/utils/email-logger.adapter';
-
 @Module({
   imports: [
     ConfigModule,
@@ -40,27 +38,20 @@ import { createDefaultEmailLogger } from './email/utils/email-logger.adapter';
         email: ConfigType<typeof emailConfig>,
         aws: ConfigType<typeof awsConfig>,
       ) => {
-        const logger = createDefaultEmailLogger();
         const configuredAdapter = email.adapter?.toUpperCase();
 
         if (configuredAdapter === EMAIL_ADAPTERS.SENDGRID) {
-          return new SendgridAdapterService(
-            {
-              sendgridApiKey: email.sendgrid.apiKey,
-              emailFrom: email.from,
-            },
-            logger,
-          );
+          return new SendgridAdapterService({
+            sendgridApiKey: email.sendgrid.apiKey,
+            emailFrom: email.from,
+          });
         }
 
         if (configuredAdapter === EMAIL_ADAPTERS.RESEND) {
-          return new ResendAdapterService(
-            {
-              resendApiKey: email.resend.apiKey,
-              emailFrom: email.resend.emailFrom || email.from,
-            },
-            logger,
-          );
+          return new ResendAdapterService({
+            resendApiKey: email.resend.apiKey,
+            emailFrom: email.resend.emailFrom || email.from,
+          });
         }
 
         if (configuredAdapter === EMAIL_ADAPTERS.AWS_SES) {
