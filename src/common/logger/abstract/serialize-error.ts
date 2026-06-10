@@ -21,8 +21,8 @@ export function serializeError(
     return {
       name: error.name,
       message: error.message,
-      ...(error.stack ? { stack: error.stack } : {}),
-      ...(cause !== undefined ? { cause: serializeError(cause) } : {}),
+      ...(error.stack && { stack: error.stack }),
+      ...(cause !== undefined && { cause: serializeError(cause) }),
     };
   }
 
