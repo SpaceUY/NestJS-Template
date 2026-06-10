@@ -31,7 +31,7 @@ export function serializeError(
   }
 
   try {
-    return JSON.parse(JSON.stringify(error)) as Record<string, unknown>;
+    return structuredClone(error) as Record<string, unknown>;
   } catch {
     return Object.prototype.toString.call(error);
   }
