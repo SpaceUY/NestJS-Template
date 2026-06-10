@@ -40,9 +40,9 @@ export class NestLoggerAdapter extends LoggerService {
 
   private _format(input: LogInput): string {
     const data =
-      input.error !== undefined
-        ? { ...input.data, error: this._serializeError(input.error) }
-        : input.data;
+      input.error === undefined
+        ? input.data
+        : { ...input.data, error: this._serializeError(input.error) };
 
     if (!data || Object.keys(data).length === 0) {
       return input.message;
