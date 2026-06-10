@@ -1,6 +1,7 @@
 import pino, { Logger } from 'pino';
 import { LoggerService } from '../abstract/logger.service';
 import { LogInput } from '../abstract/logger.interfaces';
+import { serializeError } from '../abstract/serialize-error';
 
 /**
  * Pino adapter. Requires `pino` to be installed:
@@ -49,8 +50,12 @@ export class PinoLoggerAdapter extends LoggerService {
       ...input.data,
     };
     if (input.error !== undefined) {
+      // Pass real Errors through untouched so pino's built-in `err` serializer
+      // captures the stack, type and cause; serialize anything else safely.
       payload.error =
-        input.error instanceof Error ? input.error : String(input.error);
+        input.error instanceof Error
+          ? input.error
+          : serializeError(input.error);
     }
     return payload;
   }

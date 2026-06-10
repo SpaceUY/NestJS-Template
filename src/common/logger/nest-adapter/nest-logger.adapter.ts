@@ -1,6 +1,7 @@
 import { Logger } from '@nestjs/common';
 import { LoggerService } from '../abstract/logger.service';
 import { LogInput } from '../abstract/logger.interfaces';
+import { serializeErrorToString } from '../abstract/serialize-error';
 
 export class NestLoggerAdapter extends LoggerService {
   private readonly logger: Logger;
@@ -50,6 +51,11 @@ export class NestLoggerAdapter extends LoggerService {
   }
 
   private _serializeError(error: unknown): string {
-    return error instanceof Error ? error.message : String(error);
+    // The full stack is already passed as the dedicated `stack` argument to
+    // `logger.error`, so the message body keeps just the error message to avoid
+    // duplicating it. Non-Error values are serialized safely.
+    return error instanceof Error
+      ? error.message
+      : serializeErrorToString(error);
   }
 }
