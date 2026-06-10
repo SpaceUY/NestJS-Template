@@ -30,7 +30,7 @@ export class JwtStrategy extends PassportStrategy(Strategy) {
       return null;
     }
 
-    const user = await this.userRepository.findOne({ where: { id: userId } });
+    const user = await this.userRepository.findOne({ where: { uuid: userId } });
 
     if (!user) {
       throw new RequestException(Exceptions.auth.invalidCredentials);

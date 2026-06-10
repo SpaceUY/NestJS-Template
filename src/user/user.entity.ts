@@ -3,6 +3,7 @@ import {
   CreateDateColumn,
   DeleteDateColumn,
   Entity,
+  Generated,
   OneToOne,
   PrimaryGeneratedColumn,
   UpdateDateColumn,
@@ -12,8 +13,12 @@ import { Spaceship } from '../spaceship/spaceship.entity';
 
 @Entity()
 export class User {
-  @PrimaryGeneratedColumn('uuid')
-  id: string;
+  @PrimaryGeneratedColumn()
+  id: number;
+
+  @Column({ unique: true })
+  @Generated('uuid')
+  uuid: string;
 
   @CreateDateColumn()
   createdAt: Date;

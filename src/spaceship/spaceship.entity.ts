@@ -35,5 +35,5 @@ export class Spaceship {
   captain: User;
 
   @Column({ name: 'captainId', unique: true })
-  captainId: string;
+  captainId: number;
 }

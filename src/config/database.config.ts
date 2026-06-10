@@ -10,6 +10,8 @@ export default registerWithValidation(
     username: process.env.DB_USER,
     password: process.env.DB_PASS,
     database: process.env.DB_NAME,
+    synchronize: process.env.DB_SYNCHRONIZE === 'true',
+    logging: process.env.DB_LOGGING !== 'false',
   }),
   {
     DATABASE_URL: Joi.string().optional(),
@@ -18,5 +20,7 @@ export default registerWithValidation(
     DB_USER: Joi.string().optional(),
     DB_PASS: Joi.string().optional(),
     DB_NAME: Joi.string().optional(),
+    DB_SYNCHRONIZE: Joi.boolean().optional(),
+    DB_LOGGING: Joi.boolean().optional(),
   },
 );

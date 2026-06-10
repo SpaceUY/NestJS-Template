@@ -15,7 +15,7 @@ export class AuthTokenService {
 
   generateAuthToken(user: User, authType: AuthType): Promise<string> {
     return this.jwtService.signAsync({
-      userId: user.id,
+      userId: user.uuid,
       authType,
       type: 'auth',
     } as AuthTokenPayload);

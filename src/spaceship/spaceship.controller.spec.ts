@@ -28,17 +28,17 @@ describe('SpaceshipController', () => {
     jest.clearAllMocks();
   });
 
-  const mockUser = { id: 'user-1', name: 'Captain', email: 'captain@space.com' } as User;
+  const mockUser = { id: 1, name: 'Captain', email: 'captain@space.com' } as unknown as User;
 
   describe('createSpaceship', () => {
     it('delegates to service with the current user id', async () => {
       const dto = { name: 'Falcon', fleet: 'Alpha' };
-      const expected = { id: 'ship-1', ...dto, captainId: 'user-1' };
+      const expected = { id: 'ship-1', ...dto, captainId: 1 };
       mockService.createSpaceship.mockResolvedValue(expected);
 
       const result = await controller.createSpaceship(dto, mockUser);
 
-      expect(mockService.createSpaceship).toHaveBeenCalledWith(dto, 'user-1');
+      expect(mockService.createSpaceship).toHaveBeenCalledWith(dto, 1);
       expect(result).toEqual(expected);
     });
   });

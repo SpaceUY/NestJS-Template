@@ -1,23 +1,21 @@
-import { Module } from '@nestjs/common';
+import { Global, Module } from '@nestjs/common';
 import { ConfigType } from '@nestjs/config';
 import { TypeOrmModule } from '@nestjs/typeorm';
-import baseConfig from '../config/base.config';
+import { User } from '../user/user.entity';
+import { Spaceship } from '../spaceship/spaceship.entity';
 import databaseConfig from '../config/database.config';
 
+@Global()
 @Module({
   imports: [
     TypeOrmModule.forRootAsync({
-      inject: [databaseConfig.KEY, baseConfig.KEY],
-      useFactory: (
-        db: ConfigType<typeof databaseConfig>,
-        base: ConfigType<typeof baseConfig>,
-      ) => {
-        const isProd = base.nodeEnv === 'PROD';
+      inject: [databaseConfig.KEY],
+      useFactory: (db: ConfigType<typeof databaseConfig>) => {
         const baseOptions = {
           type: 'postgres' as const,
           autoLoadEntities: true,
-          synchronize: !isProd,
-          logging: !isProd,
+          synchronize: db.synchronize,
+          logging: db.logging,
         };
 
         if (db.url) {
@@ -40,7 +38,8 @@ import databaseConfig from '../config/database.config';
         );
       },
     }),
+    TypeOrmModule.forFeature([User, Spaceship]),
   ],
+  exports: [TypeOrmModule],
 })
-
 export class DatabaseModule {}

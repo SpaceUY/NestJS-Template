@@ -14,7 +14,7 @@ export class SpaceshipService {
 
   async createSpaceship(
     data: CreateSpaceshipDto,
-    userId: string,
+    userId: number,
   ): Promise<Spaceship> {
     const spaceship = this.spaceshipRepository.create({
       ...data,

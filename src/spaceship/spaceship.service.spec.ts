@@ -35,7 +35,7 @@ describe('SpaceshipService', () => {
   describe('createSpaceship', () => {
     it('creates and saves a spaceship with captainId', async () => {
       const dto = { name: 'Falcon', fleet: 'Alpha' };
-      const userId = 'user-1';
+      const userId = 1;
       const entity = { ...dto, captainId: userId };
       const saved = { id: 'ship-1', ...entity };
 
@@ -100,7 +100,7 @@ describe('SpaceshipService', () => {
 
   describe('deleteSpaceship', () => {
     it('soft-deletes the spaceship and returns it with deletedAt set', async () => {
-      const ship = { id: 'ship-1', name: 'Falcon', fleet: 'Alpha', captainId: 'user-1' };
+      const ship = { id: 'ship-1', name: 'Falcon', fleet: 'Alpha', captainId: 1 };
       const softDeleted = { ...ship, deletedAt: new Date() };
 
       mockRepo.findOneOrFail.mockResolvedValue(ship);
