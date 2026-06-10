@@ -1,3 +1,5 @@
+import pino from 'pino';
+
 /**
  * Raw pino options for human-readable colourised output. Intended for local
  * development. Requires `pino-pretty` to be installed:
@@ -6,7 +8,7 @@
  * Usage:
  *   new PinoLoggerAdapter('App', prettyLogsConfig('debug'))
  */
-export function prettyLogsConfig(logLevel: string) {
+export function prettyLogsConfig(logLevel: string): pino.LoggerOptions {
   return {
     level: logLevel,
     messageKey: 'message',

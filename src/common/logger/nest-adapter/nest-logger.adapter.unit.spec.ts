@@ -18,6 +18,7 @@ describe('NestLoggerAdapter', () => {
   beforeEach(() => {
     jest.clearAllMocks();
     adapter = new NestLoggerAdapter('TestContext');
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
     mockLogger = (adapter as any).logger;
   });
 
@@ -89,6 +90,7 @@ describe('NestLoggerAdapter', () => {
   describe('setContext', () => {
     it('should update the underlying logger context', () => {
       adapter.setContext('NewContext');
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any
       expect((adapter as any).logger.context).toBe('NewContext');
     });
   });

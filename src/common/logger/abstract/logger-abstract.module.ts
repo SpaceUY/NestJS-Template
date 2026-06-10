@@ -17,6 +17,7 @@ interface LoggerModuleOptions {
 interface LoggerModuleAsyncOptions {
   imports?: ModuleMetadata['imports'];
   inject?: InjectionToken[];
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
   useFactory: (...args: any[]) => Promise<LoggerService> | LoggerService;
   isGlobal?: boolean;
   telemetryHook?: LogTelemetryHook;
@@ -54,6 +55,7 @@ export class LoggerAbstractModule {
       providers: [
         {
           provide: LoggerService,
+          // eslint-disable-next-line @typescript-eslint/no-explicit-any
           useFactory: async (...args: any[]) => {
             const instance = await options.useFactory(...args);
             if (telemetryHook) instance.withTelemetry(telemetryHook);

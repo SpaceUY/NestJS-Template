@@ -177,11 +177,15 @@ NestJS's logger pipeline entirely.
 
 ## Consuming `LoggerService`
 
-Inject `LoggerService` anywhere in your application:
+### Standard injection
+
+Declare `LoggerService` as a constructor dependency. NestJS resolves the
+concrete adapter that was registered at module bootstrap — the consumer never
+references a specific adapter class.
 
 ```ts
 import { Injectable } from '@nestjs/common';
-import { LoggerService } from '@/common/logger/abstract/logger.service';
+import { LoggerService } from './common/logger/abstract/logger.service';
 
 @Injectable()
 export class SomeService {
@@ -194,6 +198,71 @@ export class SomeService {
   }
 }
 ```
+
+For this to resolve, `LoggerService` must be visible to `SomeService`'s module.
+There are two ways to achieve this:
+
+**Option A — register as global (recommended for application-wide logging)**
+
+```ts
+// app.module.ts
+LoggerAbstractModule.forRoot({ adapter: NestLoggerAdapter, isGlobal: true })
+```
+
+With `isGlobal: true`, every module in the application can inject `LoggerService`
+without any additional imports. This is the recommended setup for most projects.
+
+**Option B — import per module (for tighter scoping)**
+
+```ts
+// some-feature.module.ts
+@Module({
+  imports: [
+    LoggerAbstractModule.forRoot({ adapter: NestLoggerAdapter }),
+  ],
+  providers: [SomeService],
+})
+export class SomeFeatureModule {}
+```
+
+Each module that needs `LoggerService` must import the module explicitly. Useful
+when different parts of the application should use different adapters.
+
+### Self-defaulting services (library / reusable modules)
+
+Services that ship as part of a reusable module (e.g. email adapters) accept an
+optional `LoggerService` in their constructor and fall back to a sensible default
+when none is provided. This makes the module usable without requiring the caller
+to register `LoggerAbstractModule` at all.
+
+```ts
+@Injectable()
+export class ResendAdapterService extends EmailService {
+  private logger: LoggerService;
+
+  constructor(config: ResendAdapterConfig, logger?: LoggerService) {
+    super();
+    this.logger = logger ?? new NestLoggerAdapter(ResendAdapterService.name);
+  }
+}
+```
+
+If the application has registered `LoggerAbstractModule` globally, it can pass
+the injected instance through `forRootAsync`:
+
+```ts
+// app.module.ts
+EmailAbstractModule.forRootAsync({
+  inject: [LoggerService],
+  useFactory: (logger: LoggerService) =>
+    new ResendAdapterService({ resendApiKey: '...', emailFrom: '...' }, logger),
+})
+```
+
+This propagates the application's chosen adapter (and any telemetry hook wired
+to it) into the email layer. When the logger argument is omitted, the service
+silently falls back to `NestLoggerAdapter` — so the module remains functional
+even in isolation (e.g. during testing).
 
 ---
 

@@ -21,7 +21,13 @@ jest.mock('winston', () => ({
 
 const mockedCreateLogger = jest.mocked(winston.createLogger);
 
-function getInternalLogger(adapter: WinstonLoggerAdapter) {
+function getInternalLogger(adapter: WinstonLoggerAdapter): jest.Mocked<{
+  info: jest.Mock;
+  warn: jest.Mock;
+  error: jest.Mock;
+  debug: jest.Mock;
+}> {
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
   return (adapter as any).winston as jest.Mocked<{
     info: jest.Mock;
     warn: jest.Mock;
