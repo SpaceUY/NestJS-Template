@@ -1,24 +1,23 @@
+import winston, { Logger } from 'winston';
 import { LoggerService } from '../abstract/logger.service';
 import { LogInput } from '../abstract/logger.interfaces';
 
 /**
  * Winston adapter. Requires `winston` to be installed:
  *   pnpm add winston
+ *   pnpm add -D @types/winston
  */
 export class WinstonLoggerAdapter extends LoggerService {
-  // eslint-disable-next-line @typescript-eslint/no-explicit-any
-  private winston: any;
+  private readonly winston: Logger;
   private context: string;
 
-  constructor(context = 'App') {
+  constructor(context = 'App', options: winston.LoggerOptions = {}) {
     super();
     this.context = context;
-    // Dynamic require keeps winston an optional peer dependency.
-    // eslint-disable-next-line @typescript-eslint/no-require-imports
-    const w = require('winston');
-    this.winston = w.createLogger({
-      transports: [new w.transports.Console()],
-      format: w.format.combine(w.format.timestamp(), w.format.json()),
+    this.winston = winston.createLogger({
+      transports: [new winston.transports.Console()],
+      format: winston.format.combine(winston.format.timestamp(), winston.format.json()),
+      ...options,
     });
   }
 
@@ -27,38 +26,22 @@ export class WinstonLoggerAdapter extends LoggerService {
   }
 
   log(input: LogInput): void {
-    this.winston.info({
-      context: this.context,
-      ...input.data,
-      message: input.message,
-    });
+    this.winston.info({ context: this.context, ...input.data, message: input.message });
     this.telemetryHook?.('log', input, this.context);
   }
 
   warn(input: LogInput): void {
-    this.winston.warn({
-      context: this.context,
-      ...input.data,
-      message: input.message,
-    });
+    this.winston.warn({ context: this.context, ...input.data, message: input.message });
     this.telemetryHook?.('warn', input, this.context);
   }
 
   error(input: LogInput): void {
-    this.winston.error({
-      context: this.context,
-      ...input.data,
-      message: input.message,
-    });
+    this.winston.error({ context: this.context, ...input.data, message: input.message });
     this.telemetryHook?.('error', input, this.context);
   }
 
   debug(input: LogInput): void {
-    this.winston.debug({
-      context: this.context,
-      ...input.data,
-      message: input.message,
-    });
+    this.winston.debug({ context: this.context, ...input.data, message: input.message });
     this.telemetryHook?.('debug', input, this.context);
   }
 }

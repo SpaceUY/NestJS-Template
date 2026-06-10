@@ -1,3 +1,4 @@
+import pino, { Logger } from 'pino';
 import { LoggerService } from '../abstract/logger.service';
 import { LogInput } from '../abstract/logger.interfaces';
 
@@ -5,18 +6,18 @@ import { LogInput } from '../abstract/logger.interfaces';
  * Pino adapter. Requires `pino` to be installed:
  *   pnpm add pino
  *   pnpm add -D @types/pino
+ *
+ * Pass a pino options object (e.g. from configs/) as the second argument to
+ * control output format, level, transports, etc.
  */
 export class PinoLoggerAdapter extends LoggerService {
-  // eslint-disable-next-line @typescript-eslint/no-explicit-any
-  private pino: any;
+  private readonly pino: Logger;
   private context: string;
 
-  constructor(context = 'App') {
+  constructor(context = 'App', options: pino.LoggerOptions = {}) {
     super();
     this.context = context;
-    // Dynamic require keeps pino an optional peer dependency.
-    // eslint-disable-next-line @typescript-eslint/no-require-imports
-    this.pino = require('pino')();
+    this.pino = pino(options);
   }
 
   setContext(context: string): void {
