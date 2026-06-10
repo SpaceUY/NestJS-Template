@@ -21,8 +21,9 @@ import { ConsoleAdapterService } from './email/console-adapter/console-adapter.s
 import { AwsSesAdapterService } from './email/aws-ses-adapter/aws-ses-adapter.service';
 import { SendgridAdapterService } from './email/sendgrid-adapter/sendgrid-adapter.service';
 import { ResendAdapterService } from './email/resend-adapter/resend-adapter.service';
-import { createDefaultEmailLogger } from './email/utils/email-logger.adapter';
-
+import { LoggerAbstractModule } from './common/logger/abstract/logger-abstract.module';
+import { LoggerService } from './common/logger/abstract/logger.service';
+import { NestLoggerAdapter } from './common/logger/nest-adapter/nest-logger.adapter';
 @Module({
   imports: [
     ConfigModule,
@@ -30,17 +31,21 @@ import { createDefaultEmailLogger } from './email/utils/email-logger.adapter';
     MiddlewareModule,
     SpaceshipModule,
     PrismaModule,
+    LoggerAbstractModule.forRoot({
+      adapter: NestLoggerAdapter,
+      isGlobal: true,
+    }),
     TemplateModule.forRoot({
       adapter: PugAdapterModule.register({}),
       isGlobal: true,
     }),
     EmailAbstractModule.forRootAsync({
-      inject: [emailConfig.KEY, awsConfig.KEY],
+      inject: [emailConfig.KEY, awsConfig.KEY, LoggerService],
       useFactory: (
         email: ConfigType<typeof emailConfig>,
         aws: ConfigType<typeof awsConfig>,
+        logger: LoggerService,
       ) => {
-        const logger = createDefaultEmailLogger();
         const configuredAdapter = email.adapter?.toUpperCase();
 
         if (configuredAdapter === EMAIL_ADAPTERS.SENDGRID) {

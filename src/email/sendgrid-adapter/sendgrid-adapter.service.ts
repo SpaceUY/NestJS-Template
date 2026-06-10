@@ -8,19 +8,19 @@ import {
 import { SendgridAdapterConfig } from './sendgrid-adapter-config.interface';
 import * as sgMail from '@sendgrid/mail';
 import { ClientResponse } from '@sendgrid/mail';
-import { EmailLogger } from '../abstract/email-logger.interface';
-import { createDefaultEmailLogger } from '../utils/email-logger.adapter';
+import { LoggerService } from '../../common/logger/abstract/logger.service';
+import { NestLoggerAdapter } from '../../common/logger/nest-adapter/nest-logger.adapter';
 import { executeHtmlEmailSend } from '../utils/execute-html-email-send';
 
 @Injectable()
 export class SendgridAdapterService extends EmailService {
   private emailFrom: string;
-  private logger: EmailLogger;
+  private logger: LoggerService;
 
-  constructor(config: SendgridAdapterConfig, logger?: EmailLogger) {
+  constructor(config: SendgridAdapterConfig, logger?: LoggerService) {
     super();
     this.emailFrom = config.emailFrom;
-    this.logger = logger || createDefaultEmailLogger();
+    this.logger = logger ?? new NestLoggerAdapter(SendgridAdapterService.name);
     sgMail.setApiKey(config.sendgridApiKey);
   }
 
@@ -31,11 +31,7 @@ export class SendgridAdapterService extends EmailService {
   ): Promise<ClientResponse> {
     options.from = options.from || this.emailFrom;
     options.subject = options.subject || '';
-    this.logger?.debug?.('SendGrid sending HTML', {
-      to,
-      from: options.from,
-      subject: options.subject,
-    });
+    this.logger.debug({ message: 'SendGrid sending HTML', data: { to, from: options.from, subject: options.subject } });
     return sgMail
       .send({
         to,
@@ -53,11 +49,7 @@ export class SendgridAdapterService extends EmailService {
   ): Promise<ClientResponse> {
     options.from = options.from || this.emailFrom;
     options.subject = options.subject || '';
-    this.logger?.debug?.('SendGrid sending multiple HTML', {
-      toCount: to.length,
-      from: options.from,
-      subject: options.subject,
-    });
+    this.logger.debug({ message: 'SendGrid sending multiple HTML', data: { toCount: to.length, from: options.from, subject: options.subject } });
     return sgMail
       .sendMultiple({
         to,
