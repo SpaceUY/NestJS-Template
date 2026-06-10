@@ -25,7 +25,8 @@ describe('PinoLoggerAdapter', () => {
 
   it('should construct a pino instance with the provided options', () => {
     const opts = { level: 'debug' };
-    new PinoLoggerAdapter('App', opts);
+    const adapter = new PinoLoggerAdapter('App', opts);
+    expect(adapter).toBeInstanceOf(PinoLoggerAdapter);
     expect(mockedPinoFactory).toHaveBeenCalledWith(opts);
   });
 

@@ -1,6 +1,7 @@
 import winston, { Logger } from 'winston';
 import { LoggerService } from '../abstract/logger.service';
 import { LogInput } from '../abstract/logger.interfaces';
+import { serializeError } from '../abstract/serialize-error';
 
 /**
  * Winston adapter. Requires `winston` to be installed:
@@ -54,10 +55,7 @@ export class WinstonLoggerAdapter extends LoggerService {
       message: input.message,
     };
     if (input.error !== undefined) {
-      payload.error =
-        input.error instanceof Error
-          ? (input.error.stack ?? input.error.message)
-          : String(input.error);
+      payload.error = serializeError(input.error);
     }
     return payload;
   }

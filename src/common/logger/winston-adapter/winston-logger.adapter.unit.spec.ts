@@ -54,7 +54,8 @@ describe('WinstonLoggerAdapter', () => {
 
   it('should spread caller options over the defaults', () => {
     const opts: winston.LoggerOptions = { level: 'debug' };
-    new WinstonLoggerAdapter('App', opts);
+    const adapter = new WinstonLoggerAdapter('App', opts);
+    expect(adapter).toBeInstanceOf(WinstonLoggerAdapter);
     expect(mockedCreateLogger).toHaveBeenCalledWith(
       expect.objectContaining({ level: 'debug' }),
     );
