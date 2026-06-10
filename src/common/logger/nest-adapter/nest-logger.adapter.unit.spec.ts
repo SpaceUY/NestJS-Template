@@ -23,14 +23,17 @@ describe('NestLoggerAdapter', () => {
   });
 
   describe('log', () => {
-    it('should call logger.log with the message when data is empty', () => {
+    it('should call logger.log with the message and context when data is empty', () => {
       adapter.log({ message: 'hello' });
-      expect(mockLogger.log).toHaveBeenCalledWith('hello');
+      expect(mockLogger.log).toHaveBeenCalledWith('hello', 'TestContext');
     });
 
-    it('should call logger.log with message and serialized data', () => {
+    it('should call logger.log with message, serialized data and context', () => {
       adapter.log({ message: 'hello', data: { key: 'value' } });
-      expect(mockLogger.log).toHaveBeenCalledWith('hello - {"key":"value"}');
+      expect(mockLogger.log).toHaveBeenCalledWith(
+        'hello - {"key":"value"}',
+        'TestContext',
+      );
     });
 
     it('should fire the telemetry hook with level "log"', () => {
@@ -43,9 +46,9 @@ describe('NestLoggerAdapter', () => {
   });
 
   describe('warn', () => {
-    it('should call logger.warn', () => {
+    it('should call logger.warn with context', () => {
       adapter.warn({ message: 'careful' });
-      expect(mockLogger.warn).toHaveBeenCalledWith('careful');
+      expect(mockLogger.warn).toHaveBeenCalledWith('careful', 'TestContext');
     });
 
     it('should fire the telemetry hook with level "warn"', () => {
@@ -58,9 +61,23 @@ describe('NestLoggerAdapter', () => {
   });
 
   describe('error', () => {
-    it('should call logger.error', () => {
+    it('should call logger.error with undefined stack and context', () => {
       adapter.error({ message: 'boom' });
-      expect(mockLogger.error).toHaveBeenCalledWith('boom');
+      expect(mockLogger.error).toHaveBeenCalledWith(
+        'boom',
+        undefined,
+        'TestContext',
+      );
+    });
+
+    it('should pass the error stack and serialize the error message into data', () => {
+      const err = new Error('kaboom');
+      adapter.error({ message: 'boom', error: err });
+      expect(mockLogger.error).toHaveBeenCalledWith(
+        'boom - {"error":"kaboom"}',
+        err.stack,
+        'TestContext',
+      );
     });
 
     it('should fire the telemetry hook with level "error"', () => {
@@ -73,9 +90,9 @@ describe('NestLoggerAdapter', () => {
   });
 
   describe('debug', () => {
-    it('should call logger.debug', () => {
+    it('should call logger.debug with context', () => {
       adapter.debug({ message: 'verbose' });
-      expect(mockLogger.debug).toHaveBeenCalledWith('verbose');
+      expect(mockLogger.debug).toHaveBeenCalledWith('verbose', 'TestContext');
     });
 
     it('should fire the telemetry hook with level "debug"', () => {
@@ -88,10 +105,10 @@ describe('NestLoggerAdapter', () => {
   });
 
   describe('setContext', () => {
-    it('should update the underlying logger context', () => {
+    it('should affect the context passed to subsequent calls', () => {
       adapter.setContext('NewContext');
-      // eslint-disable-next-line @typescript-eslint/no-explicit-any
-      expect((adapter as any).logger.context).toBe('NewContext');
+      adapter.log({ message: 'after set' });
+      expect(mockLogger.log).toHaveBeenCalledWith('after set', 'NewContext');
     });
   });
 

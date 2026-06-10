@@ -5,7 +5,6 @@ import { LogInput } from '../abstract/logger.interfaces';
 /**
  * Pino adapter. Requires `pino` to be installed:
  *   pnpm add pino
- *   pnpm add -D @types/pino
  *
  * Pass a pino options object (e.g. from configs/) as the second argument to
  * control output format, level, transports, etc.
@@ -25,22 +24,34 @@ export class PinoLoggerAdapter extends LoggerService {
   }
 
   log(input: LogInput): void {
-    this.pino.info({ context: this.context, ...input.data }, input.message);
-    this.telemetryHook?.('log', input, this.context);
+    this.pino.info(this._payload(input), input.message);
+    this.emitTelemetry('log', input, this.context);
   }
 
   warn(input: LogInput): void {
-    this.pino.warn({ context: this.context, ...input.data }, input.message);
-    this.telemetryHook?.('warn', input, this.context);
+    this.pino.warn(this._payload(input), input.message);
+    this.emitTelemetry('warn', input, this.context);
   }
 
   error(input: LogInput): void {
-    this.pino.error({ context: this.context, ...input.data }, input.message);
-    this.telemetryHook?.('error', input, this.context);
+    this.pino.error(this._payload(input), input.message);
+    this.emitTelemetry('error', input, this.context);
   }
 
   debug(input: LogInput): void {
-    this.pino.debug({ context: this.context, ...input.data }, input.message);
-    this.telemetryHook?.('debug', input, this.context);
+    this.pino.debug(this._payload(input), input.message);
+    this.emitTelemetry('debug', input, this.context);
+  }
+
+  private _payload(input: LogInput): Record<string, unknown> {
+    const payload: Record<string, unknown> = {
+      context: this.context,
+      ...input.data,
+    };
+    if (input.error !== undefined) {
+      payload.error =
+        input.error instanceof Error ? input.error : String(input.error);
+    }
+    return payload;
   }
 }

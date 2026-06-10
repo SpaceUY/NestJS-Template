@@ -5,7 +5,6 @@ import { LogInput } from '../abstract/logger.interfaces';
 /**
  * Winston adapter. Requires `winston` to be installed:
  *   pnpm add winston
- *   pnpm add -D @types/winston
  */
 export class WinstonLoggerAdapter extends LoggerService {
   private readonly winston: Logger;
@@ -29,38 +28,37 @@ export class WinstonLoggerAdapter extends LoggerService {
   }
 
   log(input: LogInput): void {
-    this.winston.info({
-      context: this.context,
-      ...input.data,
-      message: input.message,
-    });
-    this.telemetryHook?.('log', input, this.context);
+    this.winston.info(this._payload(input));
+    this.emitTelemetry('log', input, this.context);
   }
 
   warn(input: LogInput): void {
-    this.winston.warn({
-      context: this.context,
-      ...input.data,
-      message: input.message,
-    });
-    this.telemetryHook?.('warn', input, this.context);
+    this.winston.warn(this._payload(input));
+    this.emitTelemetry('warn', input, this.context);
   }
 
   error(input: LogInput): void {
-    this.winston.error({
-      context: this.context,
-      ...input.data,
-      message: input.message,
-    });
-    this.telemetryHook?.('error', input, this.context);
+    this.winston.error(this._payload(input));
+    this.emitTelemetry('error', input, this.context);
   }
 
   debug(input: LogInput): void {
-    this.winston.debug({
+    this.winston.debug(this._payload(input));
+    this.emitTelemetry('debug', input, this.context);
+  }
+
+  private _payload(input: LogInput): Record<string, unknown> {
+    const payload: Record<string, unknown> = {
       context: this.context,
       ...input.data,
       message: input.message,
-    });
-    this.telemetryHook?.('debug', input, this.context);
+    };
+    if (input.error !== undefined) {
+      payload.error =
+        input.error instanceof Error
+          ? (input.error.stack ?? input.error.message)
+          : String(input.error);
+    }
+    return payload;
   }
 }

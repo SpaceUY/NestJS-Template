@@ -51,9 +51,6 @@ src/common/logger/
 │       └── pretty-logs.config.ts      ← colourised preset (local dev, needs pino-pretty)
 ├── winston-adapter/
 │   └── winston-logger.adapter.ts      ← wraps winston directly (peer dep: winston)
-├── pino-http/                         ← nestjs-pino bootstrap presets (not part of the adapter model)
-│   ├── json-logs.config.ts
-│   └── pretty-logs.config.ts
 └── README.md
 ```
 
@@ -121,17 +118,16 @@ For example, to use Pino as the underlying engine via
 ```ts
 // app.module.ts — add LoggerModule alongside LoggerAbstractModule
 import { LoggerModule } from 'nestjs-pino';
-import { prettyLogsConfig } from './common/logger/pino-http/pretty-logs.config';
-import { jsonLogsConfig } from './common/logger/pino-http/json-logs.config';
 
 const isLocal = process.env.NODE_ENV === 'local';
 
 @Module({
   imports: [
     LoggerModule.forRoot({
-      pinoHttp: isLocal
-        ? prettyLogsConfig('debug')
-        : jsonLogsConfig('info'),
+      pinoHttp: {
+        level: isLocal ? 'debug' : 'info',
+        transport: isLocal ? { target: 'pino-pretty' } : undefined,
+      },
     }),
     LoggerAbstractModule.forRoot({
       adapter: NestLoggerAdapter,
@@ -160,14 +156,8 @@ bootstrap();
 `NestLoggerAdapter` (and every service injecting `LoggerService`) continues to
 work identically — the Pino engine is invisible to application code.
 
-Two pre-built `nestjs-pino` config presets live in `pino-http/`:
-
-- **`prettyLogsConfig(logLevel)`** — colourised, human-readable output for
-  local development. Requires `pino-pretty` (`pnpm add -D pino-pretty`).
-- **`jsonLogsConfig(logLevel)`** — structured JSON output for remote
-  environments, stripping `req`/`res` and normalising level labels.
-
-Both require `nestjs-pino` to be installed (`pnpm add nestjs-pino pino`).
+This recipe requires `nestjs-pino` (`pnpm add nestjs-pino pino`), and
+`pino-pretty` (`pnpm add -D pino-pretty`) for the local pretty transport.
 
 The other adapters (`PinoLoggerAdapter`, `WinstonLoggerAdapter`) exist for
 cases where you want to drive a logging library **directly**, bypassing
@@ -304,7 +294,6 @@ Pino is a **peer dependency** — install it separately:
 
 ```
 pnpm add pino
-pnpm add -D @types/pino
 ```
 
 The constructor accepts an optional pino options object. Two presets are

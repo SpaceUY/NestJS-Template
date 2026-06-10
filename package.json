@@ -75,7 +75,6 @@
     "@types/ms": "^2.1.0",
     "@types/node": "^22.14.1",
     "@types/passport-local": "^1.0.38",
-    "@types/pino": "^7.0.5",
     "@types/pug": "^2.0.10",
     "@types/supertest": "^6.0.3",
     "@typescript-eslint/eslint-plugin": "^8.31.0",
