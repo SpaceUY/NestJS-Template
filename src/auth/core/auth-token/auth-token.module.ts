@@ -1,6 +1,7 @@
 import { Module } from '@nestjs/common';
 import { ConfigType } from '@nestjs/config';
 import { JwtModule } from '@nestjs/jwt';
+import type { StringValue } from 'ms';
 import jwtConfig from 'src/config/jwt.config';
 import { AuthTokenService } from './auth-token.service';
 
@@ -11,7 +12,7 @@ import { AuthTokenService } from './auth-token.service';
         secret: jwtConf.secret,
         signOptions: jwtConf.ignoreExpiration
           ? {}
-          : { expiresIn: jwtConf.expiresIn as import('ms').StringValue },
+          : { expiresIn: jwtConf.expiresIn as StringValue },
       }),
       inject: [jwtConfig.KEY],
     }),
