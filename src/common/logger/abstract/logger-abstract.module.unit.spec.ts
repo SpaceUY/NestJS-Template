@@ -1,6 +1,5 @@
 import { LoggerAbstractModule } from './logger-abstract.module';
 import { LoggerService } from './logger.service';
-import { LogInput } from './logger.interfaces';
 
 class MockAdapter extends LoggerService {
   setContext = jest.fn();
@@ -16,8 +15,11 @@ describe('LoggerAbstractModule', () => {
       const moduleRef = LoggerAbstractModule.forRoot({ adapter: MockAdapter });
 
       const provider = (
-        moduleRef.providers as Array<{ provide: unknown; useFactory: () => LoggerService }>
-      ).find(p => p.provide === LoggerService);
+        moduleRef.providers as Array<{
+          provide: unknown;
+          useFactory: () => LoggerService;
+        }>
+      ).find((p) => p.provide === LoggerService);
 
       expect(moduleRef.module).toBe(LoggerAbstractModule);
       expect(moduleRef.global).toBe(false);
@@ -42,10 +44,14 @@ describe('LoggerAbstractModule', () => {
       });
 
       const provider = (
-        moduleRef.providers as Array<{ provide: unknown; useFactory: () => LoggerService }>
-      ).find(p => p.provide === LoggerService);
+        moduleRef.providers as Array<{
+          provide: unknown;
+          useFactory: () => LoggerService;
+        }>
+      ).find((p) => p.provide === LoggerService);
 
       const instance = provider!.useFactory();
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any
       expect((instance as any).telemetryHook).toBe(hook);
     });
 
@@ -53,10 +59,14 @@ describe('LoggerAbstractModule', () => {
       const moduleRef = LoggerAbstractModule.forRoot({ adapter: MockAdapter });
 
       const provider = (
-        moduleRef.providers as Array<{ provide: unknown; useFactory: () => LoggerService }>
-      ).find(p => p.provide === LoggerService);
+        moduleRef.providers as Array<{
+          provide: unknown;
+          useFactory: () => LoggerService;
+        }>
+      ).find((p) => p.provide === LoggerService);
 
       const instance = provider!.useFactory();
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any
       expect((instance as any).telemetryHook).toBeUndefined();
     });
   });
@@ -80,9 +90,11 @@ describe('LoggerAbstractModule', () => {
         moduleRef.providers as Array<{
           provide: unknown;
           inject: unknown[];
-          useFactory: (...args: unknown[]) => Promise<LoggerService> | LoggerService;
+          useFactory: (
+            ...args: unknown[]
+          ) => Promise<LoggerService> | LoggerService;
         }>
-      ).find(p => p.provide === LoggerService);
+      ).find((p) => p.provide === LoggerService);
 
       const resolved = await provider!.useFactory(tokenValue);
 
@@ -107,9 +119,10 @@ describe('LoggerAbstractModule', () => {
           inject: unknown[];
           useFactory: () => Promise<LoggerService> | LoggerService;
         }>
-      ).find(p => p.provide === LoggerService);
+      ).find((p) => p.provide === LoggerService);
 
       const resolved = await provider!.useFactory();
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any
       expect((resolved as any).telemetryHook).toBe(hook);
     });
 
@@ -122,7 +135,7 @@ describe('LoggerAbstractModule', () => {
 
       const provider = (
         moduleRef.providers as Array<{ provide: unknown; inject: unknown[] }>
-      ).find(p => p.provide === LoggerService);
+      ).find((p) => p.provide === LoggerService);
 
       expect(provider!.inject).toEqual([]);
     });

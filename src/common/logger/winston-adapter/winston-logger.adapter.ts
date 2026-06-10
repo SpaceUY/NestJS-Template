@@ -16,7 +16,10 @@ export class WinstonLoggerAdapter extends LoggerService {
     this.context = context;
     this.winston = winston.createLogger({
       transports: [new winston.transports.Console()],
-      format: winston.format.combine(winston.format.timestamp(), winston.format.json()),
+      format: winston.format.combine(
+        winston.format.timestamp(),
+        winston.format.json(),
+      ),
       ...options,
     });
   }
@@ -26,22 +29,38 @@ export class WinstonLoggerAdapter extends LoggerService {
   }
 
   log(input: LogInput): void {
-    this.winston.info({ context: this.context, ...input.data, message: input.message });
+    this.winston.info({
+      context: this.context,
+      ...input.data,
+      message: input.message,
+    });
     this.telemetryHook?.('log', input, this.context);
   }
 
   warn(input: LogInput): void {
-    this.winston.warn({ context: this.context, ...input.data, message: input.message });
+    this.winston.warn({
+      context: this.context,
+      ...input.data,
+      message: input.message,
+    });
     this.telemetryHook?.('warn', input, this.context);
   }
 
   error(input: LogInput): void {
-    this.winston.error({ context: this.context, ...input.data, message: input.message });
+    this.winston.error({
+      context: this.context,
+      ...input.data,
+      message: input.message,
+    });
     this.telemetryHook?.('error', input, this.context);
   }
 
   debug(input: LogInput): void {
-    this.winston.debug({ context: this.context, ...input.data, message: input.message });
+    this.winston.debug({
+      context: this.context,
+      ...input.data,
+      message: input.message,
+    });
     this.telemetryHook?.('debug', input, this.context);
   }
 }
