@@ -1,8 +1,7 @@
 import { Controller, Get, Inject } from '@nestjs/common';
-import { ConfigType } from '@nestjs/config';
 import { AppService } from './app.service';
-import baseConfig from './config/base.config';
-import emailConfig from './config/email.config';
+import { appScope, AppScopeConfig } from './app.scope';
+import { emailScope, EmailScopeConfig } from './email/config/email.scope';
 import { EmailService } from './email/abstract/email.service';
 import { TEMPLATES } from './templates';
 import { TEMPLATE_PATHS } from './templates/template.const';
@@ -12,17 +11,17 @@ import { TemplateService } from './templating/abstract/template.service';
 export class AppController {
   constructor(
     private readonly appService: AppService,
-    @Inject(baseConfig.KEY)
-    private readonly baseConf: ConfigType<typeof baseConfig>,
-    @Inject(emailConfig.KEY)
-    private readonly emailConf: ConfigType<typeof emailConfig>,
+    @Inject(appScope.KEY)
+    private readonly appConf: AppScopeConfig,
+    @Inject(emailScope.KEY)
+    private readonly emailConf: EmailScopeConfig,
     private readonly emailService: EmailService,
     private readonly templateService: TemplateService,
   ) {}
 
   @Get()
   getHello(): string {
-    return this.appService.getHello() + ' ' + this.baseConf.nodeEnv;
+    return this.appService.getHello() + ' ' + this.appConf.nodeEnv;
   }
 
   @Get('email')
