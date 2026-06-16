@@ -15,6 +15,14 @@ export class SecretsManagerConfigAdapter extends ReloadableConfigProviderService
 
   constructor(private readonly options: SecretsManagerAdapterOptions) {
     super();
+
+    // 💡 Important note: it is strongly recommended to use **IAM roles** as the preferred
+    // access pattern to AWS services (in this case, the Secrets Manager).
+    //
+    // When using roles, the access key ID and secret access key are not needed. However, this is
+    // left open as an alternative authentication method for border cases like locally connecting to
+    // an AWS account. But for remote environments running this code, prefer **roles** unless there's a
+    // GOOD REASON not to do so.
     const credentials =
       options.accessKeyId && options.secretAccessKey
         ? {
