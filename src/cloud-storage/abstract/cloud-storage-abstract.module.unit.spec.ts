@@ -1,13 +1,15 @@
-import { CloudStorageAbstractModule } from "@/modules/infrastructure/cloud-storage/abstract/cloud-storage-abstract.module";
-import { CloudStorageController } from "@/modules/infrastructure/cloud-storage/abstract/cloud-storage.controller";
+import { CloudStorageAbstractModule } from '@/modules/infrastructure/cloud-storage/abstract/cloud-storage-abstract.module';
+import { CloudStorageController } from '@/modules/infrastructure/cloud-storage/abstract/cloud-storage.controller';
 import {
   CloudStorageService,
   CloudStorageUploadFile,
-} from "@/modules/infrastructure/cloud-storage/abstract/cloud-storage.service";
+} from '@/modules/infrastructure/cloud-storage/abstract/cloud-storage.service';
 
 class MockCloudStorageAdapter extends CloudStorageService {
-  async uploadFile(_: CloudStorageUploadFile): Promise<{ url: string; id: string }> {
-    return { url: "https://example.com/file", id: "file-id" };
+  async uploadFile(
+    _: CloudStorageUploadFile,
+  ): Promise<{ url: string; id: string }> {
+    return { url: 'https://example.com/file', id: 'file-id' };
   }
 
   async deleteFile(_: string): Promise<void> {
@@ -19,16 +21,16 @@ class MockCloudStorageAdapter extends CloudStorageService {
   }
 }
 
-describe("CloudStorageAbstractModule", () => {
-  it("should bind the adapter class to CloudStorageService in forRoot", () => {
+describe('CloudStorageAbstractModule', () => {
+  it('should bind the adapter class to CloudStorageService in forRoot', () => {
     const moduleRef = CloudStorageAbstractModule.forRoot({
       adapter: MockCloudStorageAdapter,
       isGlobal: true,
     });
 
-    const provider = (moduleRef.providers as Array<{ provide: unknown; useClass: unknown }>).find(
-      p => p.provide === CloudStorageService,
-    );
+    const provider = (
+      moduleRef.providers as Array<{ provide: unknown; useClass: unknown }>
+    ).find((p) => p.provide === CloudStorageService);
 
     expect(moduleRef.module).toBe(CloudStorageAbstractModule);
     expect(moduleRef.global).toBe(true);
@@ -37,7 +39,7 @@ describe("CloudStorageAbstractModule", () => {
     expect(moduleRef.controllers).toEqual([]);
   });
 
-  it("should register CloudStorageController when useDefaultController is true in forRoot", () => {
+  it('should register CloudStorageController when useDefaultController is true in forRoot', () => {
     const moduleRef = CloudStorageAbstractModule.forRoot({
       adapter: MockCloudStorageAdapter,
       useDefaultController: true,
@@ -46,10 +48,10 @@ describe("CloudStorageAbstractModule", () => {
     expect(moduleRef.controllers).toEqual([CloudStorageController]);
   });
 
-  it("should bind a factory-returned instance to CloudStorageService in forRootAsync", async () => {
+  it('should bind a factory-returned instance to CloudStorageService in forRootAsync', async () => {
     const storageInstance = new MockCloudStorageAdapter();
-    const dependencyToken = "TEST_DEPENDENCY";
-    const dependencyValue = "dependency-value";
+    const dependencyToken = 'TEST_DEPENDENCY';
+    const dependencyValue = 'dependency-value';
 
     const moduleRef = CloudStorageAbstractModule.forRootAsync({
       imports: [],
@@ -62,11 +64,15 @@ describe("CloudStorageAbstractModule", () => {
       useDefaultController: true,
     });
 
-    const provider = (moduleRef.providers as Array<{
-      provide: unknown;
-      inject: unknown[];
-      useFactory: (...args: unknown[]) => Promise<CloudStorageService> | CloudStorageService;
-    }>).find(p => p.provide === CloudStorageService);
+    const provider = (
+      moduleRef.providers as Array<{
+        provide: unknown;
+        inject: unknown[];
+        useFactory: (
+          ...args: unknown[]
+        ) => Promise<CloudStorageService> | CloudStorageService;
+      }>
+    ).find((p) => p.provide === CloudStorageService);
 
     const resolved = await provider?.useFactory(dependencyValue);
 

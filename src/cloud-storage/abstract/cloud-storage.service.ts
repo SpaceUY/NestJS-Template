@@ -1,4 +1,7 @@
-import { CloudStorageUploadFile, CloudStorageFile } from './cloud-storage.interfaces';
+import {
+  CloudStorageUploadFile,
+  CloudStorageFile,
+} from './cloud-storage.interfaces';
 /**
  * Interface for adapters to implement to work alongside the `CloudStorageModule.`
  */

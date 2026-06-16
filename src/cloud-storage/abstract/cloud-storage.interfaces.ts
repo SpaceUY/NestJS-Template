@@ -1,4 +1,4 @@
-import type { Buffer } from "node:buffer";
+import type { Buffer } from 'node:buffer';
 
 /**
  * Interface for the file object returned by the Cloud Storage provider.

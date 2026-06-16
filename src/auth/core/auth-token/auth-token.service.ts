@@ -1,6 +1,7 @@
 import { Injectable } from '@nestjs/common';
 import { JwtService } from '@nestjs/jwt';
-import { AuthType, User } from '@prisma/client';
+import { AuthType } from '../auth-type.enum';
+import { User } from '../../../database/entities/user.entity';
 
 export interface AuthTokenPayload {
   userId: string;
@@ -14,7 +15,7 @@ export class AuthTokenService {
 
   generateAuthToken(user: User, authType: AuthType): Promise<string> {
     return this.jwtService.signAsync({
-      userId: user.id,
+      userId: user.uuid,
       authType,
       type: 'auth',
     } as AuthTokenPayload);

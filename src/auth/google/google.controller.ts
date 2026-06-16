@@ -1,8 +1,9 @@
 import { Body, Controller, Get, Post, Req, UseGuards } from '@nestjs/common';
 import { AuthGuard } from '@nestjs/passport';
-import { AuthType, User } from '@prisma/client';
 import { CurrentUser } from 'src/user/current-user.decorator';
 import { AuthTokenService } from '../core/auth-token/auth-token.service';
+import { AuthType } from '../core/auth-type.enum';
+import { User } from '../../database/entities/user.entity';
 import { GoogleService } from './google.service';
 
 @Controller('auth/google')

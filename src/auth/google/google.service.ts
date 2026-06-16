@@ -1,10 +1,12 @@
 import { Inject, Injectable, Logger } from '@nestjs/common';
-import { AuthType } from '@prisma/client';
+import { InjectRepository } from '@nestjs/typeorm';
+import { Repository } from 'typeorm';
 import { OAuth2Client } from 'google-auth-library';
 import { RequestException } from 'src/common/exception/core/ExceptionBase';
 import { Exceptions } from 'src/common/exception/exceptions';
 import { googleScope, GoogleScopeConfig } from './config/google.scope';
-import { PrismaService } from '../../prisma/prisma.service';
+import { User } from '../../database/entities/user.entity';
+import { AuthType } from '../core/auth-type.enum';
 import { AuthTokenService } from '../core/auth-token/auth-token.service';
 
 @Injectable()
@@ -17,7 +19,8 @@ export class GoogleService {
     private oauthClient: OAuth2Client,
     @Inject(googleScope.KEY)
     private readonly googleConf: GoogleScopeConfig,
-    private prisma: PrismaService,
+    @InjectRepository(User)
+    private readonly userRepository: Repository<User>,
     private authTokenService: AuthTokenService,
   ) {}
 
@@ -33,7 +36,7 @@ export class GoogleService {
       }
       const { name, email } = payload as { name: string; email: string };
 
-      const existingUser = await this.prisma.user.findFirst({
+      const existingUser = await this.userRepository.findOne({
         where: { email },
       });
 
@@ -41,13 +44,12 @@ export class GoogleService {
         throw new RequestException(Exceptions.auth.alreadyExists);
       }
 
-      const user = await this.prisma.user.create({
-        data: {
-          email,
-          name,
-          authType: AuthType.GOOGLE,
-        },
+      const user = this.userRepository.create({
+        email,
+        name,
+        authType: AuthType.GOOGLE,
       });
+      await this.userRepository.save(user);
 
       return this.authTokenService.generateAuthToken(user, AuthType.GOOGLE);
     } catch (e) {
@@ -71,11 +73,11 @@ export class GoogleService {
       }
       const { email } = payload as { email: string };
 
-      const existingUser = await this.prisma.user.findFirst({
+      const existingUser = await this.userRepository.findOne({
         where: { email },
       });
 
-      if (!existingUser || existingUser.authType !== AuthType.GOOGLE) {
+      if (existingUser?.authType !== AuthType.GOOGLE) {
         throw new RequestException(Exceptions.auth.invalidCredentials);
       }
 

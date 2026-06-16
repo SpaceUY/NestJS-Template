@@ -2,14 +2,13 @@ import { Inject, Logger, Module } from '@nestjs/common';
 import { PassportModule } from '@nestjs/passport';
 import { OAuth2Client } from 'google-auth-library';
 import { googleScope, GoogleScopeConfig } from './config/google.scope';
-import { PrismaModule } from '../../prisma/prisma.module';
 import { AuthTokenModule } from '../core/auth-token/auth-token.module';
 import { GoogleController } from './google.controller';
 import { GoogleService } from './google.service';
 import { GoogleStrategy } from './google.strategy';
 
 @Module({
-  imports: [PassportModule.register({}), PrismaModule, AuthTokenModule],
+  imports: [PassportModule.register({}), AuthTokenModule],
   controllers: [GoogleController],
   providers: [
     GoogleStrategy,

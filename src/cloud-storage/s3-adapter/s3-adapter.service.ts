@@ -1,15 +1,18 @@
-import { Injectable } from "@nestjs/common";
+import { Injectable } from '@nestjs/common';
 import {
   DeleteObjectCommand,
   GetObjectCommand,
   PutObjectCommand,
   S3Client,
-} from "@aws-sdk/client-s3";
-import { v4 as uuidv4 } from "uuid";
-import { CloudStorageService } from "../abstract/cloud-storage.service";
-import { getSignedUrl } from "@aws-sdk/s3-request-presigner";
-import { S3AdapterConfig } from "./s3-adapter-config.interface";
-import { CloudStorageFile, CloudStorageUploadFile } from "../abstract/cloud-storage.interfaces";
+} from '@aws-sdk/client-s3';
+import { v4 as uuidv4 } from 'uuid';
+import { CloudStorageService } from '../abstract/cloud-storage.service';
+import { getSignedUrl } from '@aws-sdk/s3-request-presigner';
+import { S3AdapterConfig } from './s3-adapter-config.interface';
+import {
+  CloudStorageFile,
+  CloudStorageUploadFile,
+} from '../abstract/cloud-storage.interfaces';
 
 type GetSignedUrlCompat = (
   client: S3Client,
@@ -75,9 +78,13 @@ export class S3AdapterService extends CloudStorageService {
 
     // AWS SDK packages can pull different @smithy type instances in some installs.
     // This keeps runtime behavior with the real helper while avoiding false type incompatibilities.
-    const url = await getSignedUrlCompat(this.s3, new GetObjectCommand(params), {
-      expiresIn: this.expiresInSeconds,
-    });
+    const url = await getSignedUrlCompat(
+      this.s3,
+      new GetObjectCommand(params),
+      {
+        expiresIn: this.expiresInSeconds,
+      },
+    );
 
     return { url, id: fileKey };
   }
