@@ -1,11 +1,10 @@
 import { Inject, Injectable, Logger } from '@nestjs/common';
-import { ConfigType } from '@nestjs/config';
 import { InjectRepository } from '@nestjs/typeorm';
 import { Repository } from 'typeorm';
 import { OAuth2Client } from 'google-auth-library';
 import { RequestException } from 'src/common/exception/core/ExceptionBase';
 import { Exceptions } from 'src/common/exception/exceptions';
-import googleConfig from 'src/config/google.config';
+import { googleScope, GoogleScopeConfig } from './config/google.scope';
 import { User } from '../../user/user.entity';
 import { AuthType } from '../core/auth-type.enum';
 import { AuthTokenService } from '../core/auth-token/auth-token.service';
@@ -18,8 +17,8 @@ export class GoogleService {
 
   constructor(
     private oauthClient: OAuth2Client,
-    @Inject(googleConfig.KEY)
-    private googleConf: ConfigType<typeof googleConfig>,
+    @Inject(googleScope.KEY)
+    private googleConf: GoogleScopeConfig,
     @InjectRepository(User)
     private readonly userRepository: Repository<User>,
     private authTokenService: AuthTokenService,
@@ -29,10 +28,7 @@ export class GoogleService {
     try {
       const ticket = await this.oauthClient.verifyIdToken({
         idToken,
-        audience: [
-          this.googleConf.oauth.audience,
-          this.googleConf.oauth.clientId,
-        ],
+        audience: [this.googleConf.audience, this.googleConf.clientId],
       });
       const payload = ticket.getPayload();
       if (payload === undefined) {
@@ -69,10 +65,7 @@ export class GoogleService {
     try {
       const ticket = await this.oauthClient.verifyIdToken({
         idToken,
-        audience: [
-          this.googleConf.oauth.audience,
-          this.googleConf.oauth.clientId,
-        ],
+        audience: [this.googleConf.audience, this.googleConf.clientId],
       });
       const payload = ticket.getPayload();
       if (payload === undefined) {

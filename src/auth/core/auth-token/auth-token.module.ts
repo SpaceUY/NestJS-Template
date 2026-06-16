@@ -1,20 +1,19 @@
 import { Module } from '@nestjs/common';
-import { ConfigType } from '@nestjs/config';
 import { JwtModule } from '@nestjs/jwt';
 import type { StringValue } from 'ms';
-import jwtConfig from 'src/config/jwt.config';
+import { jwtScope, JwtScopeConfig } from '../../config/jwt.scope';
 import { AuthTokenService } from './auth-token.service';
 
 @Module({
   imports: [
     JwtModule.registerAsync({
-      useFactory: (jwtConf: ConfigType<typeof jwtConfig>) => ({
+      useFactory: (jwtConf: JwtScopeConfig) => ({
         secret: jwtConf.secret,
         signOptions: jwtConf.ignoreExpiration
           ? {}
           : { expiresIn: jwtConf.expiresIn as StringValue },
       }),
-      inject: [jwtConfig.KEY],
+      inject: [jwtScope.KEY],
     }),
   ],
   providers: [AuthTokenService],

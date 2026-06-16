@@ -1,25 +1,24 @@
 import { Inject, Injectable } from '@nestjs/common';
-import { ConfigType } from '@nestjs/config';
 import { PassportStrategy } from '@nestjs/passport';
 import { InjectRepository } from '@nestjs/typeorm';
 import { Repository } from 'typeorm';
 import { Strategy, VerifyCallback } from 'passport-google-oauth20';
-import googleConfig from 'src/config/google.config';
+import { googleScope, GoogleScopeConfig } from './config/google.scope';
 import { User } from '../../user/user.entity';
 import { AuthType } from '../core/auth-type.enum';
 
 @Injectable()
 export class GoogleStrategy extends PassportStrategy(Strategy, 'google') {
   constructor(
-    @Inject(googleConfig.KEY)
-    private readonly googleConf: ConfigType<typeof googleConfig>,
+    @Inject(googleScope.KEY)
+    private readonly googleConf: GoogleScopeConfig,
     @InjectRepository(User)
     private readonly userRepository: Repository<User>,
   ) {
     super({
-      clientID: googleConf.oauth.clientId,
-      clientSecret: googleConf.oauth.secret,
-      callbackURL: googleConf.oauth.callbackURL,
+      clientID: googleConf.clientId,
+      clientSecret: googleConf.clientSecret,
+      callbackURL: googleConf.callbackUrl,
       scope: ['email', 'profile'],
     });
   }
