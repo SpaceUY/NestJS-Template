@@ -140,7 +140,13 @@ The adapter performs a startup connection check during `onModuleInit` and hard-s
 
 ## Extensions
 
-Extensions expose provider-specific operations as independently injectable NestJS services. Pass the implementation class to `forRootAsync` to enable it; the abstract module wires `CACHE_ADAPTER_CLIENT` and `CACHE_LOGGER` and creates the service via `useClass`.
+Extensions expose provider-specific operations as independently injectable NestJS services.
+
+Why extensions and not just a bigger base service? Because most of the time, we won't be using most of the possible methods we could use from a cache provider. Arguably, we'll need only the basic services (read, write, delete) in most scenarios, and other advanced functionalities will be more niche. For this reason, these bundles of custom functionalities are cast into **extensions**, so that the developer is mindful of **what they are adding** and **why they need it**.
+
+> More extensions could be added as needed. An extension is simply a granular unit of cohesive functionality, so feel free to open up a discussion with the team in order to modify existing extensions, or add new ones.
+
+In order to add an extension to the cache module, pass the implementation class to `forRootAsync` to enable it; the abstract module wires `CACHE_ADAPTER_CLIENT` and `CACHE_LOGGER` and creates the service via `useClass`.
 
 ### `CacheListExtension`
 
