@@ -3,10 +3,10 @@ import {
   InjectionToken,
   Module,
   ModuleMetadata,
-} from "@nestjs/common";
-import { ClassConstructor } from "class-transformer";
-import { CloudStorageController } from "./cloud-storage.controller";
-import { CloudStorageService } from "./cloud-storage.service";
+} from '@nestjs/common';
+import { ClassConstructor } from 'class-transformer';
+import { CloudStorageController } from './cloud-storage.controller';
+import { CloudStorageService } from './cloud-storage.service';
 
 interface CloudStorageModuleOptions {
   adapter: ClassConstructor<CloudStorageService>;
@@ -15,7 +15,7 @@ interface CloudStorageModuleOptions {
 }
 
 interface CloudStorageModuleAsyncOptions {
-  imports?: ModuleMetadata["imports"];
+  imports?: ModuleMetadata['imports'];
   inject?: InjectionToken[];
   useFactory: (
     ...args: any[]
@@ -27,11 +27,7 @@ interface CloudStorageModuleAsyncOptions {
 @Module({})
 export class CloudStorageAbstractModule {
   static forRoot(options: CloudStorageModuleOptions): DynamicModule {
-    const {
-      adapter,
-      isGlobal = false,
-      useDefaultController = false,
-    } = options;
+    const { adapter, isGlobal = false, useDefaultController = false } = options;
 
     return {
       module: CloudStorageAbstractModule,
@@ -48,10 +44,7 @@ export class CloudStorageAbstractModule {
   }
 
   static forRootAsync(options: CloudStorageModuleAsyncOptions): DynamicModule {
-    const {
-      isGlobal = false,
-      useDefaultController = false,
-    } = options;
+    const { isGlobal = false, useDefaultController = false } = options;
 
     return {
       module: CloudStorageAbstractModule,

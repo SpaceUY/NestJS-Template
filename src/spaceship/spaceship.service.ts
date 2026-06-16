@@ -1,7 +1,7 @@
 import { Injectable } from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
 import { Repository } from 'typeorm';
-import { Spaceship } from './spaceship.entity';
+import { Spaceship } from '../database/entities/spaceship.entity';
 import { CreateSpaceshipDto } from './dto/create-spaceship.dto';
 import { UpdateSpaceshipDto } from './dto/update-spaceship.dto';
 
@@ -27,21 +27,21 @@ export class SpaceshipService {
     return this.spaceshipRepository.find();
   }
 
-  async getSpaceshipById(id: string): Promise<Spaceship | null> {
-    return this.spaceshipRepository.findOne({ where: { id } });
+  async getSpaceshipById(uuid: string): Promise<Spaceship | null> {
+    return this.spaceshipRepository.findOne({ where: { uuid } });
   }
 
   async updateSpaceship(
-    id: string,
+    uuid: string,
     data: UpdateSpaceshipDto,
   ): Promise<Spaceship> {
-    await this.spaceshipRepository.update(id, data);
-    return this.spaceshipRepository.findOneOrFail({ where: { id } });
+    await this.spaceshipRepository.update({ uuid }, data);
+    return this.spaceshipRepository.findOneOrFail({ where: { uuid } });
   }
 
-  async deleteSpaceship(id: string): Promise<Spaceship> {
+  async deleteSpaceship(uuid: string): Promise<Spaceship> {
     const spaceship = await this.spaceshipRepository.findOneOrFail({
-      where: { id },
+      where: { uuid },
     });
     return this.spaceshipRepository.softRemove(spaceship);
   }

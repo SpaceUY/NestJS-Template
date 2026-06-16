@@ -6,7 +6,7 @@ import { ExtractJwt, Strategy, StrategyOptions } from 'passport-jwt';
 import { RequestException } from 'src/common/exception/core/ExceptionBase';
 import { Exceptions } from 'src/common/exception/exceptions';
 import { jwtScope, JwtScopeConfig } from './config/jwt.scope';
-import { User } from '../user/user.entity';
+import { User } from '../database/entities/user.entity';
 import { AuthTokenPayload } from './core/auth-token/auth-token.service';
 
 @Injectable()

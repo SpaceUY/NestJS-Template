@@ -8,7 +8,10 @@ import { RedisAdapterConfig } from './redis-adapter-config.interface';
 import { StandardLogger, adaptLogger } from './utils/logger';
 
 @Injectable()
-export class RedisCacheAdapterService extends CacheService implements OnModuleInit {
+export class RedisCacheAdapterService
+  extends CacheService
+  implements OnModuleInit
+{
   private readonly _redis: Redis | Cluster;
   private readonly _logger: StandardLogger;
 
@@ -36,12 +39,17 @@ export class RedisCacheAdapterService extends CacheService implements OnModuleIn
     try {
       return await this._redis.get(key);
     } catch {
-      throw new CacheError(CACHE_ERRORS.GET_FAILED, 'Cache get failed', { key });
+      throw new CacheError(CACHE_ERRORS.GET_FAILED, 'Cache get failed', {
+        key,
+      });
     }
   }
 
   async set(key: string, value: string | number, ttl?: number): Promise<void> {
-    this._logger.debug({ message: 'Setting value to cache', data: { key, ttl } });
+    this._logger.debug({
+      message: 'Setting value to cache',
+      data: { key, ttl },
+    });
     try {
       if (ttl !== undefined) {
         await this._redis.set(key, value, 'EX', ttl);
@@ -49,7 +57,9 @@ export class RedisCacheAdapterService extends CacheService implements OnModuleIn
         await this._redis.set(key, value);
       }
     } catch {
-      throw new CacheError(CACHE_ERRORS.SET_FAILED, 'Cache set failed', { key });
+      throw new CacheError(CACHE_ERRORS.SET_FAILED, 'Cache set failed', {
+        key,
+      });
     }
   }
 
@@ -58,7 +68,9 @@ export class RedisCacheAdapterService extends CacheService implements OnModuleIn
     try {
       await this._redis.del(...keys);
     } catch {
-      throw new CacheError(CACHE_ERRORS.DEL_FAILED, 'Cache deletion failed', { keys });
+      throw new CacheError(CACHE_ERRORS.DEL_FAILED, 'Cache deletion failed', {
+        keys,
+      });
     }
   }
 
@@ -70,5 +82,4 @@ export class RedisCacheAdapterService extends CacheService implements OnModuleIn
       throw new CacheError(CACHE_ERRORS.CLEAR_FAILED, 'Cache clear failed');
     }
   }
-
 }

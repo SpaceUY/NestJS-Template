@@ -8,20 +8,31 @@ import { googleScope } from './auth/google/config/google.scope';
 import { MiddlewareModule } from './common/middleware/middleware.module';
 import { CloudStorageAbstractModule } from './cloud-storage/abstract/cloud-storage-abstract.module';
 import { S3AdapterService } from './cloud-storage/s3-adapter/s3-adapter.service';
-import { s3Scope, S3ScopeConfig } from './cloud-storage/s3-adapter/config/s3.scope';
+import {
+  s3Scope,
+  S3ScopeConfig,
+} from './cloud-storage/s3-adapter/config/s3.scope';
 import { ConfigProviderAbstractModule } from './config-provider/abstract/config-provider-abstract.module';
 import { EnvConfigAdapter } from './config-provider/env-adapter/env-config.adapter';
 import { EmailAbstractModule } from './email/abstract/email-abstract.module';
-import { emailScope, EmailScopeConfig, EMAIL_ADAPTERS } from './email/config/email.scope';
+import {
+  emailScope,
+  EmailScopeConfig,
+  EMAIL_ADAPTERS,
+} from './email/config/email.scope';
 import { AwsSesAdapterService } from './email/aws-ses-adapter/aws-ses-adapter.service';
 import { ConsoleAdapterService } from './email/console-adapter/console-adapter.service';
 import { ResendAdapterService } from './email/resend-adapter/resend-adapter.service';
 import { SendgridAdapterService } from './email/sendgrid-adapter/sendgrid-adapter.service';
 import { createDefaultEmailLogger } from './email/utils/email-logger.adapter';
 import { DatabaseModule } from './database/database.module';
+import { databaseScope } from './database/config/database.scope';
 import { PushNotificationAbstractModule } from './push-notification/abstract/push-notification-abstract.module.ts';
 import { ExpoAdapterModule } from './push-notification/expo-adapter/expo-adapter.module';
-import { expoScope, ExpoScopeConfig } from './push-notification/expo-adapter/config/expo.scope';
+import {
+  expoScope,
+  ExpoScopeConfig,
+} from './push-notification/expo-adapter/config/expo.scope';
 import { SpaceshipModule } from './spaceship/spaceship.module';
 import { TemplateModule } from './templating/template.module';
 import { PugAdapterModule } from './templating/pug-adapter/pug-adapter.module';
@@ -35,7 +46,15 @@ import { PugAdapterModule } from './templating/pug-adapter/pug-adapter.module';
           useFactory: () => new EnvConfigAdapter(),
         },
       },
-      scopes: [appScope, jwtScope, googleScope, s3Scope, emailScope, expoScope],
+      scopes: [
+        appScope,
+        jwtScope,
+        googleScope,
+        s3Scope,
+        emailScope,
+        expoScope,
+        databaseScope,
+      ],
     }),
     AuthModule,
     MiddlewareModule,

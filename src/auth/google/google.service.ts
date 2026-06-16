@@ -5,7 +5,7 @@ import { OAuth2Client } from 'google-auth-library';
 import { RequestException } from 'src/common/exception/core/ExceptionBase';
 import { Exceptions } from 'src/common/exception/exceptions';
 import { googleScope, GoogleScopeConfig } from './config/google.scope';
-import { User } from '../../user/user.entity';
+import { User } from '../../database/entities/user.entity';
 import { AuthType } from '../core/auth-type.enum';
 import { AuthTokenService } from '../core/auth-token/auth-token.service';
 
@@ -18,7 +18,7 @@ export class GoogleService {
   constructor(
     private oauthClient: OAuth2Client,
     @Inject(googleScope.KEY)
-    private googleConf: GoogleScopeConfig,
+    private readonly googleConf: GoogleScopeConfig,
     @InjectRepository(User)
     private readonly userRepository: Repository<User>,
     private authTokenService: AuthTokenService,

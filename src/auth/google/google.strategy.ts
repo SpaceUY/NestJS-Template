@@ -4,7 +4,7 @@ import { InjectRepository } from '@nestjs/typeorm';
 import { Repository } from 'typeorm';
 import { Strategy, VerifyCallback } from 'passport-google-oauth20';
 import { googleScope, GoogleScopeConfig } from './config/google.scope';
-import { User } from '../../user/user.entity';
+import { User } from '../../database/entities/user.entity';
 import { AuthType } from '../core/auth-type.enum';
 
 @Injectable()

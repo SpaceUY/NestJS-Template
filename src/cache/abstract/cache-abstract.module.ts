@@ -1,4 +1,9 @@
-import { DynamicModule, InjectionToken, Module, Provider } from '@nestjs/common';
+import {
+  DynamicModule,
+  InjectionToken,
+  Module,
+  Provider,
+} from '@nestjs/common';
 
 import { CACHE_ADAPTER_CLIENT, CACHE_LOGGER } from './cache.tokens';
 import { CacheKeysExtension } from './extensions/cache-keys.extension';
@@ -18,7 +23,9 @@ import {
  * @param {CacheExtensionOptions} - The extensions to process.
  * @returns {ExtensionProviders} - The providers and exports to add to the module definition.
  */
-function buildExtensionProviders(extensions: CacheExtensionOptions): ExtensionProviders {
+function buildExtensionProviders(
+  extensions: CacheExtensionOptions,
+): ExtensionProviders {
   const providers: Provider[] = [];
   const exports: InjectionToken[] = [];
 

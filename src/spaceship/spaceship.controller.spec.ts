@@ -1,7 +1,7 @@
 import { Test, TestingModule } from '@nestjs/testing';
 import { SpaceshipController } from './spaceship.controller';
 import { SpaceshipService } from './spaceship.service';
-import { User } from '../user/user.entity';
+import { User } from '../database/entities/user.entity';
 import { UpdateSpaceshipDto } from './dto/update-spaceship.dto';
 
 describe('SpaceshipController', () => {
@@ -28,7 +28,11 @@ describe('SpaceshipController', () => {
     jest.clearAllMocks();
   });
 
-  const mockUser = { id: 1, name: 'Captain', email: 'captain@space.com' } as unknown as User;
+  const mockUser = {
+    id: 1,
+    name: 'Captain',
+    email: 'captain@space.com',
+  } as unknown as User;
 
   describe('createSpaceship', () => {
     it('delegates to service with the current user id', async () => {
@@ -70,7 +74,11 @@ describe('SpaceshipController', () => {
   describe('updateSpaceship', () => {
     it('delegates to service with id and dto', async () => {
       const dto = { name: 'Millennium Falcon' } as UpdateSpaceshipDto;
-      const updated = { id: 'ship-1', name: 'Millennium Falcon', fleet: 'Alpha' };
+      const updated = {
+        id: 'ship-1',
+        name: 'Millennium Falcon',
+        fleet: 'Alpha',
+      };
       mockService.updateSpaceship.mockResolvedValue(updated);
 
       const result = await controller.updateSpaceship('ship-1', dto);

@@ -1,16 +1,15 @@
 import { Global, Module } from '@nestjs/common';
-import { ConfigType } from '@nestjs/config';
 import { TypeOrmModule } from '@nestjs/typeorm';
-import { User } from '../user/user.entity';
-import { Spaceship } from '../spaceship/spaceship.entity';
-import databaseConfig from '../config/database.config';
+import { User } from './entities/user.entity';
+import { Spaceship } from './entities/spaceship.entity';
+import { databaseScope, DatabaseScopeConfig } from './config/database.scope';
 
 @Global()
 @Module({
   imports: [
     TypeOrmModule.forRootAsync({
-      inject: [databaseConfig.KEY],
-      useFactory: (db: ConfigType<typeof databaseConfig>) => {
+      inject: [databaseScope.KEY],
+      useFactory: (db: DatabaseScopeConfig) => {
         const baseOptions = {
           type: 'postgres' as const,
           autoLoadEntities: true,

@@ -14,9 +14,22 @@ describe('AppController', () => {
       controllers: [AppController],
       providers: [
         AppService,
-        { provide: baseConfig.KEY, useValue: { nodeEnv: 'TEST', port: 5000, selfUrl: 'http://localhost:5000' } },
-        { provide: emailConfig.KEY, useValue: { adapter: 'CONSOLE', from: 'test@example.com' } },
-        { provide: EmailService, useValue: { sendEmail: jest.fn(), sendEmailBatch: jest.fn() } },
+        {
+          provide: baseConfig.KEY,
+          useValue: {
+            nodeEnv: 'TEST',
+            port: 5000,
+            selfUrl: 'http://localhost:5000',
+          },
+        },
+        {
+          provide: emailConfig.KEY,
+          useValue: { adapter: 'CONSOLE', from: 'test@example.com' },
+        },
+        {
+          provide: EmailService,
+          useValue: { sendEmail: jest.fn(), sendEmailBatch: jest.fn() },
+        },
         { provide: TemplateService, useValue: { compile: jest.fn() } },
       ],
     }).compile();

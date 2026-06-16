@@ -3,7 +3,7 @@ import { AuthGuard } from '@nestjs/passport';
 import { CurrentUser } from 'src/user/current-user.decorator';
 import { AuthTokenService } from '../core/auth-token/auth-token.service';
 import { AuthType } from '../core/auth-type.enum';
-import { User } from '../../user/user.entity';
+import { User } from '../../database/entities/user.entity';
 import { GoogleService } from './google.service';
 
 @Controller('auth/google')

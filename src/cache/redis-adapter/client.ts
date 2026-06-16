@@ -52,8 +52,13 @@ export async function verifyConnection(
       createTimeoutPromise(TIMEOUT_MS),
     ]);
   } catch (error) {
-    logger.error({ message: '❌ Redis connection failed:', data: { error: error.message } });
-    logger.error({ message: '🚨 STOPPING APPLICATION - Redis is required for operation' });
+    logger.error({
+      message: '❌ Redis connection failed:',
+      data: { error: error.message },
+    });
+    logger.error({
+      message: '🚨 STOPPING APPLICATION - Redis is required for operation',
+    });
     process.exit(1);
   }
 }
