@@ -77,7 +77,7 @@ export class GoogleService {
         where: { email },
       });
 
-      if (!existingUser || existingUser.authType !== AuthType.GOOGLE) {
+      if (existingUser?.authType !== AuthType.GOOGLE) {
         throw new RequestException(Exceptions.auth.invalidCredentials);
       }
 
