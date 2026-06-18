@@ -1,5 +1,5 @@
-import { ERROR_CODES } from "@/common/enums";
-import { ApiException } from "@/common/expections/api.exception";
+import { ERROR_CODES } from "../../common/enums";
+import { ApiException } from "../../common/exception/api.exception";
 import { Injectable } from "@nestjs/common";
 import { access, mkdir, unlink, writeFile } from "node:fs/promises";
 import { basename, extname, join, resolve } from "node:path";

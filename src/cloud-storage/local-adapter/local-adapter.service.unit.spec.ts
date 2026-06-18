@@ -1,5 +1,5 @@
-import { ApiException } from "@/common/expections/api.exception";
-import { LocalAdapterService } from "@/modules/infrastructure/cloud-storage/local-adapter/local-adapter.service";
+import { ApiException } from "../../common/exception/api.exception";
+import { LocalAdapterService } from "./local-adapter.service";
 import { access, mkdir, unlink, writeFile } from "node:fs/promises";
 import { v4 as uuidv4 } from "uuid";
 

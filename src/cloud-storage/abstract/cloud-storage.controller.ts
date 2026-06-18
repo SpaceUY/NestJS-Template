@@ -1,5 +1,5 @@
-import { ERROR_CODES } from "@/common/enums";
-import { ApiException } from "@/common/expections/api.exception";
+import { ERROR_CODES } from "../../common/enums";
+import { ApiException } from "../../common/exception/api.exception";
 import { Controller, Delete, Get, Param, Post, UploadedFile, UseInterceptors } from "@nestjs/common";
 import { FileInterceptor } from "@nestjs/platform-express";
 import { ApiBody, ApiConsumes, ApiOperation, ApiParam, ApiResponse, ApiTags } from "@nestjs/swagger";
