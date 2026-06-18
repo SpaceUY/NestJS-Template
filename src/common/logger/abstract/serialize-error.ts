@@ -31,7 +31,16 @@ export function serializeError(
   }
 
   try {
-    return JSON.parse(JSON.stringify(error)) as Record<string, unknown>;
+    const seen = new WeakSet();
+    return JSON.parse(
+      JSON.stringify(error, (_key, value: unknown) => {
+        if (typeof value === 'object' && value !== null) {
+          if (seen.has(value)) return '[Circular]';
+          seen.add(value);
+        }
+        return value;
+      }),
+    ) as Record<string, unknown>;
   } catch {
     return Object.prototype.toString.call(error);
   }

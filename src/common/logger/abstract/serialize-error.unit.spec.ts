@@ -39,10 +39,10 @@ describe('serializeError', () => {
     });
   });
 
-  it('falls back safely for non-serializable objects', () => {
-    const circular: Record<string, unknown> = {};
+  it('replaces circular references with [Circular] and preserves other fields', () => {
+    const circular: Record<string, unknown> = { code: 'E_CIRC' };
     circular.self = circular;
-    expect(serializeError(circular)).toBe('[object Object]');
+    expect(serializeError(circular)).toEqual({ code: 'E_CIRC', self: '[Circular]' });
   });
 
   it('does not invoke a hostile toString on objects', () => {
