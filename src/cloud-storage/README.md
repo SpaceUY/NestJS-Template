@@ -31,7 +31,7 @@ src/modules/infrastructure/cloud-storage/
 ├── abstract/
 │   ├── dto/
 │   ├── cloud-storage-abstract.module.ts
-│   ├── cloud-storage-error-codes.ts
+│   ├── cloud-storage.error.ts
 │   ├── cloud-storage.exception.ts
 │   └── cloud-storage.service.ts
 ├── s3-adapter/

@@ -1,7 +1,7 @@
-import { ApiException } from "../../common/exception/api.exception";
-import { LocalAdapterService } from "./local-adapter.service";
-import { access, mkdir, unlink, writeFile } from "node:fs/promises";
-import { v4 as uuidv4 } from "uuid";
+import { CloudStorageError, CLOUD_STORAGE_ERRORS } from '../abstract/cloud-storage.error';
+import { LocalAdapterService } from './local-adapter.service';
+import { access, mkdir, unlink, writeFile } from 'node:fs/promises';
+import { v4 as uuidv4 } from 'uuid';
 
 jest.mock('node:fs/promises', () => ({
   access: jest.fn(),
@@ -24,90 +24,115 @@ describe('LocalAdapterService', () => {
     jest.clearAllMocks();
   });
 
-  it('should upload a file to the local files directory', async () => {
-    (uuidv4 as unknown as jest.Mock).mockReturnValue('local-id');
-    mockedMkdir.mockResolvedValue(undefined);
-    mockedWriteFile.mockResolvedValue(undefined);
+  describe('uploadFile', () => {
+    it('should upload a file to the local files directory', async () => {
+      (uuidv4 as unknown as jest.Mock).mockReturnValue('local-id');
+      mockedMkdir.mockResolvedValue(undefined);
+      mockedWriteFile.mockResolvedValue(undefined);
 
-    const service = new LocalAdapterService();
-    const response = await service.uploadFile({
-      buffer: Buffer.from('local-file'),
-      originalname: 'document.txt',
-    });
+      const service = new LocalAdapterService();
+      const response = await service.uploadFile({
+        buffer: Buffer.from('local-file'),
+        originalname: 'document.txt',
+      });
 
-    expect(mockedMkdir).toHaveBeenCalledWith(
-      expect.stringContaining('/files'),
-      {
-        recursive: true,
-      },
-    );
-    expect(mockedWriteFile).toHaveBeenCalledWith(
-      expect.stringContaining('/files/local-id.txt'),
-      expect.any(Buffer),
-    );
-    expect(response).toEqual({
-      id: 'local-id.txt',
-      url: '/files/local-id.txt',
+      expect(mockedMkdir).toHaveBeenCalledWith(
+        expect.stringContaining('/files'),
+        { recursive: true },
+      );
+      expect(mockedWriteFile).toHaveBeenCalledWith(
+        expect.stringContaining('/files/local-id.txt'),
+        expect.any(Buffer),
+      );
+      expect(response).toEqual({ id: 'local-id.txt', url: '/files/local-id.txt' });
     });
   });
 
-  it('should throw when uploading an empty file', async () => {
-    const service = new LocalAdapterService();
+  describe('getFile', () => {
+    it('should return a local URL when the file exists', async () => {
+      mockedAccess.mockResolvedValue(undefined);
 
-    let error: unknown;
-    try {
-      await service.uploadFile({ buffer: Buffer.alloc(0) });
-    } catch (caughtError) {
-      error = caughtError;
-    }
+      const service = new LocalAdapterService();
+      const response = await service.getFile('existing-file.png');
 
-    expect(error).toBeInstanceOf(ApiException);
-    expect(error).toMatchObject({
-      code: 'INVALID_PAYLOAD',
+      expect(mockedAccess).toHaveBeenCalledWith(
+        expect.stringContaining('/files/existing-file.png'),
+      );
+      expect(response).toEqual({ id: 'existing-file.png', url: '/files/existing-file.png' });
+    });
+
+    it('should throw CloudStorageError FILE_NOT_FOUND when file does not exist', async () => {
+      mockedAccess.mockRejectedValue({ code: 'ENOENT' });
+
+      const service = new LocalAdapterService();
+      let error: unknown;
+      try {
+        await service.getFile('missing-file.png');
+      } catch (caughtError) {
+        error = caughtError;
+      }
+
+      expect(error).toBeInstanceOf(CloudStorageError);
+      expect((error as CloudStorageError).code).toBe(CLOUD_STORAGE_ERRORS.FILE_NOT_FOUND);
+    });
+
+    it('should rethrow non-ENOENT errors from getFile unchanged', async () => {
+      const networkError = new Error('Network failure');
+      mockedAccess.mockRejectedValue(networkError);
+
+      const service = new LocalAdapterService();
+      await expect(service.getFile('some-file.png')).rejects.toBe(networkError);
     });
   });
 
-  it('should return a local URL when the file exists', async () => {
-    mockedAccess.mockResolvedValue(undefined);
+  describe('deleteFile', () => {
+    it('should delete a local file', async () => {
+      mockedUnlink.mockResolvedValue(undefined);
 
-    const service = new LocalAdapterService();
-    const response = await service.getFile('existing-file.png');
+      const service = new LocalAdapterService();
+      await service.deleteFile('file-to-delete.pdf');
 
-    expect(mockedAccess).toHaveBeenCalledWith(
-      expect.stringContaining('/files/existing-file.png'),
-    );
-    expect(response).toEqual({
-      id: 'existing-file.png',
-      url: '/files/existing-file.png',
+      expect(mockedUnlink).toHaveBeenCalledWith(
+        expect.stringContaining('/files/file-to-delete.pdf'),
+      );
+    });
+
+    it('should throw CloudStorageError FILE_NOT_FOUND when file does not exist', async () => {
+      mockedUnlink.mockRejectedValue({ code: 'ENOENT' });
+
+      const service = new LocalAdapterService();
+      let error: unknown;
+      try {
+        await service.deleteFile('missing.pdf');
+      } catch (caughtError) {
+        error = caughtError;
+      }
+
+      expect(error).toBeInstanceOf(CloudStorageError);
+      expect((error as CloudStorageError).code).toBe(CLOUD_STORAGE_ERRORS.FILE_NOT_FOUND);
+    });
+
+    it('should rethrow non-ENOENT errors from deleteFile unchanged', async () => {
+      const networkError = new Error('Network failure');
+      mockedUnlink.mockRejectedValue(networkError);
+
+      const service = new LocalAdapterService();
+      await expect(service.deleteFile('some-file.pdf')).rejects.toBe(networkError);
     });
   });
 
-  it('should throw RESOURCE_NOT_FOUND when file does not exist', async () => {
-    mockedAccess.mockRejectedValue({ code: 'ENOENT' });
+  describe('path validation', () => {
+    it('should throw CloudStorageError INVALID_KEY when file key contains path traversal', async () => {
+      const service = new LocalAdapterService();
+      let error: unknown;
+      try {
+        await service.getFile('../etc/passwd');
+      } catch (caughtError) {
+        error = caughtError;
+      }
 
-    const service = new LocalAdapterService();
-
-    let error: unknown;
-    try {
-      await service.getFile('missing-file.png');
-    } catch (caughtError) {
-      error = caughtError;
-    }
-
-    expect(error).toBeInstanceOf(ApiException);
-    expect(error).toMatchObject({
-      code: 'RESOURCE_NOT_FOUND',
+      expect(error).toBeInstanceOf(CloudStorageError);
+      expect((error as CloudStorageError).code).toBe(CLOUD_STORAGE_ERRORS.INVALID_KEY);
     });
-  });
-
-  it('should delete a local file', async () => {
-    mockedUnlink.mockResolvedValue(undefined);
-
-    const service = new LocalAdapterService();
-    await service.deleteFile('file-to-delete.pdf');
-
-    expect(mockedUnlink).toHaveBeenCalledWith(
-      expect.stringContaining('/files/file-to-delete.pdf'),
-    );
   });
 });

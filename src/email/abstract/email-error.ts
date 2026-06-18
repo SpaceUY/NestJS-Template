@@ -1,31 +1,24 @@
-export enum EmailErrorCode {
-  Unknown = 'UNKNOWN',
-  InvalidParams = 'INVALID_PARAMS',
-  InvalidRecipient = 'INVALID_RECIPIENT',
-  TemplateNotFound = 'TEMPLATE_NOT_FOUND',
-  TemplateRenderFailed = 'TEMPLATE_RENDER_FAILED',
-  ProviderAuthFailed = 'PROVIDER_AUTH_FAILED',
-  ProviderRejected = 'PROVIDER_REJECTED',
-  ProviderUnavailable = 'PROVIDER_UNAVAILABLE',
-  QuotaExceeded = 'QUOTA_EXCEEDED',
-}
+export const EMAIL_ERRORS = {
+  UNKNOWN: 'EMAIL_UNKNOWN',
+  INVALID_PARAMS: 'EMAIL_INVALID_PARAMS',
+  INVALID_RECIPIENT: 'EMAIL_INVALID_RECIPIENT',
+  TEMPLATE_NOT_FOUND: 'EMAIL_TEMPLATE_NOT_FOUND',
+  TEMPLATE_RENDER_FAILED: 'EMAIL_TEMPLATE_RENDER_FAILED',
+  PROVIDER_AUTH_FAILED: 'EMAIL_PROVIDER_AUTH_FAILED',
+  PROVIDER_REJECTED: 'EMAIL_PROVIDER_REJECTED',
+  PROVIDER_UNAVAILABLE: 'EMAIL_PROVIDER_UNAVAILABLE',
+  QUOTA_EXCEEDED: 'EMAIL_QUOTA_EXCEEDED',
+} as const;
 
-export interface EmailError {
-  name: 'EmailError';
-  message: string;
-  code: EmailErrorCode;
-  cause?: unknown;
-}
+export type EmailErrorCode = (typeof EMAIL_ERRORS)[keyof typeof EMAIL_ERRORS];
 
-export function createEmailError(
-  message: string,
-  code: EmailErrorCode = EmailErrorCode.Unknown,
-  cause?: unknown,
-): EmailError {
-  return {
-    name: 'EmailError',
-    message,
-    code,
-    cause,
-  };
+export class EmailError extends Error {
+  constructor(
+    public readonly code: EmailErrorCode,
+    message: string,
+    public readonly cause?: unknown,
+  ) {
+    super(message);
+    this.name = 'EmailError';
+  }
 }
