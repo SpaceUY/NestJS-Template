@@ -1,0 +1,343 @@
+# Logger Module
+
+Provider-agnostic structured logging with an adapter architecture.
+
+Consumers depend only on `LoggerService` (the abstract class). The concrete
+adapter — NestJS built-in, Pino, Winston, or a custom one — is wired at module
+registration time and is invisible to the rest of the codebase.
+
+---
+
+## Core Contract
+
+[`LoggerService`](./abstract/logger.service.ts) is the only type other modules
+should import:
+
+```ts
+abstract class LoggerService {
+  setContext(context: string): void;
+  log(input: LogInput): void;
+  warn(input: LogInput): void;
+  error(input: LogInput): void;
+  debug(input: LogInput): void;
+}
+```
+
+`LogInput`:
+
+```ts
+interface LogInput {
+  message: string;
+  data?: Record<string, unknown>;
+}
+```
+
+---
+
+## Directory Structure
+
+```
+src/common/logger/
+├── abstract/
+│   ├── logger-abstract.module.ts      ← forRoot / forRootAsync
+│   ├── logger.service.ts              ← abstract class (the DI token)
+│   └── logger.interfaces.ts           ← LogInput, LogTelemetryHook
+├── nest-adapter/
+│   └── nest-logger.adapter.ts         ← wraps NestJS Logger (zero extra deps)
+├── pino-adapter/
+│   ├── pino-logger.adapter.ts         ← wraps pino directly (peer dep: pino)
+│   └── configs/
+│       ├── json-logs.config.ts        ← structured JSON preset (production)
+│       └── pretty-logs.config.ts      ← colourised preset (local dev, needs pino-pretty)
+├── winston-adapter/
+│   └── winston-logger.adapter.ts      ← wraps winston directly (peer dep: winston)
+└── README.md
+```
+
+---
+
+## Registration
+
+### 1) `forRoot` — no runtime config needed
+
+```ts
+import { LoggerAbstractModule } from '@/common/logger/abstract/logger-abstract.module';
+import { NestLoggerAdapter } from '@/common/logger/nest-adapter/nest-logger.adapter';
+
+LoggerAbstractModule.forRoot({
+  adapter: NestLoggerAdapter,
+  isGlobal: true,
+})
+```
+
+### 2) `forRootAsync` — config-driven instantiation
+
+```ts
+import { LoggerAbstractModule } from '@/common/logger/abstract/logger-abstract.module';
+import { PinoLoggerAdapter } from '@/common/logger/pino-adapter/pino-logger.adapter';
+
+LoggerAbstractModule.forRootAsync({
+  isGlobal: true,
+  inject: [appConfig.KEY],
+  useFactory: (config: ConfigType<typeof appConfig>) =>
+    new PinoLoggerAdapter(config.appName),
+})
+```
+
+---
+
+## Recipe: wiring the logger in `AppModule`
+
+The recommended default is registering `NestLoggerAdapter` globally. It wraps
+NestJS's built-in `Logger`, so whatever logger is configured on the NestJS
+application instance is what actually handles the output.
+
+```ts
+// app.module.ts
+import { Module } from '@nestjs/common';
+import { LoggerAbstractModule } from './common/logger/abstract/logger-abstract.module';
+import { NestLoggerAdapter } from './common/logger/nest-adapter/nest-logger.adapter';
+
+@Module({
+  imports: [
+    LoggerAbstractModule.forRoot({
+      adapter: NestLoggerAdapter,
+      isGlobal: true,
+    }),
+    // ... other modules
+  ],
+})
+export class AppModule {}
+```
+
+This means you can swap the underlying logging library by configuring it once
+at the NestJS application level — without touching `AppModule` or any consumer.
+For example, to use Pino as the underlying engine via
+[`nestjs-pino`](https://github.com/iamolegga/nestjs-pino):
+
+```ts
+// app.module.ts — add LoggerModule alongside LoggerAbstractModule
+import { LoggerModule } from 'nestjs-pino';
+
+const isLocal = process.env.NODE_ENV === 'local';
+
+@Module({
+  imports: [
+    LoggerModule.forRoot({
+      pinoHttp: {
+        level: isLocal ? 'debug' : 'info',
+        transport: isLocal ? { target: 'pino-pretty' } : undefined,
+      },
+    }),
+    LoggerAbstractModule.forRoot({
+      adapter: NestLoggerAdapter,
+      isGlobal: true,
+    }),
+    // ...
+  ],
+})
+export class AppModule {}
+```
+
+```ts
+// main.ts
+import { NestFactory } from '@nestjs/core';
+import { Logger } from 'nestjs-pino';
+import { AppModule } from './app.module';
+
+async function bootstrap() {
+  const app = await NestFactory.create(AppModule, { bufferLogs: true });
+  app.useLogger(app.get(Logger));
+  await app.listen(3000);
+}
+bootstrap();
+```
+
+`NestLoggerAdapter` (and every service injecting `LoggerService`) continues to
+work identically — the Pino engine is invisible to application code.
+
+This recipe requires `nestjs-pino` (`pnpm add nestjs-pino pino`), and
+`pino-pretty` (`pnpm add -D pino-pretty`) for the local pretty transport.
+
+The other adapters (`PinoLoggerAdapter`, `WinstonLoggerAdapter`) exist for
+cases where you want to drive a logging library **directly**, bypassing
+NestJS's logger pipeline entirely.
+
+---
+
+## Consuming `LoggerService`
+
+### Standard injection
+
+Declare `LoggerService` as a constructor dependency. NestJS resolves the
+concrete adapter that was registered at module bootstrap — the consumer never
+references a specific adapter class.
+
+```ts
+import { Injectable } from '@nestjs/common';
+import { LoggerService } from './common/logger/abstract/logger.service';
+
+@Injectable()
+export class SomeService {
+  constructor(private readonly logger: LoggerService) {
+    this.logger.setContext(SomeService.name);
+  }
+
+  doSomething(): void {
+    this.logger.log({ message: 'Action taken', data: { key: 'value' } });
+  }
+}
+```
+
+For this to resolve, `LoggerService` must be visible to `SomeService`'s module.
+There are two ways to achieve this:
+
+**Option A — register as global (recommended for application-wide logging)**
+
+```ts
+// app.module.ts
+LoggerAbstractModule.forRoot({ adapter: NestLoggerAdapter, isGlobal: true })
+```
+
+With `isGlobal: true`, every module in the application can inject `LoggerService`
+without any additional imports. This is the recommended setup for most projects.
+
+**Option B — import per module (for tighter scoping)**
+
+```ts
+// some-feature.module.ts
+@Module({
+  imports: [
+    LoggerAbstractModule.forRoot({ adapter: NestLoggerAdapter }),
+  ],
+  providers: [SomeService],
+})
+export class SomeFeatureModule {}
+```
+
+Each module that needs `LoggerService` must import the module explicitly. Useful
+when different parts of the application should use different adapters.
+
+### Self-defaulting services (library / reusable modules)
+
+Services that ship as part of a reusable module (e.g. email adapters) accept an
+optional `LoggerService` in their constructor and fall back to a sensible default
+when none is provided. This makes the module usable without requiring the caller
+to register `LoggerAbstractModule` at all.
+
+```ts
+@Injectable()
+export class ResendAdapterService extends EmailService {
+  private logger: LoggerService;
+
+  constructor(config: ResendAdapterConfig, logger?: LoggerService) {
+    super();
+    this.logger = logger ?? new NestLoggerAdapter(ResendAdapterService.name);
+  }
+}
+```
+
+If the application has registered `LoggerAbstractModule` globally, it can pass
+the injected instance through `forRootAsync`:
+
+```ts
+// app.module.ts
+EmailAbstractModule.forRootAsync({
+  inject: [LoggerService],
+  useFactory: (logger: LoggerService) =>
+    new ResendAdapterService({ resendApiKey: '...', emailFrom: '...' }, logger),
+})
+```
+
+This propagates the application's chosen adapter (and any telemetry hook wired
+to it) into the email layer. When the logger argument is omitted, the service
+silently falls back to `NestLoggerAdapter` — so the module remains functional
+even in isolation (e.g. during testing).
+
+---
+
+## Telemetry Hook (future integration point)
+
+Both `forRoot` and `forRootAsync` accept an optional `telemetryHook`. It is
+called after every log write with the level, the original `LogInput`, and the
+current context string — without any adapter knowing about telemetry internals.
+
+```ts
+LoggerAbstractModule.forRoot({
+  adapter: NestLoggerAdapter,
+  isGlobal: true,
+  telemetryHook: (level, input, context) => {
+    openTelemetrySpan.addEvent(input.message, { level, context, ...input.data });
+  },
+})
+```
+
+When you are ready to integrate a telemetry provider (OpenTelemetry, Datadog,
+etc.), pass the hook here. No adapter code changes are required.
+
+---
+
+## Built-in Adapters
+
+### `NestLoggerAdapter`
+
+Wraps NestJS's built-in `Logger`. No extra dependencies. Recommended default
+for projects that haven't chosen a logging library yet.
+
+### `PinoLoggerAdapter`
+
+Wraps [pino](https://github.com/pinojs/pino) directly — no NestJS logger
+pipeline involved. Use this when you want pino as a standalone logger, bypassing
+`nestjs-pino` entirely.
+
+Pino is a **peer dependency** — install it separately:
+
+```
+pnpm add pino
+```
+
+The constructor accepts an optional pino options object. Two presets are
+provided in `pino-adapter/configs/`:
+
+```ts
+import { PinoLoggerAdapter } from './pino-adapter/pino-logger.adapter';
+import { prettyLogsConfig } from './pino-adapter/configs/pretty-logs.config';
+import { jsonLogsConfig } from './pino-adapter/configs/json-logs.config';
+
+const isLocal = process.env.NODE_ENV === 'local';
+
+LoggerAbstractModule.forRoot({
+  adapter: ..., // can't use forRoot here — use forRootAsync
+})
+
+// With forRootAsync:
+LoggerAbstractModule.forRootAsync({
+  isGlobal: true,
+  useFactory: () =>
+    new PinoLoggerAdapter(
+      'App',
+      isLocal ? prettyLogsConfig('debug') : jsonLogsConfig('info'),
+    ),
+})
+```
+
+`pretty-logs.config.ts` requires `pino-pretty` (`pnpm add -D pino-pretty`).
+
+### `WinstonLoggerAdapter`
+
+Wraps [winston](https://github.com/winstonjs/winston). Winston is a **peer
+dependency** — install it separately:
+
+```
+pnpm add winston
+```
+
+---
+
+## Adding a Custom Adapter
+
+1. Create a class that extends `LoggerService`.
+2. Implement `setContext`, `log`, `warn`, `error`, `debug`.
+3. Call `this.telemetryHook?.(level, input, context)` at the end of each method
+   so the hook fires automatically when wired.
+4. Register it with `LoggerAbstractModule.forRoot` or `forRootAsync`.

@@ -4,7 +4,7 @@ import { EnvConfigAdapter } from './env-config.adapter';
 import { CONFIG_PROVIDER_ERRORS } from '../abstract/config-provider-error-codes';
 import { ConfigProviderError } from '../abstract/config-provider.error';
 
-jest.mock('fs');
+jest.mock('node:fs');
 jest.mock('dotenv');
 
 const mockExistsSync = fs.existsSync as jest.Mock;
