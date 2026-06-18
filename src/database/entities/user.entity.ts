@@ -17,6 +17,9 @@ export class User extends BaseEntity {
   @Column({ type: 'enum', enum: AuthType, default: AuthType.EMAIL })
   authType: AuthType;
 
+  @Column({ unique: true, nullable: true })
+  auth0Id: string | null;
+
   @OneToOne(() => Spaceship, (spaceship) => spaceship.captain)
   ship: Spaceship;
 }

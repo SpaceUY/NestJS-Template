@@ -32,6 +32,7 @@ import {
   expoScope,
   ExpoScopeConfig,
 } from './push-notification/expo-adapter/config/expo.scope';
+import { auth0Scope } from './auth/config/auth0.scope';
 import { SpaceshipModule } from './spaceship/spaceship.module';
 import { TemplateModule } from './templating/template.module';
 import { PugAdapterModule } from './templating/pug-adapter/pug-adapter.module';
@@ -42,12 +43,13 @@ import { PugAdapterModule } from './templating/pug-adapter/pug-adapter.module';
       isGlobal: true,
       sources: {
         env: {
-          useFactory: () => new EnvConfigAdapter(),
+          useFactory: () => new EnvConfigAdapter({ envFilePath: '.env' }),
         },
       },
       scopes: [
         appScope,
         jwtScope,
+        auth0Scope,
         s3Scope,
         emailScope,
         expoScope,

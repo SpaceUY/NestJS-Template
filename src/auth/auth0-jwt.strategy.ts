@@ -1,16 +1,17 @@
 import { Inject, Injectable } from '@nestjs/common';
-import { ConfigType } from '@nestjs/config';
 import { PassportStrategy } from '@nestjs/passport';
+import { InjectRepository } from '@nestjs/typeorm';
 import { ExtractJwt, Strategy } from 'passport-jwt';
+import { Repository } from 'typeorm';
 import * as jwt from 'jsonwebtoken';
-import { User } from '@prisma/client';
 import { RequestException } from 'src/common/exception/core/ExceptionBase';
 import { Exceptions } from 'src/common/exception/exceptions';
-import auth0Config from '../config/auth0.config';
-import { PrismaService } from '../prisma/prisma.service';
+import { auth0Scope, Auth0ScopeConfig } from './config/auth0.scope';
 import { passportJwtSecret } from 'jwks-rsa';
 import axios from 'axios';
 import { Request } from 'express';
+import { User } from '../database/entities/user.entity';
+import { AuthType } from './core/auth-type.enum';
 
 interface Auth0UserInfo {
   sub: string;
@@ -23,9 +24,10 @@ interface Auth0UserInfo {
 @Injectable()
 export class Auth0JwtStrategy extends PassportStrategy(Strategy, 'auth0-jwt') {
   constructor(
-    @Inject(auth0Config.KEY)
-    private readonly auth0Conf: ConfigType<typeof auth0Config>,
-    private readonly prisma: PrismaService,
+    @Inject(auth0Scope.KEY)
+    private readonly auth0Conf: Auth0ScopeConfig,
+    @InjectRepository(User)
+    private readonly userRepository: Repository<User>,
   ) {
     super({
       jwtFromRequest: ExtractJwt.fromAuthHeaderAsBearerToken(),
@@ -47,7 +49,6 @@ export class Auth0JwtStrategy extends PassportStrategy(Strategy, 'auth0-jwt') {
       throw new RequestException(Exceptions.auth.invalidCredentials);
     }
 
-    // Extract the raw token from the Authorization header
     const authHeader = req.headers.authorization;
     if (!authHeader?.startsWith('Bearer ')) {
       throw new RequestException(Exceptions.auth.invalidCredentials);
@@ -59,31 +60,29 @@ export class Auth0JwtStrategy extends PassportStrategy(Strategy, 'auth0-jwt') {
       throw new RequestException(Exceptions.auth.invalidCredentials);
     }
 
-    let user = await this.prisma.user.findUnique({
+    let user = await this.userRepository.findOne({
       where: { auth0Id: userInfo.sub },
     });
 
     if (!user) {
-      user = await this.prisma.user.create({
-        data: {
+      user = await this.userRepository.save(
+        this.userRepository.create({
           auth0Id: userInfo.sub,
           email: userInfo.email,
           name: userInfo.name || userInfo.email.split('@')[0],
           verified: userInfo.email_verified,
-          authType: 'AUTH0',
-        },
-      });
+          authType: AuthType.AUTH0,
+        }),
+      );
     } else {
       const expectedName = userInfo.name || userInfo.email.split('@')[0];
       if (user.email !== userInfo.email || user.name !== expectedName) {
-        user = await this.prisma.user.update({
-          where: { id: user.id },
-          data: {
-            email: userInfo.email,
-            name: expectedName,
-            verified: userInfo.email_verified,
-          },
+        Object.assign(user, {
+          email: userInfo.email,
+          name: expectedName,
+          verified: userInfo.email_verified,
         });
+        user = await this.userRepository.save(user);
       }
     }
 
