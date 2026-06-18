@@ -144,3 +144,25 @@ this.logger.debug({ message: 'Validating order DTO' });
 this.logger.debug({ message: 'Persisting order' });
 this.logger.log({ message: 'Order created', data: { orderId: order.id } });
 ```
+
+## Use past-tense event names for log messages
+
+Write log messages as past-tense events, not present-participle actions or
+verbose completion phrases. This keeps messages short, consistent, and easy to
+scan or aggregate across services.
+
+```ts
+// Correct
+'Order created'
+'Order cancelled'
+'Payment refunded'
+'User registered'
+
+// Wrong
+'Creating order'
+'Order creation completed'
+'Refund completed successfully'
+'Registering user'
+```
+
+Think of each message as the name of a business event that just occurred.
