@@ -1,5 +1,5 @@
-import { ApiException } from '@/common/expections/api.exception';
-import { LocalAdapterService } from '@/modules/infrastructure/cloud-storage/local-adapter/local-adapter.service';
+import { BadRequestException, NotFoundException } from '@nestjs/common';
+import { LocalAdapterService } from './local-adapter.service';
 import { access, mkdir, unlink, writeFile } from 'node:fs/promises';
 import { v4 as uuidv4 } from 'uuid';
 
@@ -61,10 +61,7 @@ describe('LocalAdapterService', () => {
       error = caughtError;
     }
 
-    expect(error).toBeInstanceOf(ApiException);
-    expect(error).toMatchObject({
-      code: 'INSUFFICIENT_INFORMATION',
-    });
+    expect(error).toBeInstanceOf(BadRequestException);
   });
 
   it('should return a local URL when the file exists', async () => {
@@ -94,10 +91,7 @@ describe('LocalAdapterService', () => {
       error = caughtError;
     }
 
-    expect(error).toBeInstanceOf(ApiException);
-    expect(error).toMatchObject({
-      code: 'RESOURCE_NOT_FOUND',
-    });
+    expect(error).toBeInstanceOf(NotFoundException);
   });
 
   it('should delete a local file', async () => {
