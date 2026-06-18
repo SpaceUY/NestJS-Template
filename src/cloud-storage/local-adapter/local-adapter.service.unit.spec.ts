@@ -63,7 +63,7 @@ describe('LocalAdapterService', () => {
 
     expect(error).toBeInstanceOf(ApiException);
     expect(error).toMatchObject({
-      code: 'INSUFFICIENT_INFORMATION',
+      code: 'INVALID_PAYLOAD',
     });
   });
 
