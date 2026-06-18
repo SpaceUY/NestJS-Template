@@ -4,7 +4,6 @@ import { AppService } from './app.service';
 import { appScope } from './app.scope';
 import { AuthModule } from './auth/auth.module';
 import { jwtScope } from './auth/config/jwt.scope';
-import { googleScope } from './auth/google/config/google.scope';
 import { MiddlewareModule } from './common/middleware/middleware.module';
 import { CloudStorageAbstractModule } from './cloud-storage/abstract/cloud-storage-abstract.module';
 import { S3AdapterService } from './cloud-storage/s3-adapter/s3-adapter.service';
@@ -33,6 +32,7 @@ import {
   expoScope,
   ExpoScopeConfig,
 } from './push-notification/expo-adapter/config/expo.scope';
+import { auth0Scope } from './auth/config/auth0.scope';
 import { SpaceshipModule } from './spaceship/spaceship.module';
 import { TemplateModule } from './templating/template.module';
 import { PugAdapterModule } from './templating/pug-adapter/pug-adapter.module';
@@ -43,13 +43,13 @@ import { PugAdapterModule } from './templating/pug-adapter/pug-adapter.module';
       isGlobal: true,
       sources: {
         env: {
-          useFactory: () => new EnvConfigAdapter(),
+          useFactory: () => new EnvConfigAdapter({ envFilePath: '.env' }),
         },
       },
       scopes: [
         appScope,
         jwtScope,
-        googleScope,
+        auth0Scope,
         s3Scope,
         emailScope,
         expoScope,

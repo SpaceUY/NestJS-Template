@@ -1,19 +1,12 @@
 import { Module } from '@nestjs/common';
-import { PassportModule } from '@nestjs/passport';
-import { GoogleModule } from './google/google.module';
 import { AuthService } from './auth.service';
-import { JwtStrategy } from './jwt.strategy';
-import { AuthTokenModule } from './core/auth-token/auth-token.module';
-import { EmailModule } from './email/email.module';
+import { Auth0JwtStrategy } from './auth0-jwt.strategy';
+import { Auth0Guard } from './auth0.guard';
+import { PassportModule } from '@nestjs/passport';
 
 @Module({
-  imports: [
-    PassportModule.register({ defaultStrategy: 'jwt' }),
-    GoogleModule,
-    AuthTokenModule,
-    EmailModule,
-  ],
-  providers: [AuthService, JwtStrategy],
-  exports: [AuthService, JwtStrategy, PassportModule],
+  imports: [PassportModule.register({ defaultStrategy: 'auth0-jwt' })],
+  providers: [AuthService, Auth0JwtStrategy, Auth0Guard],
+  exports: [AuthService, Auth0JwtStrategy, Auth0Guard, PassportModule],
 })
 export class AuthModule {}
