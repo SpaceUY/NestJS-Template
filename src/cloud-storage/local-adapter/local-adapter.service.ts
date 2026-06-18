@@ -1,16 +1,11 @@
-import {
-  BadRequestException,
-  Injectable,
-  NotFoundException,
-} from '@nestjs/common';
-import { access, mkdir, unlink, writeFile } from 'node:fs/promises';
-import { basename, extname, join, resolve } from 'node:path';
-import { v4 as uuidv4 } from 'uuid';
-import { CloudStorageService } from '../abstract/cloud-storage.service';
-import {
-  CloudStorageFile,
-  CloudStorageUploadFile,
-} from '../abstract/cloud-storage.interfaces';
+import { ERROR_CODES } from "../../common/enums";
+import { ApiException } from "../../common/exception/api.exception";
+import { Injectable } from "@nestjs/common";
+import { access, mkdir, unlink, writeFile } from "node:fs/promises";
+import { basename, extname, join, resolve } from "node:path";
+import { v4 as uuidv4 } from "uuid";
+import { CloudStorageService } from "../abstract/cloud-storage.service";
+import { CloudStorageFile, CloudStorageUploadFile } from "../abstract/cloud-storage.interfaces";
 
 const LOCAL_FILES_DIRECTORY = resolve(process.cwd(), 'files');
 const LOCAL_FILES_PUBLIC_PREFIX = '/files';
