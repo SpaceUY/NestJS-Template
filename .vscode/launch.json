@@ -8,7 +8,8 @@
       "name": "Debug Application",
       "type": "node",
       "request": "launch",
-      "runtimeExecutable": "npm",
+      "cwd": "${workspaceFolder}",
+      "runtimeExecutable": "/opt/homebrew/bin/npm",
       "runtimeArgs": ["run", "start:debug"],
       "env": {
         "NODE_ENV": "development"
@@ -17,7 +18,9 @@
       "skipFiles": [
         "<node_internals>/**"
       ],
-      "restart": true
+      "restart": true,
+      "sourceMaps": true,
+      "outFiles": ["${workspaceFolder}/dist/**/*.js"]
     },
     {
       "name": "Attach",

@@ -1,19 +1,23 @@
-image: node:16.15
+image: node:24.15.0
 
 definitions:
+  caches:
+    pnpm: ~/.local/share/pnpm/store
   steps:
     - step: &test-build
         name: Test & Build
         caches:
-          - node
+          - pnpm
         script:
-          - npm ci
-          - npm run lint
-          - npm run build
+          - corepack enable
+          - corepack prepare pnpm@10.15.1 --activate
+          - pnpm install --frozen-lockfile
+          - pnpm run lint
+          - pnpm run build
         artifacts:
           - dist/**
     - step: &build_publish_and_deploy
-        image: node:alpine
+        image: node:24.15.0
         name: Backend build/publish docker to ECR, deploy to ECS, and lambda build/deploy.
         services:
           # Enable Docker for your repository

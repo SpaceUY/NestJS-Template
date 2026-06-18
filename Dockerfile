@@ -1,24 +1,25 @@
-FROM node:lts-alpine
+FROM node:24.15.0
 # RUN as root
 RUN apk add dumb-init
+RUN corepack enable && corepack prepare pnpm@10.15.1 --activate
 # Use the node user from the image (instead of the root user)
 USER node
 # Create app directory
 WORKDIR /home/node
 
 # Copy application dependency manifests to the container image.
-# A wildcard is used to ensure copying both package.json AND package-lock.json (when available).
-# Copying this first prevents re-running npm install on every code change.
-COPY --chown=node:node package*.json ./
-# Install app dependencies using the `npm ci` command instead of `npm install`
-RUN npm ci
+# Copying this first prevents re-running pnpm install on every code change.
+COPY --chown=node:node package.json pnpm-lock.yaml ./
+# Install app dependencies using frozen lockfile for reproducible builds
+RUN pnpm install --frozen-lockfile
+
 # Bundle app source
 COPY --chown=node:node . .
 
 # Run the build command which creates the production bundle
-RUN npx prisma generate
+RUN pnpm exec prisma generate
 
-RUN npm run build
+RUN pnpm run build
 
 RUN chmod 777 ./docker-script.sh
 

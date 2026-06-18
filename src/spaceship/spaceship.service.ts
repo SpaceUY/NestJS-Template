@@ -1,41 +1,48 @@
 import { Injectable } from '@nestjs/common';
-import { Spaceship } from '@prisma/client';
-import { PrismaService } from '../prisma/prisma.service';
+import { InjectRepository } from '@nestjs/typeorm';
+import { Repository } from 'typeorm';
+import { Spaceship } from '../database/entities/spaceship.entity';
 import { CreateSpaceshipDto } from './dto/create-spaceship.dto';
 import { UpdateSpaceshipDto } from './dto/update-spaceship.dto';
 
 @Injectable()
 export class SpaceshipService {
-  constructor(private readonly prisma: PrismaService) {}
+  constructor(
+    @InjectRepository(Spaceship)
+    private readonly spaceshipRepository: Repository<Spaceship>,
+  ) {}
 
   async createSpaceship(
     data: CreateSpaceshipDto,
-    userId: string,
+    userId: number,
   ): Promise<Spaceship> {
-    return this.prisma.spaceship.create({
-      data: { ...data, captainId: userId },
+    const spaceship = this.spaceshipRepository.create({
+      ...data,
+      captainId: userId,
     });
+    return this.spaceshipRepository.save(spaceship);
   }
 
   async getAllSpaceships(): Promise<Spaceship[]> {
-    return this.prisma.spaceship.findMany();
+    return this.spaceshipRepository.find();
   }
 
-  async getSpaceshipById(id: string): Promise<Spaceship | null> {
-    return this.prisma.spaceship.findUnique({ where: { id } });
+  async getSpaceshipById(uuid: string): Promise<Spaceship | null> {
+    return this.spaceshipRepository.findOne({ where: { uuid } });
   }
 
   async updateSpaceship(
-    id: string,
+    uuid: string,
     data: UpdateSpaceshipDto,
   ): Promise<Spaceship> {
-    return this.prisma.spaceship.update({
-      where: { id },
-      data,
-    });
+    await this.spaceshipRepository.update({ uuid }, data);
+    return this.spaceshipRepository.findOneOrFail({ where: { uuid } });
   }
 
-  async deleteSpaceship(id: string): Promise<Spaceship> {
-    return this.prisma.spaceship.delete({ where: { id } });
+  async deleteSpaceship(uuid: string): Promise<Spaceship> {
+    const spaceship = await this.spaceshipRepository.findOneOrFail({
+      where: { uuid },
+    });
+    return this.spaceshipRepository.softRemove(spaceship);
   }
 }
