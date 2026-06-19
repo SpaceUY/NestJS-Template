@@ -4,13 +4,14 @@ import {
   Module,
   ModuleMetadata,
 } from '@nestjs/common';
-import { ClassConstructor } from 'class-transformer';
 import { CloudStorageController } from './cloud-storage.controller';
 import { CloudStorageService } from './cloud-storage.service';
 import { LoggerService } from '../../common/logger/abstract/logger.service';
 
 interface CloudStorageModuleOptions {
-  adapter: ClassConstructor<CloudStorageService>;
+  // forRoot instantiates the adapter directly (no NestJS DI). Adapters that
+  // need constructor arguments must use forRootAsync instead.
+  adapter: new () => CloudStorageService;
   isGlobal?: boolean;
   useDefaultController?: boolean;
 }

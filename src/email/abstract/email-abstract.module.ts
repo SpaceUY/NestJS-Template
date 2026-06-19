@@ -3,13 +3,14 @@ import {
   InjectionToken,
   Module,
   ModuleMetadata,
-  Type,
 } from '@nestjs/common';
 import { EmailService } from './email.service';
 import { LoggerService } from '../../common/logger/abstract/logger.service';
 
 interface EmailModuleOptions {
-  adapter: Type<EmailService>;
+  // forRoot instantiates the adapter directly (no NestJS DI). Adapters that
+  // need constructor arguments must use forRootAsync instead.
+  adapter: new () => EmailService;
   isGlobal?: boolean;
 }
 

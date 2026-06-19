@@ -35,7 +35,6 @@ import { AwsSesAdapterService } from './email/aws-ses-adapter/aws-ses-adapter.se
 import { SendgridAdapterService } from './email/sendgrid-adapter/sendgrid-adapter.service';
 import { ResendAdapterService } from './email/resend-adapter/resend-adapter.service';
 import { LoggerAbstractModule } from './common/logger/abstract/logger-abstract.module';
-import { LoggerService } from './common/logger/abstract/logger.service';
 import { NestLoggerAdapter } from './common/logger/nest-adapter/nest-logger.adapter';
 @Module({
   imports: [
@@ -69,32 +68,25 @@ import { NestLoggerAdapter } from './common/logger/nest-adapter/nest-logger.adap
       isGlobal: true,
     }),
     EmailAbstractModule.forRootAsync({
-      inject: [emailConfig.KEY, awsConfig.KEY, LoggerService],
+      inject: [emailConfig.KEY, awsConfig.KEY],
       useFactory: (
         email: ConfigType<typeof emailConfig>,
         aws: ConfigType<typeof awsConfig>,
-        logger: LoggerService,
       ) => {
         const configuredAdapter = email.adapter?.toUpperCase();
 
         if (configuredAdapter === EMAIL_ADAPTERS.SENDGRID) {
-          return new SendgridAdapterService(
-            {
-              sendgridApiKey: email.sendgrid.apiKey,
-              emailFrom: email.from,
-            },
-            logger,
-          );
+          return new SendgridAdapterService({
+            sendgridApiKey: email.sendgrid.apiKey,
+            emailFrom: email.from,
+          });
         }
 
         if (configuredAdapter === EMAIL_ADAPTERS.RESEND) {
-          return new ResendAdapterService(
-            {
-              resendApiKey: email.resend.apiKey,
-              emailFrom: email.resend.emailFrom || email.from,
-            },
-            logger,
-          );
+          return new ResendAdapterService({
+            resendApiKey: email.resend.apiKey,
+            emailFrom: email.resend.emailFrom || email.from,
+          });
         }
 
         if (configuredAdapter === EMAIL_ADAPTERS.AWS_SES) {
