@@ -16,7 +16,7 @@ export const CACHE_ERRORS = {
 
   // Keys extension
   KEYS_FAILED: 'CACHE_KEYS_FAILED',
-};
+} as const;
 
 export type CacheErrorCode = (typeof CACHE_ERRORS)[keyof typeof CACHE_ERRORS];
 

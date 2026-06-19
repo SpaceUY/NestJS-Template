@@ -3,7 +3,7 @@ import {
   RenderedEmailContent,
 } from '../abstract/email.interface';
 import { LoggerService } from '../../common/logger/abstract/logger.service';
-import { createEmailError, EmailErrorCode } from '../abstract/email-error';
+import { EMAIL_ERRORS, EmailError } from '../abstract/email.error';
 
 interface ExecuteHtmlEmailSendOptions<TProviderResponse> {
   content: RenderedEmailContent;
@@ -22,10 +22,7 @@ export async function executeHtmlEmailSend<TProviderResponse>(
   options: ExecuteHtmlEmailSendOptions<TProviderResponse>,
 ): Promise<MailingResponse> {
   if (!options.content.html) {
-    throw createEmailError(
-      options.invalidContentMessage,
-      EmailErrorCode.InvalidParams,
-    );
+    throw new EmailError(EMAIL_ERRORS.INVALID_PARAMS, options.invalidContentMessage);
   }
 
   try {
@@ -41,10 +38,6 @@ export async function executeHtmlEmailSend<TProviderResponse>(
       message: options.failureLogMessage,
       data: { ...options.failureMeta, error: String(error) },
     });
-    throw createEmailError(
-      options.providerErrorMessage,
-      EmailErrorCode.ProviderRejected,
-      error,
-    );
+    throw new EmailError(EMAIL_ERRORS.PROVIDER_REJECTED, options.providerErrorMessage, { cause: String(error) });
   }
 }

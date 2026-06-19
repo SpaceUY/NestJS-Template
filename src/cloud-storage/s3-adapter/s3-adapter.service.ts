@@ -13,6 +13,7 @@ import {
   CloudStorageFile,
   CloudStorageUploadFile,
 } from '../abstract/cloud-storage.interfaces';
+import { CloudStorageError, CLOUD_STORAGE_ERRORS } from '../abstract/cloud-storage.error';
 
 type GetSignedUrlCompat = (
   client: S3Client,
@@ -57,7 +58,15 @@ export class S3AdapterService extends CloudStorageService {
       Body: file.buffer,
       ContentType: file.mimetype,
     };
-    await this.s3.send(new PutObjectCommand(params));
+    try {
+      await this.s3.send(new PutObjectCommand(params));
+    } catch (error) {
+      throw new CloudStorageError(
+        CLOUD_STORAGE_ERRORS.UPLOAD_FAILED,
+        'File upload to S3 failed',
+        { cause: String(error) },
+      );
+    }
     const url = `https://${this.bucket}.s3.${this.region}.amazonaws.com/${params.Key}`;
     return { url, id };
   }
@@ -67,7 +76,15 @@ export class S3AdapterService extends CloudStorageService {
       Bucket: this.bucket,
       Key: fileKey,
     };
-    await this.s3.send(new DeleteObjectCommand(params));
+    try {
+      await this.s3.send(new DeleteObjectCommand(params));
+    } catch (error) {
+      throw new CloudStorageError(
+        CLOUD_STORAGE_ERRORS.DELETE_FAILED,
+        'File deletion from S3 failed',
+        { cause: String(error) },
+      );
+    }
   }
 
   async getFile(fileKey: string): Promise<CloudStorageFile> {
@@ -78,14 +95,19 @@ export class S3AdapterService extends CloudStorageService {
 
     // AWS SDK packages can pull different @smithy type instances in some installs.
     // This keeps runtime behavior with the real helper while avoiding false type incompatibilities.
-    const url = await getSignedUrlCompat(
-      this.s3,
-      new GetObjectCommand(params),
-      {
-        expiresIn: this.expiresInSeconds,
-      },
-    );
-
-    return { url, id: fileKey };
+    try {
+      const url = await getSignedUrlCompat(
+        this.s3,
+        new GetObjectCommand(params),
+        { expiresIn: this.expiresInSeconds },
+      );
+      return { url, id: fileKey };
+    } catch (error) {
+      throw new CloudStorageError(
+        CLOUD_STORAGE_ERRORS.GET_FAILED,
+        'Failed to generate signed URL from S3',
+        { cause: String(error) },
+      );
+    }
   }
 }

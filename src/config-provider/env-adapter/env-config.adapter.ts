@@ -2,8 +2,7 @@ import * as dotenv from 'dotenv';
 import * as fs from 'node:fs';
 import { Injectable } from '@nestjs/common';
 import { ConfigProviderService } from '../abstract/config-provider.service';
-import { CONFIG_PROVIDER_ERRORS } from '../abstract/config-provider-error-codes';
-import { ConfigProviderError } from '../abstract/config-provider.error';
+import { ConfigProviderError, CONFIG_PROVIDER_ERRORS } from '../abstract/config-provider.error';
 import { EnvConfigAdapterOptions } from './env-config.interfaces';
 
 @Injectable()

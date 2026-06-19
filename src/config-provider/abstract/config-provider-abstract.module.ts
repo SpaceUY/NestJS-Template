@@ -5,8 +5,7 @@ import {
   Provider,
 } from '@nestjs/common';
 import { reloadableSourceToken } from './config-provider-tokens';
-import { CONFIG_PROVIDER_ERRORS } from './config-provider-error-codes';
-import { ConfigProviderError } from './config-provider.error';
+import { ConfigProviderError, CONFIG_PROVIDER_ERRORS } from './config-provider.error';
 import {
   ConfigProviderModuleAsyncOptions,
   ConfigProviderModuleOptions,
