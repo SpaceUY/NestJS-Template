@@ -351,7 +351,7 @@ describe('ConfigProviderAbstractModule', () => {
         const instance = findSourceProvider(moduleRef).useFactory(mockLogger);
 
         expect(instance).toBeInstanceOf(MockNoArgsAdapter);
-        expect((instance as any).logger).toBe(mockLogger);
+        expect(instance.logger).toBe(mockLogger);
       });
 
       it('uses NestLoggerAdapter as fallback when no logger is provided', () => {
@@ -361,7 +361,7 @@ describe('ConfigProviderAbstractModule', () => {
 
         const instance = findSourceProvider(moduleRef).useFactory(undefined);
 
-        expect((instance as any).logger).toBeInstanceOf(NestLoggerAdapter);
+        expect(instance.logger).toBeInstanceOf(NestLoggerAdapter);
       });
     });
 
