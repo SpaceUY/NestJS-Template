@@ -1,7 +1,6 @@
 import { SecretsManagerClient } from '@aws-sdk/client-secrets-manager';
 import { SecretsManagerConfigAdapter } from './secrets-manager-config.adapter';
-import { CONFIG_PROVIDER_ERRORS } from '../abstract/config-provider.error';
-import { ConfigProviderError } from '../abstract/config-provider.error';
+import { ConfigProviderError, CONFIG_PROVIDER_ERRORS } from '../abstract/config-provider.error';
 
 const mockSend = jest.fn();
 
