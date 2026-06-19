@@ -8,19 +8,15 @@ import {
 import { SendgridAdapterConfig } from './sendgrid-adapter-config.interface';
 import * as sgMail from '@sendgrid/mail';
 import { ClientResponse } from '@sendgrid/mail';
-import { LoggerService } from '../../common/logger/abstract/logger.service';
-import { NestLoggerAdapter } from '../../common/logger/nest-adapter/nest-logger.adapter';
 import { executeHtmlEmailSend } from '../utils/execute-html-email-send';
 
 @Injectable()
 export class SendgridAdapterService extends EmailService {
   private emailFrom: string;
-  private logger: LoggerService;
 
-  constructor(config: SendgridAdapterConfig, logger?: LoggerService) {
+  constructor(config: SendgridAdapterConfig) {
     super();
     this.emailFrom = config.emailFrom;
-    this.logger = logger ?? new NestLoggerAdapter(SendgridAdapterService.name);
     sgMail.setApiKey(config.sendgridApiKey);
   }
 

@@ -43,8 +43,11 @@ export class SecretsManagerConfigAdapter extends ReloadableConfigProviderService
    */
   private async _fetchSecret(): Promise<Record<string, string>> {
     if (this.options.cacheSecret !== false && this.cachedSecret) {
+      this.logger.debug({ message: 'Returning cached secret', data: { secretName: this.options.secretName } });
       return this.cachedSecret;
     }
+
+    this.logger.debug({ message: 'Fetching secret from AWS Secrets Manager', data: { secretName: this.options.secretName } });
 
     let secretString: string;
 
@@ -54,6 +57,7 @@ export class SecretsManagerConfigAdapter extends ReloadableConfigProviderService
       );
       secretString = response.SecretString ?? '{}';
     } catch (error) {
+      this.logger.error({ message: 'Failed to fetch secret from AWS Secrets Manager', error });
       throw new ConfigProviderError(
         CONFIG_PROVIDER_ERRORS.SECRET_FETCH_FAILED,
         `Failed to fetch secret "${this.options.secretName}"`,
@@ -68,6 +72,7 @@ export class SecretsManagerConfigAdapter extends ReloadableConfigProviderService
     try {
       parsed = JSON.parse(secretString);
     } catch (e) {
+      this.logger.error({ message: 'Secret is not valid JSON', error: e });
       throw new ConfigProviderError(
         CONFIG_PROVIDER_ERRORS.SECRET_FETCH_FAILED,
         `Secret "${this.options.secretName}" is not valid JSON`,
@@ -79,6 +84,7 @@ export class SecretsManagerConfigAdapter extends ReloadableConfigProviderService
       this.cachedSecret = parsed;
     }
 
+    this.logger.log({ message: 'Secret fetched from AWS Secrets Manager', data: { secretName: this.options.secretName } });
     return parsed;
   }
 
@@ -100,6 +106,7 @@ export class SecretsManagerConfigAdapter extends ReloadableConfigProviderService
   }
 
   async reload(): Promise<void> {
+    this.logger.log({ message: 'Reloading secret from AWS Secrets Manager', data: { secretName: this.options.secretName } });
     this.cachedSecret = null;
     await this._fetchSecret();
     await this.notifyReload();

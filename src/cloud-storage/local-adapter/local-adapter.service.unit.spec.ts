@@ -2,6 +2,8 @@ import { CloudStorageError, CLOUD_STORAGE_ERRORS } from '../abstract/cloud-stora
 import { LocalAdapterService } from './local-adapter.service';
 import { access, mkdir, unlink, writeFile } from 'node:fs/promises';
 import { v4 as uuidv4 } from 'uuid';
+import { LoggerService } from '../../common/logger/abstract/logger.service';
+import { NestLoggerAdapter } from '../../common/logger/nest-adapter/nest-logger.adapter';
 
 jest.mock('node:fs/promises', () => ({
   access: jest.fn(),
@@ -133,6 +135,83 @@ describe('LocalAdapterService', () => {
 
       expect(error).toBeInstanceOf(CloudStorageError);
       expect((error as CloudStorageError).code).toBe(CLOUD_STORAGE_ERRORS.INVALID_KEY);
+    });
+  });
+
+  describe('logger behavior', () => {
+    const mockLogger = {
+      log: jest.fn(),
+      warn: jest.fn(),
+      error: jest.fn(),
+      debug: jest.fn(),
+      setContext: jest.fn(),
+      withTelemetry: jest.fn(),
+    } as unknown as LoggerService;
+
+    describe('without LoggerService (NestLoggerAdapter fallback)', () => {
+      it('uses NestLoggerAdapter as the default logger', () => {
+        const service = new LocalAdapterService();
+        expect((service as any).logger).toBeInstanceOf(NestLoggerAdapter);
+      });
+
+      it('completes uploadFile without error using the fallback logger', async () => {
+        (uuidv4 as unknown as jest.Mock).mockReturnValue('fallback-uuid');
+        mockedMkdir.mockResolvedValue(undefined);
+        mockedWriteFile.mockResolvedValue(undefined);
+        const service = new LocalAdapterService();
+        await expect(
+          service.uploadFile({ buffer: Buffer.from('x'), originalname: 'test.txt' }),
+        ).resolves.toBeDefined();
+      });
+    });
+
+    describe('with injected LoggerService', () => {
+      it('logs debug and log on successful uploadFile', async () => {
+        (uuidv4 as unknown as jest.Mock).mockReturnValue('test-uuid');
+        mockedMkdir.mockResolvedValue(undefined);
+        mockedWriteFile.mockResolvedValue(undefined);
+        const service = new LocalAdapterService();
+        service.setLogger(mockLogger);
+
+        await service.uploadFile({ buffer: Buffer.from('x'), originalname: 'test.txt' });
+
+        expect(mockLogger.debug).toHaveBeenCalledWith(
+          expect.objectContaining({ message: 'Writing file to local storage' }),
+        );
+        expect(mockLogger.log).toHaveBeenCalledWith(
+          expect.objectContaining({ message: 'File written to local storage' }),
+        );
+      });
+
+      it('logs debug and log on successful deleteFile', async () => {
+        mockedUnlink.mockResolvedValue(undefined);
+        const service = new LocalAdapterService();
+        service.setLogger(mockLogger);
+
+        await service.deleteFile('file.txt');
+
+        expect(mockLogger.debug).toHaveBeenCalledWith(
+          expect.objectContaining({ message: 'Deleting file from local storage' }),
+        );
+        expect(mockLogger.log).toHaveBeenCalledWith(
+          expect.objectContaining({ message: 'File deleted from local storage' }),
+        );
+      });
+
+      it('logs debug and log on successful getFile', async () => {
+        mockedAccess.mockResolvedValue(undefined);
+        const service = new LocalAdapterService();
+        service.setLogger(mockLogger);
+
+        await service.getFile('file.txt');
+
+        expect(mockLogger.debug).toHaveBeenCalledWith(
+          expect.objectContaining({ message: 'Checking file in local storage' }),
+        );
+        expect(mockLogger.log).toHaveBeenCalledWith(
+          expect.objectContaining({ message: 'File found in local storage' }),
+        );
+      });
     });
   });
 });

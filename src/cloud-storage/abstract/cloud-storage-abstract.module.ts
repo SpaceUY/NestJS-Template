@@ -4,12 +4,14 @@ import {
   Module,
   ModuleMetadata,
 } from '@nestjs/common';
-import { ClassConstructor } from 'class-transformer';
 import { CloudStorageController } from './cloud-storage.controller';
 import { CloudStorageService } from './cloud-storage.service';
+import { LoggerService } from '../../common/logger/abstract/logger.service';
 
 interface CloudStorageModuleOptions {
-  adapter: ClassConstructor<CloudStorageService>;
+  // forRoot instantiates the adapter directly (no NestJS DI). Adapters that
+  // need constructor arguments must use forRootAsync instead.
+  adapter: new () => CloudStorageService;
   isGlobal?: boolean;
   useDefaultController?: boolean;
 }
@@ -35,7 +37,12 @@ export class CloudStorageAbstractModule {
       providers: [
         {
           provide: CloudStorageService,
-          useClass: adapter,
+          useFactory: (logger?: LoggerService) => {
+            const instance = new adapter();
+            if (logger) instance.setLogger(logger);
+            return instance;
+          },
+          inject: [{ token: LoggerService, optional: true }],
         },
       ],
       exports: [CloudStorageService],
@@ -53,8 +60,12 @@ export class CloudStorageAbstractModule {
       providers: [
         {
           provide: CloudStorageService,
-          useFactory: options.useFactory,
-          inject: options.inject || [],
+          useFactory: async (logger: LoggerService | undefined, ...args: unknown[]) => {
+            const instance = await options.useFactory(...args);
+            if (logger) instance.setLogger(logger);
+            return instance;
+          },
+          inject: [{ token: LoggerService, optional: true }, ...(options.inject || [])],
         },
       ],
       exports: [CloudStorageService],

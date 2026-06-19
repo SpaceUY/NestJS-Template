@@ -1,6 +1,8 @@
 import { SecretsManagerClient } from '@aws-sdk/client-secrets-manager';
 import { SecretsManagerConfigAdapter } from './secrets-manager-config.adapter';
 import { ConfigProviderError, CONFIG_PROVIDER_ERRORS } from '../abstract/config-provider.error';
+import { LoggerService } from '../../common/logger/abstract/logger.service';
+import { NestLoggerAdapter } from '../../common/logger/nest-adapter/nest-logger.adapter';
 
 const mockSend = jest.fn();
 
@@ -147,6 +149,97 @@ describe('SecretsManagerConfigAdapter', () => {
       await expect(adapter.get('ANY')).rejects.toMatchObject({
         code: CONFIG_PROVIDER_ERRORS.SECRET_FETCH_FAILED,
         data: { secretName: 'test/secret' },
+      });
+    });
+  });
+
+  describe('logger behavior', () => {
+    const mockLogger = {
+      log: jest.fn(),
+      warn: jest.fn(),
+      error: jest.fn(),
+      debug: jest.fn(),
+      setContext: jest.fn(),
+      withTelemetry: jest.fn(),
+    } as unknown as LoggerService;
+
+    describe('without LoggerService (NestLoggerAdapter fallback)', () => {
+      it('uses NestLoggerAdapter as the default logger', () => {
+        const adapter = makeAdapter();
+        expect((adapter as any).logger).toBeInstanceOf(NestLoggerAdapter);
+      });
+
+      it('completes get without error using the fallback logger', async () => {
+        mockSecret({ KEY: 'value' });
+        const adapter = makeAdapter();
+        await expect(adapter.get('KEY')).resolves.toBe('value');
+      });
+    });
+
+    describe('with injected LoggerService', () => {
+      it('logs debug on cache hit', async () => {
+        mockSecret({ KEY: 'value' });
+        const adapter = makeAdapter();
+        adapter.setLogger(mockLogger);
+
+        await adapter.get('KEY'); // populate cache
+        jest.clearAllMocks();
+        await adapter.get('KEY'); // cache hit
+
+        expect(mockLogger.debug).toHaveBeenCalledWith(
+          expect.objectContaining({ message: 'Returning cached secret' }),
+        );
+      });
+
+      it('logs debug and log on successful fetch', async () => {
+        mockSecret({ KEY: 'value' });
+        const adapter = makeAdapter();
+        adapter.setLogger(mockLogger);
+
+        await adapter.get('KEY');
+
+        expect(mockLogger.debug).toHaveBeenCalledWith(
+          expect.objectContaining({ message: 'Fetching secret from AWS Secrets Manager' }),
+        );
+        expect(mockLogger.log).toHaveBeenCalledWith(
+          expect.objectContaining({ message: 'Secret fetched from AWS Secrets Manager' }),
+        );
+      });
+
+      it('logs error on fetch failure', async () => {
+        mockSend.mockRejectedValue(new Error('network failure'));
+        const adapter = makeAdapter();
+        adapter.setLogger(mockLogger);
+
+        await expect(adapter.get('KEY')).rejects.toBeDefined();
+
+        expect(mockLogger.error).toHaveBeenCalledWith(
+          expect.objectContaining({ message: 'Failed to fetch secret from AWS Secrets Manager' }),
+        );
+      });
+
+      it('logs error when secret is not valid JSON', async () => {
+        mockSend.mockResolvedValue({ SecretString: 'not-json' });
+        const adapter = makeAdapter();
+        adapter.setLogger(mockLogger);
+
+        await expect(adapter.get('KEY')).rejects.toBeDefined();
+
+        expect(mockLogger.error).toHaveBeenCalledWith(
+          expect.objectContaining({ message: 'Secret is not valid JSON' }),
+        );
+      });
+
+      it('logs on reload', async () => {
+        mockSecret({ KEY: 'v1' });
+        const adapter = makeAdapter();
+        adapter.setLogger(mockLogger);
+
+        await adapter.reload();
+
+        expect(mockLogger.log).toHaveBeenCalledWith(
+          expect.objectContaining({ message: 'Reloading secret from AWS Secrets Manager' }),
+        );
       });
     });
   });

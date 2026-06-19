@@ -21,17 +21,19 @@ function isFileNotFoundError(error: unknown): error is NodeJS.ErrnoException {
 @Injectable()
 export class LocalAdapterService extends CloudStorageService {
   async uploadFile(file: CloudStorageUploadFile): Promise<CloudStorageFile> {
-    if (!file?.buffer || file.buffer.length === 0) { 
+    if (!file?.buffer || file.buffer.length === 0) {
       throw new CloudStorageError(CLOUD_STORAGE_ERRORS.UPLOAD_FAILED, 'A non-empty file is required');
     }
-    
+
     await mkdir(LOCAL_FILES_DIRECTORY, { recursive: true });
 
     const extension = extname(file.originalname ?? '');
     const id = `${uuidv4()}${extension}`;
     const filePath = this._resolveLocalPath(id);
 
+    this.logger.debug({ message: 'Writing file to local storage', data: { id } });
     await writeFile(filePath, file.buffer);
+    this.logger.log({ message: 'File written to local storage', data: { id } });
 
     return {
       id,
@@ -42,6 +44,7 @@ export class LocalAdapterService extends CloudStorageService {
   async deleteFile(fileKey: string): Promise<void> {
     const filePath = this._resolveLocalPath(fileKey);
 
+    this.logger.debug({ message: 'Deleting file from local storage', data: { key: fileKey } });
     try {
       await unlink(filePath);
     } catch (error) {
@@ -53,12 +56,14 @@ export class LocalAdapterService extends CloudStorageService {
       }
       throw error;
     }
+    this.logger.log({ message: 'File deleted from local storage', data: { key: fileKey } });
   }
 
   async getFile(fileKey: string): Promise<CloudStorageFile> {
     const filePath = this._resolveLocalPath(fileKey);
     const normalizedFileKey = basename(decodeURIComponent(fileKey));
 
+    this.logger.debug({ message: 'Checking file in local storage', data: { key: fileKey } });
     try {
       await access(filePath);
     } catch (error) {
@@ -71,6 +76,7 @@ export class LocalAdapterService extends CloudStorageService {
       throw error;
     }
 
+    this.logger.log({ message: 'File found in local storage', data: { key: normalizedFileKey } });
     return {
       id: normalizedFileKey,
       url: this._buildLocalUrl(normalizedFileKey),

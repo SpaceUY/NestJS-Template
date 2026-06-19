@@ -2,6 +2,8 @@ import { S3Client } from '@aws-sdk/client-s3';
 import { getSignedUrl } from '@aws-sdk/s3-request-presigner';
 import { CloudStorageError, CLOUD_STORAGE_ERRORS } from '../abstract/cloud-storage.error';
 import { S3AdapterService } from './s3-adapter.service';
+import { LoggerService } from '../../common/logger/abstract/logger.service';
+import { NestLoggerAdapter } from '../../common/logger/nest-adapter/nest-logger.adapter';
 
 jest.mock('@aws-sdk/client-s3');
 jest.mock('@aws-sdk/s3-request-presigner', () => ({
@@ -105,6 +107,117 @@ describe('S3AdapterService', () => {
 
       expect(error).toBeInstanceOf(CloudStorageError);
       expect((error as CloudStorageError).code).toBe(CLOUD_STORAGE_ERRORS.GET_FAILED);
+    });
+  });
+
+  describe('logger behavior', () => {
+    const mockLogger = {
+      log: jest.fn(),
+      warn: jest.fn(),
+      error: jest.fn(),
+      debug: jest.fn(),
+      setContext: jest.fn(),
+      withTelemetry: jest.fn(),
+    } as unknown as LoggerService;
+
+    describe('without LoggerService (NestLoggerAdapter fallback)', () => {
+      it('uses NestLoggerAdapter as the default logger', () => {
+        const service = new S3AdapterService(config);
+        expect((service as any).logger).toBeInstanceOf(NestLoggerAdapter);
+      });
+
+      it('completes uploadFile without error using the fallback logger', async () => {
+        mockedSend.mockResolvedValue({});
+        const service = new S3AdapterService(config);
+        await expect(
+          service.uploadFile({ buffer: Buffer.from('x'), mimetype: 'text/plain' }),
+        ).resolves.toBeDefined();
+      });
+    });
+
+    describe('with injected LoggerService', () => {
+      it('logs debug and log on successful uploadFile', async () => {
+        mockedSend.mockResolvedValue({});
+        const service = new S3AdapterService(config);
+        service.setLogger(mockLogger);
+
+        await service.uploadFile({ buffer: Buffer.from('x'), mimetype: 'text/plain' });
+
+        expect(mockLogger.debug).toHaveBeenCalledWith(
+          expect.objectContaining({ message: 'Uploading file to S3' }),
+        );
+        expect(mockLogger.log).toHaveBeenCalledWith(
+          expect.objectContaining({ message: 'File uploaded to S3' }),
+        );
+      });
+
+      it('logs error on uploadFile failure', async () => {
+        mockedSend.mockRejectedValue(new Error('S3 error'));
+        const service = new S3AdapterService(config);
+        service.setLogger(mockLogger);
+
+        await expect(
+          service.uploadFile({ buffer: Buffer.from('x'), mimetype: 'text/plain' }),
+        ).rejects.toBeDefined();
+
+        expect(mockLogger.error).toHaveBeenCalledWith(
+          expect.objectContaining({ message: 'File upload to S3 failed' }),
+        );
+      });
+
+      it('logs debug and log on successful deleteFile', async () => {
+        mockedSend.mockResolvedValue({});
+        const service = new S3AdapterService(config);
+        service.setLogger(mockLogger);
+
+        await service.deleteFile('some-key');
+
+        expect(mockLogger.debug).toHaveBeenCalledWith(
+          expect.objectContaining({ message: 'Deleting file from S3' }),
+        );
+        expect(mockLogger.log).toHaveBeenCalledWith(
+          expect.objectContaining({ message: 'File deleted from S3' }),
+        );
+      });
+
+      it('logs error on deleteFile failure', async () => {
+        mockedSend.mockRejectedValue(new Error('S3 error'));
+        const service = new S3AdapterService(config);
+        service.setLogger(mockLogger);
+
+        await expect(service.deleteFile('some-key')).rejects.toBeDefined();
+
+        expect(mockLogger.error).toHaveBeenCalledWith(
+          expect.objectContaining({ message: 'File deletion from S3 failed' }),
+        );
+      });
+
+      it('logs debug and log on successful getFile', async () => {
+        mockedGetSignedUrl.mockResolvedValue('https://signed-url.example.com');
+        const service = new S3AdapterService(config);
+        service.setLogger(mockLogger);
+
+        await service.getFile('some-key');
+
+        expect(mockLogger.debug).toHaveBeenCalledWith(
+          expect.objectContaining({ message: 'Generating signed URL from S3' }),
+        );
+        expect(mockLogger.log).toHaveBeenCalledWith(
+          expect.objectContaining({ message: 'Signed URL generated' }),
+        );
+      });
+
+      it('logs error on getFile failure', async () => {
+        mockedGetSignedUrl.mockRejectedValue(new Error('Presign error'));
+        const service = new S3AdapterService(config);
+        service.setLogger(mockLogger);
+
+        await expect(service.getFile('some-key')).rejects.toBeDefined();
+
+        expect(mockLogger.error).toHaveBeenCalledWith(
+          expect.objectContaining({ message: 'Failed to generate signed URL from S3' }),
+        );
+      });
     });
   });
 });
