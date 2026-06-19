@@ -21,6 +21,10 @@ function isFileNotFoundError(error: unknown): error is NodeJS.ErrnoException {
 @Injectable()
 export class LocalAdapterService extends CloudStorageService {
   async uploadFile(file: CloudStorageUploadFile): Promise<CloudStorageFile> {
+    if (!file?.buffer || file.buffer.length === 0) { 
+      throw new CloudStorageError(CLOUD_STORAGE_ERRORS.UPLOAD_FAILED, 'A non-empty file is required');
+    }
+    
     await mkdir(LOCAL_FILES_DIRECTORY, { recursive: true });
 
     const extension = extname(file.originalname ?? '');

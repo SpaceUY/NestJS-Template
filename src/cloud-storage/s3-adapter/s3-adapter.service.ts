@@ -92,6 +92,9 @@ export class S3AdapterService extends CloudStorageService {
       Bucket: this.bucket,
       Key: fileKey,
     };
+
+    // AWS SDK packages can pull different @smithy type instances in some installs.
+    // This keeps runtime behavior with the real helper while avoiding false type incompatibilities.
     try {
       const url = await getSignedUrlCompat(
         this.s3,
