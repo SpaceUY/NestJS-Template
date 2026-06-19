@@ -1,6 +1,9 @@
 import { SecretsManagerClient } from '@aws-sdk/client-secrets-manager';
 import { SecretsManagerConfigAdapter } from './secrets-manager-config.adapter';
-import { ConfigProviderError, CONFIG_PROVIDER_ERRORS } from '../abstract/config-provider.error';
+import {
+  ConfigProviderError,
+  CONFIG_PROVIDER_ERRORS,
+} from '../abstract/config-provider.error';
 import { LoggerService } from '../../common/logger/abstract/logger.service';
 import { NestLoggerAdapter } from '../../common/logger/nest-adapter/nest-logger.adapter';
 
@@ -199,10 +202,14 @@ describe('SecretsManagerConfigAdapter', () => {
         await adapter.get('KEY');
 
         expect(mockLogger.debug).toHaveBeenCalledWith(
-          expect.objectContaining({ message: 'Fetching secret from AWS Secrets Manager' }),
+          expect.objectContaining({
+            message: 'Fetching secret from AWS Secrets Manager',
+          }),
         );
         expect(mockLogger.log).toHaveBeenCalledWith(
-          expect.objectContaining({ message: 'Secret fetched from AWS Secrets Manager' }),
+          expect.objectContaining({
+            message: 'Secret fetched from AWS Secrets Manager',
+          }),
         );
       });
 
@@ -214,7 +221,9 @@ describe('SecretsManagerConfigAdapter', () => {
         await expect(adapter.get('KEY')).rejects.toBeDefined();
 
         expect(mockLogger.error).toHaveBeenCalledWith(
-          expect.objectContaining({ message: 'Failed to fetch secret from AWS Secrets Manager' }),
+          expect.objectContaining({
+            message: 'Failed to fetch secret from AWS Secrets Manager',
+          }),
         );
       });
 
@@ -238,7 +247,9 @@ describe('SecretsManagerConfigAdapter', () => {
         await adapter.reload();
 
         expect(mockLogger.log).toHaveBeenCalledWith(
-          expect.objectContaining({ message: 'Reloading secret from AWS Secrets Manager' }),
+          expect.objectContaining({
+            message: 'Reloading secret from AWS Secrets Manager',
+          }),
         );
       });
     });

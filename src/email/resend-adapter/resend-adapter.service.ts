@@ -27,7 +27,10 @@ export class ResendAdapterService extends EmailService {
   ): Promise<CreateEmailResponse> {
     const from = options.from || this.emailFrom;
     const subject = options.subject || '';
-    this.logger.debug({ message: 'Resend sending HTML', data: { to, from, subject } });
+    this.logger.debug({
+      message: 'Resend sending HTML',
+      data: { to, from, subject },
+    });
     return this.resend.emails.send({
       from,
       to,
@@ -44,7 +47,10 @@ export class ResendAdapterService extends EmailService {
     const from = options.from || this.emailFrom;
     const subject = options.subject || '';
 
-    this.logger.debug({ message: 'Resend sending batch HTML', data: { toCount: to.length, from, subject } });
+    this.logger.debug({
+      message: 'Resend sending batch HTML',
+      data: { toCount: to.length, from, subject },
+    });
     const response = await this.resend.batch.send(
       to.map((recipient) => ({
         from,

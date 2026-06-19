@@ -54,12 +54,18 @@ export class EmailAbstractModule {
       providers: [
         {
           provide: EmailService,
-          useFactory: async (logger: LoggerService | undefined, ...args: unknown[]) => {
+          useFactory: async (
+            logger: LoggerService | undefined,
+            ...args: unknown[]
+          ) => {
             const instance = await options.useFactory(...args);
             if (logger) instance.setLogger(logger);
             return instance;
           },
-          inject: [{ token: LoggerService, optional: true }, ...(options.inject || [])],
+          inject: [
+            { token: LoggerService, optional: true },
+            ...(options.inject || []),
+          ],
         },
       ],
       exports: [EmailService],

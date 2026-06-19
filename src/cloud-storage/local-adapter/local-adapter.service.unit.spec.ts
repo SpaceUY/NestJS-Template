@@ -1,4 +1,7 @@
-import { CloudStorageError, CLOUD_STORAGE_ERRORS } from '../abstract/cloud-storage.error';
+import {
+  CloudStorageError,
+  CLOUD_STORAGE_ERRORS,
+} from '../abstract/cloud-storage.error';
 import { LocalAdapterService } from './local-adapter.service';
 import { access, mkdir, unlink, writeFile } from 'node:fs/promises';
 import { v4 as uuidv4 } from 'uuid';
@@ -46,7 +49,10 @@ describe('LocalAdapterService', () => {
         expect.stringContaining('/files/local-id.txt'),
         expect.any(Buffer),
       );
-      expect(response).toEqual({ id: 'local-id.txt', url: '/files/local-id.txt' });
+      expect(response).toEqual({
+        id: 'local-id.txt',
+        url: '/files/local-id.txt',
+      });
     });
   });
 
@@ -60,7 +66,10 @@ describe('LocalAdapterService', () => {
       expect(mockedAccess).toHaveBeenCalledWith(
         expect.stringContaining('/files/existing-file.png'),
       );
-      expect(response).toEqual({ id: 'existing-file.png', url: '/files/existing-file.png' });
+      expect(response).toEqual({
+        id: 'existing-file.png',
+        url: '/files/existing-file.png',
+      });
     });
 
     it('should throw CloudStorageError FILE_NOT_FOUND when file does not exist', async () => {
@@ -75,7 +84,9 @@ describe('LocalAdapterService', () => {
       }
 
       expect(error).toBeInstanceOf(CloudStorageError);
-      expect((error as CloudStorageError).code).toBe(CLOUD_STORAGE_ERRORS.FILE_NOT_FOUND);
+      expect((error as CloudStorageError).code).toBe(
+        CLOUD_STORAGE_ERRORS.FILE_NOT_FOUND,
+      );
     });
 
     it('should rethrow non-ENOENT errors from getFile unchanged', async () => {
@@ -111,7 +122,9 @@ describe('LocalAdapterService', () => {
       }
 
       expect(error).toBeInstanceOf(CloudStorageError);
-      expect((error as CloudStorageError).code).toBe(CLOUD_STORAGE_ERRORS.FILE_NOT_FOUND);
+      expect((error as CloudStorageError).code).toBe(
+        CLOUD_STORAGE_ERRORS.FILE_NOT_FOUND,
+      );
     });
 
     it('should rethrow non-ENOENT errors from deleteFile unchanged', async () => {
@@ -119,7 +132,9 @@ describe('LocalAdapterService', () => {
       mockedUnlink.mockRejectedValue(networkError);
 
       const service = new LocalAdapterService();
-      await expect(service.deleteFile('some-file.pdf')).rejects.toBe(networkError);
+      await expect(service.deleteFile('some-file.pdf')).rejects.toBe(
+        networkError,
+      );
     });
   });
 
@@ -134,7 +149,9 @@ describe('LocalAdapterService', () => {
       }
 
       expect(error).toBeInstanceOf(CloudStorageError);
-      expect((error as CloudStorageError).code).toBe(CLOUD_STORAGE_ERRORS.INVALID_KEY);
+      expect((error as CloudStorageError).code).toBe(
+        CLOUD_STORAGE_ERRORS.INVALID_KEY,
+      );
     });
   });
 
@@ -160,7 +177,10 @@ describe('LocalAdapterService', () => {
         mockedWriteFile.mockResolvedValue(undefined);
         const service = new LocalAdapterService();
         await expect(
-          service.uploadFile({ buffer: Buffer.from('x'), originalname: 'test.txt' }),
+          service.uploadFile({
+            buffer: Buffer.from('x'),
+            originalname: 'test.txt',
+          }),
         ).resolves.toBeDefined();
       });
     });
@@ -173,7 +193,10 @@ describe('LocalAdapterService', () => {
         const service = new LocalAdapterService();
         service.setLogger(mockLogger);
 
-        await service.uploadFile({ buffer: Buffer.from('x'), originalname: 'test.txt' });
+        await service.uploadFile({
+          buffer: Buffer.from('x'),
+          originalname: 'test.txt',
+        });
 
         expect(mockLogger.debug).toHaveBeenCalledWith(
           expect.objectContaining({ message: 'Writing file to local storage' }),
@@ -191,10 +214,14 @@ describe('LocalAdapterService', () => {
         await service.deleteFile('file.txt');
 
         expect(mockLogger.debug).toHaveBeenCalledWith(
-          expect.objectContaining({ message: 'Deleting file from local storage' }),
+          expect.objectContaining({
+            message: 'Deleting file from local storage',
+          }),
         );
         expect(mockLogger.log).toHaveBeenCalledWith(
-          expect.objectContaining({ message: 'File deleted from local storage' }),
+          expect.objectContaining({
+            message: 'File deleted from local storage',
+          }),
         );
       });
 
@@ -206,7 +233,9 @@ describe('LocalAdapterService', () => {
         await service.getFile('file.txt');
 
         expect(mockLogger.debug).toHaveBeenCalledWith(
-          expect.objectContaining({ message: 'Checking file in local storage' }),
+          expect.objectContaining({
+            message: 'Checking file in local storage',
+          }),
         );
         expect(mockLogger.log).toHaveBeenCalledWith(
           expect.objectContaining({ message: 'File found in local storage' }),

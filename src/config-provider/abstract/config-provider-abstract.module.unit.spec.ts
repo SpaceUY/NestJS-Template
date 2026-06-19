@@ -305,7 +305,9 @@ describe('ConfigProviderAbstractModule', () => {
     const SOURCE_TOKEN = 'CONFIG_PROVIDER_SOURCE_ENV';
 
     function findSourceProvider(moduleRef: any): any {
-      return (moduleRef.providers as any[]).find((p) => p.provide === SOURCE_TOKEN);
+      return (moduleRef.providers as any[]).find(
+        (p) => p.provide === SOURCE_TOKEN,
+      );
     }
 
     describe('forRoot — useValue source', () => {

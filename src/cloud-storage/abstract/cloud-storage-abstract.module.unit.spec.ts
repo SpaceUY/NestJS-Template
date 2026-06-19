@@ -1,9 +1,9 @@
-import { CloudStorageAbstractModule } from "./cloud-storage-abstract.module";
-import { CloudStorageController } from "./cloud-storage.controller";
-import { CloudStorageService } from "./cloud-storage.service";
-import { LoggerService } from "../../common/logger/abstract/logger.service";
-import { NestLoggerAdapter } from "../../common/logger/nest-adapter/nest-logger.adapter";
-import { CloudStorageUploadFile } from "./cloud-storage.interfaces";
+import { CloudStorageAbstractModule } from './cloud-storage-abstract.module';
+import { CloudStorageController } from './cloud-storage.controller';
+import { CloudStorageService } from './cloud-storage.service';
+import { LoggerService } from '../../common/logger/abstract/logger.service';
+import { NestLoggerAdapter } from '../../common/logger/nest-adapter/nest-logger.adapter';
+import { CloudStorageUploadFile } from './cloud-storage.interfaces';
 
 class MockCloudStorageAdapter extends CloudStorageService {
   async uploadFile(
@@ -29,7 +29,11 @@ describe('CloudStorageAbstractModule', () => {
     });
 
     const provider = (
-      moduleRef.providers as Array<{ provide: unknown; useFactory: (...args: unknown[]) => CloudStorageService; inject: unknown[] }>
+      moduleRef.providers as Array<{
+        provide: unknown;
+        useFactory: (...args: unknown[]) => CloudStorageService;
+        inject: unknown[];
+      }>
     ).find((p) => p.provide === CloudStorageService);
 
     const instance = provider?.useFactory(undefined);
@@ -37,7 +41,9 @@ describe('CloudStorageAbstractModule', () => {
     expect(moduleRef.module).toBe(CloudStorageAbstractModule);
     expect(moduleRef.global).toBe(true);
     expect(instance).toBeInstanceOf(MockCloudStorageAdapter);
-    expect(provider?.inject).toEqual([{ token: LoggerService, optional: true }]);
+    expect(provider?.inject).toEqual([
+      { token: LoggerService, optional: true },
+    ]);
     expect(moduleRef.exports).toContain(CloudStorageService);
     expect(moduleRef.controllers).toEqual([]);
   });
@@ -48,11 +54,23 @@ describe('CloudStorageAbstractModule', () => {
     });
 
     const provider = (
-      moduleRef.providers as Array<{ provide: unknown; useFactory: (...args: unknown[]) => CloudStorageService }>
+      moduleRef.providers as Array<{
+        provide: unknown;
+        useFactory: (...args: unknown[]) => CloudStorageService;
+      }>
     ).find((p) => p.provide === CloudStorageService);
 
-    const mockLogger = { setContext: jest.fn(), log: jest.fn(), warn: jest.fn(), error: jest.fn(), debug: jest.fn(), withTelemetry: jest.fn() } as unknown as LoggerService;
-    const instance = provider?.useFactory(mockLogger) as MockCloudStorageAdapter;
+    const mockLogger = {
+      setContext: jest.fn(),
+      log: jest.fn(),
+      warn: jest.fn(),
+      error: jest.fn(),
+      debug: jest.fn(),
+      withTelemetry: jest.fn(),
+    } as unknown as LoggerService;
+    const instance = provider?.useFactory(
+      mockLogger,
+    ) as MockCloudStorageAdapter;
 
     expect((instance as any).logger).toBe(mockLogger);
   });
@@ -63,7 +81,10 @@ describe('CloudStorageAbstractModule', () => {
     });
 
     const provider = (
-      moduleRef.providers as Array<{ provide: unknown; useFactory: (...args: unknown[]) => CloudStorageService }>
+      moduleRef.providers as Array<{
+        provide: unknown;
+        useFactory: (...args: unknown[]) => CloudStorageService;
+      }>
     ).find((p) => p.provide === CloudStorageService);
 
     const instance = provider?.useFactory(undefined) as MockCloudStorageAdapter;
@@ -111,7 +132,10 @@ describe('CloudStorageAbstractModule', () => {
 
     expect(moduleRef.global).toBe(true);
     expect(moduleRef.imports).toEqual([]);
-    expect(provider?.inject).toEqual([{ token: LoggerService, optional: true }, dependencyToken]);
+    expect(provider?.inject).toEqual([
+      { token: LoggerService, optional: true },
+      dependencyToken,
+    ]);
     expect(resolved).toBe(storageInstance);
     expect(moduleRef.exports).toContain(CloudStorageService);
     expect(moduleRef.controllers).toEqual([CloudStorageController]);
@@ -119,7 +143,14 @@ describe('CloudStorageAbstractModule', () => {
 
   it('should call setLogger when a logger is provided in forRootAsync', async () => {
     const storageInstance = new MockCloudStorageAdapter();
-    const mockLogger = { setContext: jest.fn(), log: jest.fn(), warn: jest.fn(), error: jest.fn(), debug: jest.fn(), withTelemetry: jest.fn() } as unknown as LoggerService;
+    const mockLogger = {
+      setContext: jest.fn(),
+      log: jest.fn(),
+      warn: jest.fn(),
+      error: jest.fn(),
+      debug: jest.fn(),
+      withTelemetry: jest.fn(),
+    } as unknown as LoggerService;
 
     const moduleRef = CloudStorageAbstractModule.forRootAsync({
       useFactory: async () => storageInstance,
