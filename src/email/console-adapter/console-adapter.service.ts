@@ -1,4 +1,4 @@
-import { Injectable, Logger } from '@nestjs/common';
+import { Injectable } from '@nestjs/common';
 import { EmailService } from '../abstract/email.service';
 import {
   MailingResponse,
@@ -10,10 +10,6 @@ import { ConsoleAdapterConfig } from './console-adapter-config.interface';
 
 @Injectable()
 export class ConsoleAdapterService extends EmailService {
-  private readonly logger = new Logger(this.constructor.name, {
-    timestamp: true,
-  });
-
   private readonly defaultFrom?: string;
 
   constructor(config: ConsoleAdapterConfig = {}) {
@@ -44,7 +40,7 @@ export class ConsoleAdapterService extends EmailService {
       },
     };
 
-    this.logger.log(`${logMessage}\n${JSON.stringify(payload, null, 2)}`);
+    this.logger.log({ message: logMessage, data: { payload } });
 
     return {
       statusCode: 200,

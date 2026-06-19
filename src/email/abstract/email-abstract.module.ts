@@ -6,6 +6,7 @@ import {
   Type,
 } from '@nestjs/common';
 import { EmailService } from './email.service';
+import { LoggerService } from '../../common/logger/abstract/logger.service';
 
 interface EmailModuleOptions {
   adapter: Type<EmailService>;
@@ -30,7 +31,12 @@ export class EmailAbstractModule {
       providers: [
         {
           provide: EmailService,
-          useClass: adapter,
+          useFactory: (logger?: LoggerService) => {
+            const instance = new adapter();
+            if (logger) instance.setLogger(logger);
+            return instance;
+          },
+          inject: [{ token: LoggerService, optional: true }],
         },
       ],
       exports: [EmailService],
@@ -47,8 +53,12 @@ export class EmailAbstractModule {
       providers: [
         {
           provide: EmailService,
-          useFactory: options.useFactory,
-          inject: options.inject || [],
+          useFactory: async (logger: LoggerService | undefined, ...args: unknown[]) => {
+            const instance = await options.useFactory(...args);
+            if (logger) instance.setLogger(logger);
+            return instance;
+          },
+          inject: [{ token: LoggerService, optional: true }, ...(options.inject || [])],
         },
       ],
       exports: [EmailService],
