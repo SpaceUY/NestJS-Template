@@ -17,6 +17,7 @@ import { EnvConfigAdapter } from './config-provider/env-adapter/env-config.adapt
 import { EmailAbstractModule } from './email/abstract/email-abstract.module';
 import {
   emailScope,
+  EmailScopeConfig,
   EMAIL_ADAPTERS,
 } from './email/config/email.scope';
 import { DatabaseModule } from './database/database.module';
@@ -68,24 +69,21 @@ import { NestLoggerAdapter } from './common/logger/nest-adapter/nest-logger.adap
       isGlobal: true,
     }),
     EmailAbstractModule.forRootAsync({
-      inject: [emailConfig.KEY, awsConfig.KEY],
-      useFactory: (
-        email: ConfigType<typeof emailConfig>,
-        aws: ConfigType<typeof awsConfig>,
-      ) => {
+      inject: [emailScope.KEY],
+      useFactory: (email: EmailScopeConfig) => {
         const configuredAdapter = email.adapter?.toUpperCase();
 
         if (configuredAdapter === EMAIL_ADAPTERS.SENDGRID) {
           return new SendgridAdapterService({
-            sendgridApiKey: email.sendgrid.apiKey,
+            sendgridApiKey: email.sendgridApiKey,
             emailFrom: email.from,
           });
         }
 
         if (configuredAdapter === EMAIL_ADAPTERS.RESEND) {
           return new ResendAdapterService({
-            resendApiKey: email.resend.apiKey,
-            emailFrom: email.resend.emailFrom || email.from,
+            resendApiKey: email.resendApiKey,
+            emailFrom: email.resendEmailFrom || email.from,
           });
         }
 
