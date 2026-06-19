@@ -1,5 +1,5 @@
 import { ConfigProviderService } from './config-provider.service';
-import { CONFIG_PROVIDER_ERRORS } from './config-provider-error-codes';
+import { CONFIG_PROVIDER_ERRORS } from './config-provider.error';
 import { ConfigProviderError } from './config-provider.error';
 
 export abstract class ReloadableConfigProviderService extends ConfigProviderService {

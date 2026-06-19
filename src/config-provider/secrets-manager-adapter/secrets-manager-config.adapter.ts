@@ -3,7 +3,7 @@ import {
   SecretsManagerClient,
 } from '@aws-sdk/client-secrets-manager';
 import { Injectable } from '@nestjs/common';
-import { CONFIG_PROVIDER_ERRORS } from '../abstract/config-provider-error-codes';
+import { CONFIG_PROVIDER_ERRORS } from '../abstract/config-provider.error';
 import { ConfigProviderError } from '../abstract/config-provider.error';
 import { ReloadableConfigProviderService } from '../abstract/reloadable-config-provider.service';
 import { SecretsManagerAdapterOptions } from './secrets-manager-config.interfaces';

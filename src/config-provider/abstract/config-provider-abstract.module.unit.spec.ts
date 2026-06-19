@@ -1,6 +1,6 @@
 /* eslint-disable @typescript-eslint/no-explicit-any */
 import { ConfigProviderAbstractModule } from './config-provider-abstract.module';
-import { CONFIG_PROVIDER_ERRORS } from './config-provider-error-codes';
+import { CONFIG_PROVIDER_ERRORS } from './config-provider.error';
 import { ConfigScopeDefinition } from './config-provider.interfaces';
 import { ConfigProviderService } from './config-provider.service';
 import { ReloadableConfigProviderService } from './reloadable-config-provider.service';

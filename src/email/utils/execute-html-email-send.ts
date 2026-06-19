@@ -3,7 +3,7 @@ import {
   RenderedEmailContent,
 } from '../abstract/email.interface';
 import { LoggerService } from '../../common/logger/abstract/logger.service';
-import { EMAIL_ERRORS, EmailError } from '../abstract/email-error';
+import { EMAIL_ERRORS, EmailError } from '../abstract/email.error';
 
 interface ExecuteHtmlEmailSendOptions<TProviderResponse> {
   content: RenderedEmailContent;
@@ -38,6 +38,6 @@ export async function executeHtmlEmailSend<TProviderResponse>(
       message: options.failureLogMessage,
       data: { ...options.failureMeta, error: String(error) },
     });
-    throw new EmailError(EMAIL_ERRORS.PROVIDER_REJECTED, options.providerErrorMessage, error);
+    throw new EmailError(EMAIL_ERRORS.PROVIDER_REJECTED, options.providerErrorMessage, { cause: String(error) });
   }
 }

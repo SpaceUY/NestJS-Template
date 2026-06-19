@@ -16,7 +16,7 @@ export class EmailError extends Error {
   constructor(
     public readonly code: EmailErrorCode,
     message: string,
-    public readonly cause?: unknown,
+    public readonly data?: Record<string, unknown>,
   ) {
     super(message);
     this.name = 'EmailError';
