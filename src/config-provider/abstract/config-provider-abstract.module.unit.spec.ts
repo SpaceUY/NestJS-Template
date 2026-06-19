@@ -6,6 +6,8 @@ import { ConfigProviderService } from './config-provider.service';
 import { ReloadableConfigProviderService } from './reloadable-config-provider.service';
 import { defineConfigScope } from './define-config-scope.util';
 import { SOURCES } from './config-source.util';
+import { LoggerService } from '../../common/logger/abstract/logger.service';
+import { NestLoggerAdapter } from '../../common/logger/nest-adapter/nest-logger.adapter';
 
 class MockEnvAdapter extends ConfigProviderService {
   constructor(private readonly store: Record<string, string>) {
@@ -20,6 +22,16 @@ class MockEnvAdapter extends ConfigProviderService {
     const value = this.store[key];
     if (value === undefined) throw new Error(`Key "${key}" not found`);
     return value;
+  }
+}
+
+class MockNoArgsAdapter extends ConfigProviderService {
+  async get(_: string): Promise<string | undefined> {
+    return undefined;
+  }
+
+  async getOrThrow(key: string): Promise<string> {
+    throw new Error(`Key "${key}" not found`);
   }
 }
 
@@ -277,6 +289,121 @@ describe('ConfigProviderAbstractModule', () => {
 
       expect('secret' in conf).toBe(true);
       expect('nonexistent' in conf).toBe(false);
+    });
+  });
+
+  describe('logger integration', () => {
+    const mockLogger = {
+      log: jest.fn(),
+      warn: jest.fn(),
+      error: jest.fn(),
+      debug: jest.fn(),
+      setContext: jest.fn(),
+      withTelemetry: jest.fn(),
+    } as unknown as LoggerService;
+
+    const SOURCE_TOKEN = 'CONFIG_PROVIDER_SOURCE_ENV';
+
+    function findSourceProvider(moduleRef: any): any {
+      return (moduleRef.providers as any[]).find((p) => p.provide === SOURCE_TOKEN);
+    }
+
+    describe('forRoot — useValue source', () => {
+      it('calls setLogger on the adapter when a logger is provided', () => {
+        const adapter = new MockEnvAdapter({});
+        const moduleRef = ConfigProviderAbstractModule.forRoot({
+          sources: { env: { useValue: adapter } },
+        });
+
+        findSourceProvider(moduleRef).useFactory(mockLogger);
+
+        expect((adapter as any).logger).toBe(mockLogger);
+      });
+
+      it('uses NestLoggerAdapter as fallback when no logger is provided', () => {
+        const adapter = new MockEnvAdapter({});
+        const moduleRef = ConfigProviderAbstractModule.forRoot({
+          sources: { env: { useValue: adapter } },
+        });
+
+        findSourceProvider(moduleRef).useFactory(undefined);
+
+        expect((adapter as any).logger).toBeInstanceOf(NestLoggerAdapter);
+      });
+
+      it('inject array includes optional LoggerService', () => {
+        const moduleRef = ConfigProviderAbstractModule.forRoot({
+          sources: { env: { useValue: new MockEnvAdapter({}) } },
+        });
+
+        expect(findSourceProvider(moduleRef).inject).toEqual([
+          { token: LoggerService, optional: true },
+        ]);
+      });
+    });
+
+    describe('forRoot — useClass source', () => {
+      it('calls setLogger on the created instance when a logger is provided', () => {
+        const moduleRef = ConfigProviderAbstractModule.forRoot({
+          sources: { env: { useClass: MockNoArgsAdapter } },
+        });
+
+        const instance = findSourceProvider(moduleRef).useFactory(mockLogger);
+
+        expect(instance).toBeInstanceOf(MockNoArgsAdapter);
+        expect((instance as any).logger).toBe(mockLogger);
+      });
+
+      it('uses NestLoggerAdapter as fallback when no logger is provided', () => {
+        const moduleRef = ConfigProviderAbstractModule.forRoot({
+          sources: { env: { useClass: MockNoArgsAdapter } },
+        });
+
+        const instance = findSourceProvider(moduleRef).useFactory(undefined);
+
+        expect((instance as any).logger).toBeInstanceOf(NestLoggerAdapter);
+      });
+    });
+
+    describe('forRootAsync source', () => {
+      it('calls setLogger on the factory-returned instance when a logger is provided', async () => {
+        const adapter = new MockEnvAdapter({});
+        const moduleRef = ConfigProviderAbstractModule.forRootAsync({
+          sources: { env: { useFactory: () => adapter } },
+        });
+
+        await findSourceProvider(moduleRef).useFactory(mockLogger);
+
+        expect((adapter as any).logger).toBe(mockLogger);
+      });
+
+      it('uses NestLoggerAdapter as fallback when no logger is provided', async () => {
+        const adapter = new MockEnvAdapter({});
+        const moduleRef = ConfigProviderAbstractModule.forRootAsync({
+          sources: { env: { useFactory: () => adapter } },
+        });
+
+        await findSourceProvider(moduleRef).useFactory(undefined);
+
+        expect((adapter as any).logger).toBeInstanceOf(NestLoggerAdapter);
+      });
+
+      it('inject array includes optional LoggerService prepended to user tokens', async () => {
+        const depToken = 'SOME_DEP';
+        const moduleRef = ConfigProviderAbstractModule.forRootAsync({
+          sources: {
+            env: {
+              inject: [depToken],
+              useFactory: () => new MockEnvAdapter({}),
+            },
+          },
+        });
+
+        expect(findSourceProvider(moduleRef).inject).toEqual([
+          { token: LoggerService, optional: true },
+          depToken,
+        ]);
+      });
     });
   });
 
