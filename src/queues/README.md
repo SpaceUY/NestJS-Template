@@ -256,6 +256,79 @@ reappears after its visibility timeout lapses, going to a dead-letter queue if
 the queue has a redrive policy. This is an SQS constraint, not an adapter
 shortcut.
 
+## Built-in Adapter: RabbitMQ
+
+A RabbitMQ adapter built directly on `amqplib` lives in
+`src/queues/rabbitmq-adapter/` (`RabbitMqSenderAdapter` +
+`RabbitMqConsumerAdapter`). Unlike SQS, RabbitMQ is a true push broker, so the
+consumer uses `channel.consume` callbacks (no polling). Each adapter owns its
+connection and connects **lazily** on first use (memoized); on connection
+`close` it drops the cached connection so the next call reconnects — fail-fast,
+no active retry loop.
+
+```ts
+// Sender
+QueueSenderModule.forRootAsync({
+  inject: [rabbitConfig.KEY],
+  useFactory: (cfg) => new RabbitMqSenderAdapter({ url: cfg.url }),
+});
+
+// Consumer
+QueueConsumerModule.forRootAsync({
+  inject: [rabbitConfig.KEY],
+  useFactory: (cfg) =>
+    new RabbitMqConsumerAdapter({ url: cfg.url, prefetch: 10 }),
+  consumers: [{ queue: 'orders', handler: OrdersHandler }],
+});
+```
+
+**Topology (`assertTopology`, default `true`).** When on, the adapter
+idempotently asserts the **durable** queues and exchanges it directly uses. When
+off, it asserts nothing — infra/migrations own all topology. Either way the
+adapter never creates **bindings**; queue↔exchange bindings are always managed
+externally.
+
+**Default-exchange send.** `send(queue, payload)` / `dispatch` publish to the
+default exchange with routing-key = queue name, and forward non-reserved headers
+as AMQP message headers.
+
+**Exchanges — two ways** (per design, both are supported):
+
+1. Dedicated, type-safe method on the concrete sender:
+
+   ```ts
+   await sender.publishToExchange({
+     exchange: 'orders',
+     routingKey: 'order.created',
+     payload: { id: 1 },
+     type: 'topic', // used only when asserting; default 'topic'
+   });
+   ```
+
+2. Reserved headers on the abstract `dispatch`, for callers that only hold a
+   `QueueSenderService`. `x-exchange` / `x-routing-key` are lifted out and route
+   the message through that exchange (never forwarded as message headers):
+
+   ```ts
+   await sender.dispatch({
+     queue: 'unused',
+     payload: { id: 1 },
+     headers: { 'x-exchange': 'orders', 'x-routing-key': 'order.created' },
+   });
+   ```
+
+**Consuming.** One channel per queue (so `prefetch`/QoS and channel failures are
+isolated). `startConsuming` optionally asserts the queue, sets `prefetch`, and
+`channel.consume`s; null deliveries (broker-cancelled) are ignored. Implicit ack
+→ `channel.ack`; implicit/explicit nack → `channel.nack(msg, false, requeue)` —
+so `nack({ requeue: false })` is a real discard (dead-lettered if a DLX is
+configured), unlike SQS. `stopConsuming` cancels the consumer and closes its
+channel.
+
+> Consuming **from an exchange** (topic/fanout) requires the queue to be bound to
+> that exchange. Per the design, the adapter does not create bindings — declare
+> them in infra/migrations (or assert+bind them at startup outside the adapter).
+
 ## Error Codes
 
 | Class | Code | Meaning |
