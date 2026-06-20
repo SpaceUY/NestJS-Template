@@ -9,6 +9,10 @@ import { QueueConsumerHandler } from './queue-consumer.handler';
 export interface MessageContext {
   readonly messageId?: string;
   readonly headers: Record<string, string>;
+  // 1-based count of how many times this message has been delivered, where the
+  // broker exposes it (SQS ApproximateReceiveCount, BullMQ attemptsMade + 1,
+  // RabbitMQ via the x-death header). Undefined when the broker can't report it.
+  readonly deliveryCount?: number;
   ack(): Promise<void>;
   nack(opts?: { requeue?: boolean }): Promise<void>;
 }

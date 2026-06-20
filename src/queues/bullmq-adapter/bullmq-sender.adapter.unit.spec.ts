@@ -38,10 +38,11 @@ describe('BullMqSenderAdapter', () => {
         connection,
         prefix: 'app',
       });
-      expect(mockAdd).toHaveBeenCalledWith('message', {
-        payload: { id: 1 },
-        headers: {},
-      });
+      expect(mockAdd).toHaveBeenCalledWith(
+        'message',
+        { payload: { id: 1 }, headers: {} },
+        {},
+      );
     });
 
     it('forwards headers in the job envelope', async () => {
@@ -53,10 +54,27 @@ describe('BullMqSenderAdapter', () => {
         headers: { traceId: 'abc' },
       });
 
-      expect(mockAdd).toHaveBeenCalledWith('message', {
+      expect(mockAdd).toHaveBeenCalledWith(
+        'message',
+        { payload: { id: 1 }, headers: { traceId: 'abc' } },
+        {},
+      );
+    });
+
+    it('maps delay and priority delivery options to job options', async () => {
+      const adapter = makeAdapter();
+
+      await adapter.dispatch({
+        queue: 'orders',
         payload: { id: 1 },
-        headers: { traceId: 'abc' },
+        options: { delay: 5000, priority: 3 },
       });
+
+      expect(mockAdd).toHaveBeenCalledWith(
+        'message',
+        { payload: { id: 1 }, headers: {} },
+        { delay: 5000, priority: 3 },
+      );
     });
 
     it('reuses the same Queue instance per queue name', async () => {
@@ -76,6 +94,25 @@ describe('BullMqSenderAdapter', () => {
         code: QUEUE_SENDER_ERRORS.SEND_FAILED,
         data: { queue: 'orders', cause: 'redis down' },
       });
+    });
+  });
+
+  describe('addJob (BullMQ extension)', () => {
+    it('passes through BullMQ-specific job options', async () => {
+      const adapter = makeAdapter();
+
+      await adapter.addJob({
+        queue: 'orders',
+        payload: { id: 1 },
+        headers: { traceId: 'abc' },
+        options: { attempts: 3, backoff: { type: 'exponential', delay: 1000 } },
+      });
+
+      expect(mockAdd).toHaveBeenCalledWith(
+        'message',
+        { payload: { id: 1 }, headers: { traceId: 'abc' } },
+        { attempts: 3, backoff: { type: 'exponential', delay: 1000 } },
+      );
     });
   });
 

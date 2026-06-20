@@ -1,12 +1,16 @@
 import { Injectable, OnModuleDestroy } from '@nestjs/common';
-import { Queue } from 'bullmq';
+import { JobsOptions, Queue } from 'bullmq';
 import { QueueSenderService } from '../abstract/sender/queue-sender.service';
 import { QueueEnvelope } from '../abstract/sender/queue-sender.interfaces';
 import {
   QueueSenderError,
   QUEUE_SENDER_ERRORS,
 } from '../abstract/sender/queue-sender.error';
-import { BullMqSenderAdapterOptions } from './bullmq-adapter.interfaces';
+import { assertSupportedDeliveryOptions } from '../abstract/sender/queue-delivery-options.util';
+import {
+  BullMqAddJobParams,
+  BullMqSenderAdapterOptions,
+} from './bullmq-adapter.interfaces';
 
 // BullMQ requires a job name; the worker processes all names, so a constant
 // keeps it simple while remaining readable in the BullMQ dashboard.
@@ -28,10 +32,48 @@ export class BullMqSenderAdapter
   }
 
   async dispatch(envelope: QueueEnvelope): Promise<void> {
-    const { queue, payload, headers = {} } = envelope;
+    const { queue, payload, headers = {}, options } = envelope;
 
+    // BullMQ supports both shared delivery options natively.
+    assertSupportedDeliveryOptions(
+      options,
+      ['delay', 'priority'],
+      'BullMqSenderAdapter',
+    );
+
+    const jobOptions: JobsOptions = {
+      ...(options?.delay !== undefined ? { delay: options.delay } : {}),
+      ...(options?.priority !== undefined
+        ? { priority: options.priority }
+        : {}),
+    };
+
+    await this._enqueue(queue, payload, headers, jobOptions);
+  }
+
+  /**
+   * BullMQ-specific extension: enqueue a job with the full set of supported
+   * BullMQ options (attempts, backoff, jobId, …) that go beyond the abstract
+   * delivery options. Inject this concrete adapter to use it.
+   */
+  async addJob(params: BullMqAddJobParams): Promise<void> {
+    const { queue, payload, headers = {}, options = {} } = params;
+    await this._enqueue(queue, payload, headers, options);
+  }
+
+  async onModuleDestroy(): Promise<void> {
+    await Promise.all([...this.queues.values()].map((queue) => queue.close()));
+    this.queues.clear();
+  }
+
+  private async _enqueue(
+    queue: string,
+    payload: unknown,
+    headers: Record<string, string>,
+    options: JobsOptions,
+  ): Promise<void> {
     try {
-      await this._getQueue(queue).add(JOB_NAME, { payload, headers });
+      await this._getQueue(queue).add(JOB_NAME, { payload, headers }, options);
     } catch (error) {
       this.logger.error({
         message: 'Failed to enqueue BullMQ job',
@@ -46,11 +88,6 @@ export class BullMqSenderAdapter
     }
 
     this.logger.debug({ message: 'Job enqueued to BullMQ', data: { queue } });
-  }
-
-  async onModuleDestroy(): Promise<void> {
-    await Promise.all([...this.queues.values()].map((queue) => queue.close()));
-    this.queues.clear();
   }
 
   private _getQueue(name: string): Queue {

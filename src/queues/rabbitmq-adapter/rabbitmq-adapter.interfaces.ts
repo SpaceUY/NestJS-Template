@@ -34,6 +34,9 @@ export interface PublishToExchangeParams {
   headers?: Record<string, string>;
   // Exchange type used only when asserting (assertTopology on). Default 'topic'.
   type?: RabbitMqExchangeType;
+  // Message priority; honored when the target queue was declared with
+  // x-max-priority.
+  priority?: number;
 }
 
 /**

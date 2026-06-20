@@ -12,6 +12,7 @@ import {
   RABBITMQ_RESERVED_HEADERS,
   RabbitMqSenderAdapterOptions,
 } from './rabbitmq-adapter.interfaces';
+import { assertSupportedDeliveryOptions } from '../abstract/sender/queue-delivery-options.util';
 
 @Injectable()
 export class RabbitMqSenderAdapter extends QueueSenderService {
@@ -29,7 +30,15 @@ export class RabbitMqSenderAdapter extends QueueSenderService {
   }
 
   async dispatch(envelope: QueueEnvelope): Promise<void> {
-    const { queue, payload, headers = {} } = envelope;
+    const { queue, payload, headers = {}, options } = envelope;
+
+    // RabbitMQ supports priority (on priority queues); native per-message delay
+    // requires a plugin, so it isn't honored here.
+    assertSupportedDeliveryOptions(
+      options,
+      ['priority'],
+      'RabbitMqSenderAdapter',
+    );
 
     // Reserved headers route through a named exchange; everything else is
     // forwarded as AMQP message headers.
@@ -43,6 +52,7 @@ export class RabbitMqSenderAdapter extends QueueSenderService {
         routingKey,
         payload,
         headers: messageHeaders,
+        priority: options?.priority,
       });
       return;
     }
@@ -54,6 +64,9 @@ export class RabbitMqSenderAdapter extends QueueSenderService {
       channel.sendToQueue(queue, this._encode(payload), {
         headers: messageHeaders,
         persistent: true,
+        ...(options?.priority !== undefined
+          ? { priority: options.priority }
+          : {}),
       });
     } catch (error) {
       throw this._sendError(QUEUE_SENDER_ERRORS.SEND_FAILED, queue, error);
@@ -74,6 +87,7 @@ export class RabbitMqSenderAdapter extends QueueSenderService {
       payload,
       headers = {},
       type = 'topic',
+      priority,
     } = params;
 
     const channel = await this._getChannel();
@@ -83,6 +97,7 @@ export class RabbitMqSenderAdapter extends QueueSenderService {
       channel.publish(exchange, routingKey, this._encode(payload), {
         headers,
         persistent: true,
+        ...(priority !== undefined ? { priority } : {}),
       });
     } catch (error) {
       throw this._sendError(

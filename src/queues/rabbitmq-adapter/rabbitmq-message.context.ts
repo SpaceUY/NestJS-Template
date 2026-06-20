@@ -13,6 +13,7 @@ import {
 export class RabbitMqMessageContext implements MessageContext {
   readonly messageId?: string;
   readonly headers: Record<string, string>;
+  readonly deliveryCount?: number;
 
   private _wasAcknowledged = false;
 
@@ -22,6 +23,9 @@ export class RabbitMqMessageContext implements MessageContext {
   ) {
     this.messageId = message.properties.messageId;
     this.headers = RabbitMqMessageContext.extractHeaders(
+      message.properties.headers,
+    );
+    this.deliveryCount = RabbitMqMessageContext.extractDeliveryCount(
       message.properties.headers,
     );
   }
@@ -67,5 +71,18 @@ export class RabbitMqMessageContext implements MessageContext {
       }
     }
     return result;
+  }
+
+  // RabbitMQ only tracks redeliveries via the `x-death` header populated by a
+  // dead-letter retry setup; without one the count is unknown.
+  private static extractDeliveryCount(
+    headers: ConsumeMessage['properties']['headers'],
+  ): number | undefined {
+    const xDeath = headers?.['x-death'];
+    if (Array.isArray(xDeath) && xDeath.length > 0) {
+      const count = Number(xDeath[0]?.count);
+      if (!Number.isNaN(count)) return count + 1;
+    }
+    return undefined;
   }
 }

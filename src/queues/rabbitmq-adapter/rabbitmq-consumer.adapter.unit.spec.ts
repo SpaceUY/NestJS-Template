@@ -70,6 +70,20 @@ describe('RabbitMqConsumerAdapter', () => {
       expect(mockChannel.nack).not.toHaveBeenCalled();
     });
 
+    it('derives deliveryCount from the x-death header', async () => {
+      const adapter = makeAdapter();
+      const callback = jest.fn(async () => {});
+      const redelivered = {
+        ...message,
+        properties: { messageId: 'm1', headers: { 'x-death': [{ count: 2 }] } },
+      };
+
+      await (adapter as any)._handleMessage(mockChannel, redelivered, callback);
+
+      const ctx = (callback.mock.calls[0] as unknown[])[1] as MessageContext;
+      expect(ctx.deliveryCount).toBe(3);
+    });
+
     it('nacks with requeue when the handler throws', async () => {
       const adapter = makeAdapter();
       const callback = jest.fn(async () => {

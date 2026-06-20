@@ -12,6 +12,7 @@ import { MessageContext } from '../abstract/consumer/queue-consumer.interfaces';
 export class BullMqMessageContext implements MessageContext {
   readonly messageId?: string;
   readonly headers: Record<string, string>;
+  readonly deliveryCount?: number;
 
   private _outcome: 'ack' | 'nack' | null = null;
   private _requeue = true;
@@ -19,6 +20,8 @@ export class BullMqMessageContext implements MessageContext {
   constructor(job: Job, headers: Record<string, string>) {
     this.messageId = job.id;
     this.headers = headers;
+    // attemptsMade is 0 on the first run; +1 makes it a 1-based delivery count.
+    this.deliveryCount = job.attemptsMade + 1;
   }
 
   get wasAcknowledged(): boolean {

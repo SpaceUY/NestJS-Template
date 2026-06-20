@@ -67,6 +67,47 @@ describe('SqsSenderAdapter', () => {
     });
   });
 
+  describe('delivery options', () => {
+    it('maps delay to DelaySeconds', async () => {
+      const adapter = makeAdapter();
+
+      await adapter.dispatch({
+        queue: 'orders',
+        payload: { id: 1 },
+        options: { delay: 5000 },
+      });
+
+      expect(lastSendMessage().DelaySeconds).toBe(5);
+    });
+
+    it('throws UNSUPPORTED_OPTION for priority', async () => {
+      const adapter = makeAdapter();
+
+      await expect(
+        adapter.dispatch({
+          queue: 'orders',
+          payload: {},
+          options: { priority: 1 },
+        }),
+      ).rejects.toMatchObject({
+        code: QUEUE_SENDER_ERRORS.UNSUPPORTED_OPTION,
+        data: { option: 'priority' },
+      });
+    });
+
+    it('throws DISPATCH_FAILED when delay exceeds the 15 minute cap', async () => {
+      const adapter = makeAdapter();
+
+      await expect(
+        adapter.dispatch({
+          queue: 'orders',
+          payload: {},
+          options: { delay: 900_001 },
+        }),
+      ).rejects.toMatchObject({ code: QUEUE_SENDER_ERRORS.DISPATCH_FAILED });
+    });
+  });
+
   describe('dispatch', () => {
     it('maps non-reserved headers to message attributes', async () => {
       const adapter = makeAdapter();

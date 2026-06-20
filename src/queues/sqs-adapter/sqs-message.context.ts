@@ -18,6 +18,7 @@ import {
 export class SqsMessageContext implements MessageContext {
   readonly messageId?: string;
   readonly headers: Record<string, string>;
+  readonly deliveryCount?: number;
 
   private _wasAcknowledged = false;
 
@@ -28,6 +29,10 @@ export class SqsMessageContext implements MessageContext {
   ) {
     this.messageId = message.MessageId;
     this.headers = SqsMessageContext.extractHeaders(message);
+    // Requires MessageSystemAttributeNames: ['ApproximateReceiveCount'] on the
+    // ReceiveMessage call; already a 1-based count of deliveries.
+    const received = message.Attributes?.ApproximateReceiveCount;
+    this.deliveryCount = received ? Number(received) : undefined;
   }
 
   get wasAcknowledged(): boolean {

@@ -78,10 +78,17 @@ explicit acknowledgment control.
 export interface MessageContext {
   readonly messageId?: string;
   readonly headers: Record<string, string>;
+  readonly deliveryCount?: number; // 1-based; undefined when the broker can't report it
   ack(): Promise<void>;
   nack(opts?: { requeue?: boolean }): Promise<void>;
 }
 ```
+
+`deliveryCount` is the cross-broker read-side companion to retries — useful for
+poison-message handling (`if (ctx.deliveryCount > 5) ctx.nack({ requeue: false })`).
+It maps to SQS `ApproximateReceiveCount`, BullMQ `attemptsMade + 1`, and RabbitMQ
+the `x-death` header (so on RabbitMQ it's only populated with a dead-letter retry
+setup; otherwise `undefined`).
 
 ## Registration
 
@@ -167,6 +174,34 @@ export class OrdersHandler extends QueueConsumerHandler<OrderPayload> {
   }
 }
 ```
+
+## Delivery Options
+
+`dispatch` accepts optional, broker-agnostic per-message delivery options:
+
+```ts
+await sender.dispatch({
+  queue: 'orders',
+  payload: { id: 1 },
+  options: { delay: 5000, priority: 3 }, // ms, and relative priority
+});
+```
+
+Only fields with a genuine per-message meaning across brokers live here. Richer,
+broker-specific knobs (retries/backoff, cron, exchanges) stay in adapter-level
+extensions (e.g. BullMQ's `addJob`, RabbitMQ's `publishToExchange`).
+
+**Honor-or-throw**: an adapter applies an option natively or throws
+`QUEUE_SENDER_UNSUPPORTED_OPTION` — it never silently drops one (a delay that
+fires immediately is a correctness bug, not a degradation). Support matrix:
+
+| Option | SQS | RabbitMQ | BullMQ |
+|---|---|---|---|
+| `delay` | ✅ `DelaySeconds` (≤15 min) | ❌ throws (needs a delayed-exchange plugin) | ✅ |
+| `priority` | ❌ throws | ✅ (needs a priority queue) | ✅ |
+
+Adapters validate via `assertSupportedDeliveryOptions(options, supported, name)`
+([util](./abstract/sender/queue-delivery-options.util.ts)).
 
 ## What Adapters Must Implement
 
@@ -358,7 +393,21 @@ QueueConsumerModule.forRootAsync({
 **Job ↔ message mapping.** `send`/`dispatch` enqueue a job via `queue.add`. BullMQ
 jobs have no header slot, so the adapter wraps the message as
 `{ payload, headers }` job data and unwraps it on consume; `ctx.messageId` is the
-BullMQ job id. The sender closes its queues on `OnModuleDestroy`.
+BullMQ job id and `ctx.deliveryCount` is `attemptsMade + 1`. The sender closes its
+queues on `OnModuleDestroy`. The shared `delay`/`priority` delivery options map
+straight onto BullMQ job options.
+
+**Richer job options — `addJob`.** For BullMQ-specific options beyond the shared
+tier (`attempts`, `backoff`, `jobId`, `lifo`, `removeOnComplete`, …), inject the
+concrete `BullMqSenderAdapter` and use the dedicated extension:
+
+```ts
+await sender.addJob({
+  queue: 'orders',
+  payload: { id: 1 },
+  options: { attempts: 5, backoff: { type: 'exponential', delay: 1000 } },
+});
+```
 
 **Acknowledgment is emulated.** BullMQ has no ack/nack — a job *completes* when
 its processor resolves and *fails* (and retries per the job's `attempts`) when
@@ -372,12 +421,11 @@ the processor throws. The adapter maps the context contract onto that:
 | `ctx.nack({ requeue: false })` | processor throws `UnrecoverableError` → no further retries |
 
 > **Retry caveat.** Whether a failed/nacked job is *retried* is governed by the
-> job's `attempts` option, set at enqueue time. The minimal sender doesn't set
-> job options, so jobs default to a single attempt — meaning `nack({ requeue:
-> true })` and a plain throw both fail the job without retrying until `attempts`
-> is configured. `requeue: false` always prevents retries via
-> `UnrecoverableError`. (Exposing `attempts`/`delay`/`backoff` is the planned
-> job-options extension, mirroring RabbitMQ's `publishToExchange`.)
+> job's `attempts` option, set at enqueue time. A job enqueued without `attempts`
+> (plain `send`/`dispatch`) defaults to a single attempt — so `nack({ requeue:
+> true })` and a plain throw both fail it without retrying. Enqueue with
+> `addJob({ options: { attempts } })` to make retries (and thus `requeue: true`)
+> meaningful. `requeue: false` always prevents retries via `UnrecoverableError`.
 
 ## Error Codes
 
@@ -386,6 +434,7 @@ the processor throws. The adapter maps the context contract onto that:
 | `QueueSenderError` | `QUEUE_SENDER_SEND_FAILED` | `send()` failed |
 | `QueueSenderError` | `QUEUE_SENDER_DISPATCH_FAILED` | `dispatch()` failed |
 | `QueueSenderError` | `QUEUE_SENDER_CONNECTION_FAILED` | broker connection failed |
+| `QueueSenderError` | `QUEUE_SENDER_UNSUPPORTED_OPTION` | a delivery option the adapter can't honor |
 | `QueueConsumerError` | `QUEUE_CONSUMER_CONSUME_FAILED` | consuming a message failed |
 | `QueueConsumerError` | `QUEUE_CONSUMER_ACK_FAILED` | acknowledging failed |
 | `QueueConsumerError` | `QUEUE_CONSUMER_NACK_FAILED` | negative-acknowledging failed |

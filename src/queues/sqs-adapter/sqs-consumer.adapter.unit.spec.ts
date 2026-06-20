@@ -83,6 +83,21 @@ describe('SqsConsumerAdapter', () => {
       expect(changeVisibilityCalls()).toHaveLength(0);
     });
 
+    it('exposes the delivery count from ApproximateReceiveCount', async () => {
+      const adapter = makeAdapter();
+      const callback = jest.fn(async () => {});
+      nextReceive = {
+        Messages: [
+          { ...message, Attributes: { ApproximateReceiveCount: '3' } },
+        ],
+      };
+
+      await (adapter as any)._pollOnce('https://sqs.test/orders', callback);
+
+      const ctx = (callback.mock.calls[0] as unknown[])[1] as MessageContext;
+      expect(ctx.deliveryCount).toBe(3);
+    });
+
     it('nacks (immediate redelivery) when the handler throws', async () => {
       const adapter = makeAdapter();
       const callback = jest.fn(async () => {

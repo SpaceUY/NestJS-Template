@@ -148,6 +148,39 @@ describe('RabbitMqSenderAdapter', () => {
     });
   });
 
+  describe('delivery options', () => {
+    it('passes priority into the publish options', async () => {
+      const adapter = makeAdapter();
+
+      await adapter.dispatch({
+        queue: 'orders',
+        payload: { id: 1 },
+        options: { priority: 5 },
+      });
+
+      expect(mockChannel.sendToQueue.mock.calls[0][2]).toEqual({
+        headers: {},
+        persistent: true,
+        priority: 5,
+      });
+    });
+
+    it('throws UNSUPPORTED_OPTION for delay', async () => {
+      const adapter = makeAdapter();
+
+      await expect(
+        adapter.dispatch({
+          queue: 'orders',
+          payload: {},
+          options: { delay: 1000 },
+        }),
+      ).rejects.toMatchObject({
+        code: QUEUE_SENDER_ERRORS.UNSUPPORTED_OPTION,
+        data: { option: 'delay' },
+      });
+    });
+  });
+
   describe('error handling', () => {
     it('throws CONNECTION_FAILED when connecting fails', async () => {
       mockConnect.mockRejectedValue(new Error('econnrefused'));

@@ -122,6 +122,7 @@ export class SqsConsumerAdapter extends QueueConsumerAdapter {
         WaitTimeSeconds:
           this.options.waitTimeSeconds ?? DEFAULT_WAIT_TIME_SECONDS,
         MessageAttributeNames: ['All'],
+        MessageSystemAttributeNames: ['ApproximateReceiveCount'],
         ...(this.options.visibilityTimeout !== undefined
           ? { VisibilityTimeout: this.options.visibilityTimeout }
           : {}),

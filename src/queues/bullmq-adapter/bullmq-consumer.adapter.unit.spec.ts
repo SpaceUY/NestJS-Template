@@ -36,6 +36,7 @@ function makeAdapter(
 const job = {
   id: 'j1',
   name: 'message',
+  attemptsMade: 0,
   data: { payload: { id: 1 }, headers: { traceId: 'abc' } },
 } as any;
 
@@ -95,6 +96,7 @@ describe('BullMqConsumerAdapter', () => {
       expect(ctx).toBeInstanceOf(BullMqMessageContext);
       expect(ctx.messageId).toBe('j1');
       expect(ctx.headers).toEqual({ traceId: 'abc' });
+      expect(ctx.deliveryCount).toBe(1); // attemptsMade (0) + 1
     });
 
     it('completes when the handler acks explicitly', async () => {

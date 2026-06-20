@@ -15,6 +15,10 @@ import {
   SqsSenderAdapterOptions,
 } from './sqs-adapter.interfaces';
 import { resolveQueueUrl } from './sqs-queue-url.util';
+import { assertSupportedDeliveryOptions } from '../abstract/sender/queue-delivery-options.util';
+
+// SQS caps DelaySeconds at 15 minutes.
+const MAX_DELAY_MS = 900_000;
 
 @Injectable()
 export class SqsSenderAdapter extends QueueSenderService {
@@ -48,7 +52,10 @@ export class SqsSenderAdapter extends QueueSenderService {
   }
 
   async dispatch(envelope: QueueEnvelope): Promise<void> {
-    const { queue, payload, headers = {} } = envelope;
+    const { queue, payload, headers = {}, options } = envelope;
+
+    // SQS supports delay natively (DelaySeconds); priority has no equivalent.
+    assertSupportedDeliveryOptions(options, ['delay'], 'SqsSenderAdapter');
 
     const queueUrl = await this._resolveUrl(queue);
 
@@ -64,12 +71,15 @@ export class SqsSenderAdapter extends QueueSenderService {
       );
     }
 
+    const delaySeconds = this._resolveDelaySeconds(queue, options?.delay);
+
     try {
       await this.client.send(
         new SendMessageCommand({
           QueueUrl: queueUrl,
           MessageBody: JSON.stringify(payload),
           MessageAttributes: this._buildAttributes(headers),
+          ...(delaySeconds !== undefined ? { DelaySeconds: delaySeconds } : {}),
           ...(groupId ? { MessageGroupId: groupId } : {}),
           ...(deduplicationId
             ? { MessageDeduplicationId: deduplicationId }
@@ -107,6 +117,22 @@ export class SqsSenderAdapter extends QueueSenderService {
         { queue, cause: (error as Error).message },
       );
     }
+  }
+
+  // FIFO queues reject DelaySeconds, and SQS caps it at 15 minutes.
+  private _resolveDelaySeconds(
+    queue: string,
+    delay: number | undefined,
+  ): number | undefined {
+    if (delay === undefined) return undefined;
+    if (delay > MAX_DELAY_MS) {
+      throw new QueueSenderError(
+        QUEUE_SENDER_ERRORS.DISPATCH_FAILED,
+        `SQS delay for "${queue}" exceeds the 15 minute maximum`,
+        { queue, delay },
+      );
+    }
+    return Math.round(delay / 1000);
   }
 
   // Maps non-reserved envelope headers to SQS string message attributes.
