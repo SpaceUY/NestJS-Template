@@ -329,6 +329,56 @@ channel.
 > that exchange. Per the design, the adapter does not create bindings — declare
 > them in infra/migrations (or assert+bind them at startup outside the adapter).
 
+## Built-in Adapter: BullMQ
+
+A Redis-backed adapter using [BullMQ](https://docs.bullmq.io/) lives in
+`src/queues/bullmq-adapter/` (`BullMqSenderAdapter` + `BullMqConsumerAdapter`).
+BullMQ is a job queue rather than a raw broker, built on `ioredis` (already a
+project dependency).
+
+```ts
+const connection = { host: 'localhost', port: 6379 };
+
+// Sender
+QueueSenderModule.forRootAsync({
+  useFactory: () => new BullMqSenderAdapter({ connection }),
+});
+
+// Consumer — BullMQ workers need a connection with maxRetriesPerRequest: null
+QueueConsumerModule.forRootAsync({
+  useFactory: () =>
+    new BullMqConsumerAdapter({
+      connection: { ...connection, maxRetriesPerRequest: null },
+      concurrency: 10,
+    }),
+  consumers: [{ queue: 'orders', handler: OrdersHandler }],
+});
+```
+
+**Job ↔ message mapping.** `send`/`dispatch` enqueue a job via `queue.add`. BullMQ
+jobs have no header slot, so the adapter wraps the message as
+`{ payload, headers }` job data and unwraps it on consume; `ctx.messageId` is the
+BullMQ job id. The sender closes its queues on `OnModuleDestroy`.
+
+**Acknowledgment is emulated.** BullMQ has no ack/nack — a job *completes* when
+its processor resolves and *fails* (and retries per the job's `attempts`) when
+the processor throws. The adapter maps the context contract onto that:
+
+| Handler action | BullMQ outcome |
+|---|---|
+| resolves (or `ctx.ack()`) | job completes |
+| throws | processor rethrows → job fails (retries if attempts remain) |
+| `ctx.nack()` (requeue, default) | processor throws → job fails (retries if attempts remain) |
+| `ctx.nack({ requeue: false })` | processor throws `UnrecoverableError` → no further retries |
+
+> **Retry caveat.** Whether a failed/nacked job is *retried* is governed by the
+> job's `attempts` option, set at enqueue time. The minimal sender doesn't set
+> job options, so jobs default to a single attempt — meaning `nack({ requeue:
+> true })` and a plain throw both fail the job without retrying until `attempts`
+> is configured. `requeue: false` always prevents retries via
+> `UnrecoverableError`. (Exposing `attempts`/`delay`/`backoff` is the planned
+> job-options extension, mirroring RabbitMQ's `publishToExchange`.)
+
 ## Error Codes
 
 | Class | Code | Meaning |
