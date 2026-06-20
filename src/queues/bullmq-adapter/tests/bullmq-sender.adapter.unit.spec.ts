@@ -77,6 +77,18 @@ describe('BullMqSenderAdapter', () => {
       );
     });
 
+    it('uses a custom jobName when configured', async () => {
+      const adapter = makeAdapter({ jobName: 'order-event' });
+
+      await adapter.send('orders', { id: 1 });
+
+      expect(mockAdd).toHaveBeenCalledWith(
+        'order-event',
+        { payload: { id: 1 }, headers: {} },
+        {},
+      );
+    });
+
     it('reuses the same Queue instance per queue name', async () => {
       const adapter = makeAdapter();
 

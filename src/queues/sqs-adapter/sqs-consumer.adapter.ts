@@ -12,8 +12,9 @@ import { resolveQueueUrl } from './sqs-queue-url.util';
 
 const DEFAULT_WAIT_TIME_SECONDS = 20;
 const DEFAULT_MAX_MESSAGES = 10;
-// Pause after a failed ReceiveMessage so transient broker errors don't hot-loop.
-const RECEIVE_ERROR_BACKOFF_MS = 1000;
+// Default pause after a failed ReceiveMessage so transient broker errors don't
+// hot-loop. Overridable via `receiveErrorBackoffMs`.
+const DEFAULT_RECEIVE_ERROR_BACKOFF_MS = 1000;
 
 type ConsumerCallback = (
   payload: unknown,
@@ -31,6 +32,12 @@ export class SqsConsumerAdapter extends QueueConsumerAdapter {
   private readonly urlCache = new Map<string, string>();
   private readonly consumers = new Map<string, ActiveConsumer>();
 
+  /**
+   * Builds the SQS consumer adapter and its underlying SQS client.
+   *
+   * @param {SqsConsumerAdapterOptions} options - Connection and polling configuration (region, optional
+   *   endpoint, credentials, and receive/visibility tuning).
+   */
   constructor(private readonly options: SqsConsumerAdapterOptions) {
     super();
 
@@ -53,6 +60,17 @@ export class SqsConsumerAdapter extends QueueConsumerAdapter {
     });
   }
 
+  /**
+   * Starts a background polling loop that delivers messages from a queue to the
+   * callback. Idempotent per queue: a second start for an already-consumed
+   * queue is ignored.
+   *
+   * @param {string} queue - Queue name to consume from.
+   * @param {ConsumerCallback} callback - Handler invoked with the parsed payload and message context.
+   * @returns {Promise<void>} Resolves once the polling loop has been registered and started.
+   * @throws {QueueConsumerError} With code `CONSUME_FAILED` if the queue URL
+   *   cannot be resolved.
+   */
   async startConsuming(
     queue: string,
     callback: ConsumerCallback,
@@ -76,6 +94,13 @@ export class SqsConsumerAdapter extends QueueConsumerAdapter {
     });
   }
 
+  /**
+   * Stops consuming a queue, aborting the in-flight poll and awaiting the loop's
+   * graceful exit. No-op if the queue is not currently being consumed.
+   *
+   * @param {string} queue - Queue name to stop consuming.
+   * @returns {Promise<void>} Resolves once the polling loop has fully wound down.
+   */
   async stopConsuming(queue: string): Promise<void> {
     const active = this.consumers.get(queue);
     if (!active) return;
@@ -89,6 +114,16 @@ export class SqsConsumerAdapter extends QueueConsumerAdapter {
     });
   }
 
+  /**
+   * Long-running poll loop that repeatedly receives and handles messages until
+   * the signal aborts. Receive failures are logged and followed by a backoff
+   * delay so transient broker errors don't hot-loop.
+   *
+   * @param {string} queueUrl - Resolved SQS queue URL to poll.
+   * @param {ConsumerCallback} callback - Handler invoked for each received message.
+   * @param {AbortSignal} signal - Abort signal that terminates the loop.
+   * @returns {Promise<void>} Resolves when the loop exits after the signal is aborted.
+   */
   private async _consumeLoop(
     queueUrl: string,
     callback: ConsumerCallback,
@@ -104,11 +139,24 @@ export class SqsConsumerAdapter extends QueueConsumerAdapter {
           data: { queueUrl },
           error,
         });
-        await this._delay(RECEIVE_ERROR_BACKOFF_MS, signal);
+        await this._delay(
+          this.options.receiveErrorBackoffMs ??
+            DEFAULT_RECEIVE_ERROR_BACKOFF_MS,
+          signal,
+        );
       }
     }
   }
 
+  /**
+   * Performs a single long-poll ReceiveMessage and processes the returned batch
+   * serially.
+   *
+   * @param {string} queueUrl - Resolved SQS queue URL to poll.
+   * @param {ConsumerCallback} callback - Handler invoked for each received message.
+   * @param {AbortSignal} [signal] - Optional abort signal forwarded to the SDK call.
+   * @returns {Promise<void>} Resolves once every message in the batch has been handled.
+   */
   private async _pollOnce(
     queueUrl: string,
     callback: ConsumerCallback,
@@ -139,9 +187,19 @@ export class SqsConsumerAdapter extends QueueConsumerAdapter {
     }
   }
 
-  // Runs the handler for a single message and applies the implicit ack/nack
-  // contract: ack on success, nack on throw, unless the handler settled the
-  // message explicitly via the context.
+  /**
+   * Runs the handler for a single message and applies the implicit ack/nack
+   * contract.
+   *
+   * Acks on success and nacks on a thrown handler error, unless the handler
+   * settled the message explicitly via the context. Failures to settle are
+   * logged but never propagated, so the poll loop stays alive.
+   *
+   * @param {string} queueUrl - Resolved SQS queue URL the message came from.
+   * @param {Message} message - Raw SQS message to process.
+   * @param {ConsumerCallback} callback - Handler invoked with the parsed payload and message context.
+   * @returns {Promise<void>} Resolves once the message has been handled and settled.
+   */
   private async _handleMessage(
     queueUrl: string,
     message: Message,
@@ -184,6 +242,13 @@ export class SqsConsumerAdapter extends QueueConsumerAdapter {
     }
   }
 
+  /**
+   * Parses a message body as JSON, falling back to the raw string when it is
+   * not valid JSON.
+   *
+   * @param {string | undefined} body - Raw SQS message body, or undefined when absent.
+   * @returns {unknown} The parsed object, the original string, or undefined.
+   */
   private _parseBody(body: string | undefined): unknown {
     if (body === undefined) return undefined;
     try {
@@ -193,6 +258,14 @@ export class SqsConsumerAdapter extends QueueConsumerAdapter {
     }
   }
 
+  /**
+   * Resolves and caches the URL for a queue name, wrapping any failure in a
+   * consumer-domain error.
+   *
+   * @param {string} queue - Queue name to resolve.
+   * @returns {Promise<string>} The resolved SQS queue URL.
+   * @throws {QueueConsumerError} With code `CONSUME_FAILED` if resolution fails.
+   */
   private async _resolveUrl(queue: string): Promise<string> {
     try {
       return await resolveQueueUrl(this.client, queue, this.urlCache);
@@ -210,6 +283,14 @@ export class SqsConsumerAdapter extends QueueConsumerAdapter {
     }
   }
 
+  /**
+   * Waits for the given duration, resolving early if the signal aborts so the
+   * loop can exit promptly during shutdown.
+   *
+   * @param {number} ms - Delay duration in milliseconds.
+   * @param {AbortSignal} signal - Abort signal that short-circuits the wait.
+   * @returns {Promise<void>} Resolves when the timer fires or the signal aborts.
+   */
   private _delay(ms: number, signal: AbortSignal): Promise<void> {
     return new Promise((resolve) => {
       const onAbort = (): void => {

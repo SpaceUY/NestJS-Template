@@ -20,6 +20,9 @@ export interface SqsConsumerAdapterOptions extends SqsConnectionOptions {
   maxNumberOfMessages?: number;
   // Optional per-message visibility timeout (seconds) applied on receive.
   visibilityTimeout?: number;
+  // Pause after a failed ReceiveMessage before retrying, in milliseconds, so
+  // transient broker errors don't hot-loop. Defaults to 1000.
+  receiveErrorBackoffMs?: number;
 }
 
 /**

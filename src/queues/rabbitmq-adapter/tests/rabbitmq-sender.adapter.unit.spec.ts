@@ -77,6 +77,17 @@ describe('RabbitMqSenderAdapter', () => {
       });
     });
 
+    it('publishes non-persistent messages when persistent is false', async () => {
+      const adapter = makeAdapter({ persistent: false });
+
+      await adapter.send('orders', { id: 1 });
+
+      expect(mockChannel.sendToQueue.mock.calls[0][2]).toEqual({
+        headers: {},
+        persistent: false,
+      });
+    });
+
     it('skips assertQueue when assertTopology is false', async () => {
       const adapter = makeAdapter({ assertTopology: false });
 

@@ -25,6 +25,12 @@ export class SqsSenderAdapter extends QueueSenderService {
   private readonly client: SQSClient;
   private readonly urlCache = new Map<string, string>();
 
+  /**
+   * Builds the SQS sender adapter and its underlying SQS client.
+   *
+   * @param {SqsSenderAdapterOptions} options - Connection configuration (region, optional endpoint, and
+   *   credentials).
+   */
   constructor(options: SqsSenderAdapterOptions) {
     super();
 
@@ -47,10 +53,35 @@ export class SqsSenderAdapter extends QueueSenderService {
     });
   }
 
+  /**
+   * Sends a payload to a queue with default delivery options.
+   *
+   * Convenience wrapper over {@link dispatch} for the common no-headers case.
+   *
+   * @param {string} queue - Destination queue name.
+   * @param {unknown} payload - Message payload, serialized to JSON.
+   * @returns {Promise<void>} Resolves once the message has been accepted by SQS.
+   * @throws {QueueSenderError} If the queue URL cannot be resolved or the send fails.
+   */
   async send(queue: string, payload: unknown): Promise<void> {
     await this.dispatch({ queue, payload });
   }
 
+  /**
+   * Dispatches a full envelope (payload, headers, and delivery options) to SQS.
+   *
+   * Honors the `delay` delivery option natively via DelaySeconds; priority is
+   * unsupported. FIFO queues require a message-group-id header. Reserved headers
+   * are mapped to SQS-native fields rather than message attributes.
+   *
+   * @param {QueueEnvelope} envelope - Queue envelope holding the destination, payload, headers,
+   *   and delivery options.
+   * @returns {Promise<void>} Resolves once the message has been accepted by SQS.
+   * @throws {QueueSenderError} With code `DISPATCH_FAILED` for unsupported
+   *   delivery options, a FIFO queue missing its group id, or a delay over the
+   *   15 minute maximum; with code `SEND_FAILED` if the underlying send fails;
+   *   with code `CONNECTION_FAILED` if the queue URL cannot be resolved.
+   */
   async dispatch(envelope: QueueEnvelope): Promise<void> {
     const { queue, payload, headers = {}, options } = envelope;
 
@@ -102,6 +133,14 @@ export class SqsSenderAdapter extends QueueSenderService {
     this.logger.debug({ message: 'Message sent to SQS', data: { queue } });
   }
 
+  /**
+   * Resolves and caches the URL for a queue name, wrapping any failure in a
+   * sender-domain error.
+   *
+   * @param {string} queue - Queue name to resolve.
+   * @returns {Promise<string>} The resolved SQS queue URL.
+   * @throws {QueueSenderError} With code `CONNECTION_FAILED` if resolution fails.
+   */
   private async _resolveUrl(queue: string): Promise<string> {
     try {
       return await resolveQueueUrl(this.client, queue, this.urlCache);
@@ -119,7 +158,18 @@ export class SqsSenderAdapter extends QueueSenderService {
     }
   }
 
-  // FIFO queues reject DelaySeconds, and SQS caps it at 15 minutes.
+  /**
+   * Converts a millisecond delay into SQS DelaySeconds.
+   *
+   * SQS caps DelaySeconds at 15 minutes; note that FIFO queues reject the field
+   * entirely.
+   *
+   * @param {string} queue - Destination queue name, used for error context.
+   * @param {number | undefined} delay - Requested delay in milliseconds, or undefined for none.
+   * @returns {number | undefined} The delay in seconds, or undefined when no delay was requested.
+   * @throws {QueueSenderError} With code `DISPATCH_FAILED` if the delay exceeds
+   *   the 15 minute maximum.
+   */
   private _resolveDelaySeconds(
     queue: string,
     delay: number | undefined,
@@ -135,7 +185,15 @@ export class SqsSenderAdapter extends QueueSenderService {
     return Math.round(delay / 1000);
   }
 
-  // Maps non-reserved envelope headers to SQS string message attributes.
+  /**
+   * Maps non-reserved envelope headers to SQS string message attributes.
+   *
+   * Reserved headers (group id, deduplication id) are skipped because they map
+   * to SQS-native fields handled separately by {@link dispatch}.
+   *
+   * @param {Record<string, string>} headers - Envelope headers to translate.
+   * @returns {Record<string, MessageAttributeValue>} The message attributes keyed by header name.
+   */
   private _buildAttributes(
     headers: Record<string, string>,
   ): Record<string, MessageAttributeValue> {

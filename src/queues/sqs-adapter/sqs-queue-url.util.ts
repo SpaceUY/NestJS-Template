@@ -4,6 +4,13 @@ import { GetQueueUrlCommand, SQSClient } from '@aws-sdk/client-sqs';
  * Resolves an SQS queue name to its URL, memoizing the result in the provided
  * cache so repeated sends/polls don't re-hit `GetQueueUrl`. Throws the raw SDK
  * error — callers wrap it in their domain error with the right code.
+ *
+ * @param {SQSClient} client - SQS client used to look up the queue URL.
+ * @param {string} queueName - Queue name to resolve.
+ * @param {Map<string, string>} cache - Name-to-URL cache, read on hit and populated on miss.
+ * @returns {Promise<string>} The resolved SQS queue URL.
+ * @throws {Error} The raw SDK error if the lookup fails, or a plain error if
+ *   SQS returns no URL for the queue.
  */
 export async function resolveQueueUrl(
   client: SQSClient,

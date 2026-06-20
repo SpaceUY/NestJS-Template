@@ -13,7 +13,21 @@ export interface MessageContext {
   // broker exposes it (SQS ApproximateReceiveCount, BullMQ attemptsMade + 1,
   // RabbitMQ via the x-death header). Undefined when the broker can't report it.
   readonly deliveryCount?: number;
+  /**
+   * Acknowledges the message, removing it from the queue.
+   *
+   * @returns {Promise<void>} Resolves once the broker has accepted the acknowledgment.
+   */
   ack(): Promise<void>;
+  /**
+   * Negatively acknowledges the message.
+   *
+   * @param {{ requeue?: boolean }} [opts] - When `requeue` is true (the default),
+   *   the message is made available for redelivery; when false, it is discarded
+   *   (dead-lettered if the broker is configured for it). Exact semantics vary
+   *   per broker.
+   * @returns {Promise<void>} Resolves once the broker has accepted the negative acknowledgment.
+   */
   nack(opts?: { requeue?: boolean }): Promise<void>;
 }
 

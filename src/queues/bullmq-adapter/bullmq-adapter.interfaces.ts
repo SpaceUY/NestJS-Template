@@ -11,7 +11,12 @@ export interface BullMqConnectionOptions {
   prefix?: string;
 }
 
-export type BullMqSenderAdapterOptions = BullMqConnectionOptions;
+export interface BullMqSenderAdapterOptions extends BullMqConnectionOptions {
+  // Name applied to every enqueued job. BullMQ requires a job name but the
+  // worker processes all names regardless, so this is mainly a label in the
+  // BullMQ dashboard. Defaults to 'message'.
+  jobName?: string;
+}
 
 export interface BullMqConsumerAdapterOptions extends BullMqConnectionOptions {
   // Number of jobs a worker processes in parallel. Defaults to BullMQ's default.

@@ -6,6 +6,12 @@ import { QueueSenderError, QUEUE_SENDER_ERRORS } from './queue-sender.error';
  * the envelope that the adapter does not list as supported raises
  * `UNSUPPORTED_OPTION`, so a request an adapter can't fulfil (e.g. a delay it
  * would silently ignore) fails loudly instead of misbehaving.
+ *
+ * @param {QueueDeliveryOptions | undefined} options - The requested per-message delivery options, if any.
+ * @param {ReadonlyArray<keyof QueueDeliveryOptions>} supported - Option keys the adapter can honor natively.
+ * @param {string} adapter - Adapter name, used in the error message and data.
+ * @returns {void} Returns nothing when all set options are supported.
+ * @throws {QueueSenderError} With code `UNSUPPORTED_OPTION` if a set option is not supported.
  */
 export function assertSupportedDeliveryOptions(
   options: QueueDeliveryOptions | undefined,

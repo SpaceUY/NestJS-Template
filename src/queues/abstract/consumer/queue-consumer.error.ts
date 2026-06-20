@@ -9,6 +9,13 @@ export type QueueConsumerErrorCode =
   (typeof QUEUE_CONSUMER_ERRORS)[keyof typeof QUEUE_CONSUMER_ERRORS];
 
 export class QueueConsumerError extends Error {
+  /**
+   * Creates a consumer error tagged with a machine-readable code.
+   *
+   * @param {QueueConsumerErrorCode} code - Stable error code identifying the failure.
+   * @param {string} message - Human-readable error message.
+   * @param {Record<string, unknown>} [data] - Optional structured context (queue, message id, cause, …).
+   */
   constructor(
     public readonly code: QueueConsumerErrorCode,
     message: string,

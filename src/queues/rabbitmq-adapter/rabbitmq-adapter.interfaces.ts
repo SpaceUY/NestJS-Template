@@ -11,7 +11,12 @@ export interface RabbitMqConnectionOptions {
   assertTopology?: boolean;
 }
 
-export type RabbitMqSenderAdapterOptions = RabbitMqConnectionOptions;
+export interface RabbitMqSenderAdapterOptions extends RabbitMqConnectionOptions {
+  // Mark published messages as persistent so they survive a broker restart (on
+  // durable queues). Defaults to true; set false to trade durability for
+  // throughput.
+  persistent?: boolean;
+}
 
 export interface RabbitMqConsumerAdapterOptions extends RabbitMqConnectionOptions {
   // Per-channel prefetch (QoS). Limits unacked messages in flight per queue.

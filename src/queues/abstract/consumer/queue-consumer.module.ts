@@ -28,6 +28,13 @@ export class QueueConsumerModule implements OnModuleInit, OnModuleDestroy {
     private readonly consumers: ConsumerRegistration[],
   ) {}
 
+  /**
+   * Configures the module with a directly-instantiated adapter (no DI for the
+   * adapter itself).
+   *
+   * @param {QueueConsumerModuleOptions} options - Adapter class, consumer registrations, and global flag.
+   * @returns {DynamicModule} A dynamic module wiring the adapter, consumers, and handlers.
+   */
   static forRoot(options: QueueConsumerModuleOptions): DynamicModule {
     const { adapter, consumers, isGlobal = false } = options;
 
@@ -50,6 +57,14 @@ export class QueueConsumerModule implements OnModuleInit, OnModuleDestroy {
     };
   }
 
+  /**
+   * Configures the module with an adapter built by a factory, so its
+   * configuration can be resolved from DI.
+   *
+   * @param {QueueConsumerModuleAsyncOptions} options - Factory, its injected
+   *   dependencies, consumer registrations, imports, and global flag.
+   * @returns {DynamicModule} A dynamic module wiring the adapter, consumers, and handlers.
+   */
   static forRootAsync(options: QueueConsumerModuleAsyncOptions): DynamicModule {
     const { consumers, isGlobal = false } = options;
 
@@ -79,6 +94,12 @@ export class QueueConsumerModule implements OnModuleInit, OnModuleDestroy {
     };
   }
 
+  /**
+   * Resolves each registered handler from the container and starts consuming its
+   * queue. Runs once on application bootstrap.
+   *
+   * @returns {Promise<void>} Resolves once every registered consumer has started.
+   */
   async onModuleInit(): Promise<void> {
     for (const { queue, handler } of this.consumers) {
       // `get` resolves singleton-scoped handlers only; request/transient-scoped
@@ -88,15 +109,25 @@ export class QueueConsumerModule implements OnModuleInit, OnModuleDestroy {
     }
   }
 
+  /**
+   * Stops every registered consumer on application shutdown.
+   *
+   * @returns {Promise<void>} Resolves once every registered consumer has stopped.
+   */
   async onModuleDestroy(): Promise<void> {
     for (const { queue } of this.consumers) {
       await this.adapter.stopConsuming(queue);
     }
   }
 
-  // Registers each handler class as a provider (so handlers resolve through DI
-  // and can inject services) plus the registration list the lifecycle hooks
-  // iterate over.
+  /**
+   * Builds the providers shared by both registration paths: each handler class
+   * (so handlers resolve through DI and can inject services) plus the
+   * registration list the lifecycle hooks iterate over.
+   *
+   * @param {ConsumerRegistration[]} consumers - The queue↔handler registrations.
+   * @returns {Provider[]} The provider list to merge into the dynamic module.
+   */
   private static buildSharedProviders(
     consumers: ConsumerRegistration[],
   ): Provider[] {

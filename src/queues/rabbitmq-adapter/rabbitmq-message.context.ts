@@ -17,6 +17,13 @@ export class RabbitMqMessageContext implements MessageContext {
 
   private _wasAcknowledged = false;
 
+  /**
+   * Builds the context from a delivered message, extracting id, headers, and
+   * delivery count for handler use.
+   *
+   * @param {Channel} channel - Channel the message was delivered on, used to ack/nack.
+   * @param {ConsumeMessage} message - The raw RabbitMQ delivery.
+   */
   constructor(
     private readonly channel: Channel,
     private readonly message: ConsumeMessage,
@@ -30,10 +37,17 @@ export class RabbitMqMessageContext implements MessageContext {
     );
   }
 
+  /** Whether the message has already been settled (acked or nacked). */
   get wasAcknowledged(): boolean {
     return this._wasAcknowledged;
   }
 
+  /**
+   * Acknowledges the message, marking it as settled.
+   *
+   * @returns {Promise<void>} Resolves once the ack has been issued.
+   * @throws {QueueConsumerError} With code `ACK_FAILED` if the channel rejects the ack.
+   */
   async ack(): Promise<void> {
     this._wasAcknowledged = true;
     try {
@@ -47,6 +61,16 @@ export class RabbitMqMessageContext implements MessageContext {
     }
   }
 
+  /**
+   * Negatively acknowledges the message, marking it as settled.
+   *
+   * Requeues by default so the message can be redelivered; pass `requeue: false`
+   * to drop or dead-letter it.
+   *
+   * @param {{ requeue?: boolean }} [opts] - Settlement options; `requeue` controls whether the broker requeues the message (default `true`).
+   * @returns {Promise<void>} Resolves once the nack has been issued.
+   * @throws {QueueConsumerError} With code `NACK_FAILED` if the channel rejects the nack.
+   */
   async nack(opts?: { requeue?: boolean }): Promise<void> {
     this._wasAcknowledged = true;
     const requeue = opts?.requeue ?? true;
@@ -61,6 +85,14 @@ export class RabbitMqMessageContext implements MessageContext {
     }
   }
 
+  /**
+   * Normalizes AMQP message headers into a string-valued map.
+   *
+   * Skips null/undefined values and stringifies the rest for a uniform shape.
+   *
+   * @param {ConsumeMessage['properties']['headers']} headers - Raw AMQP message headers, if any.
+   * @returns {Record<string, string>} A map of header names to string values.
+   */
   private static extractHeaders(
     headers: ConsumeMessage['properties']['headers'],
   ): Record<string, string> {
@@ -73,8 +105,15 @@ export class RabbitMqMessageContext implements MessageContext {
     return result;
   }
 
-  // RabbitMQ only tracks redeliveries via the `x-death` header populated by a
-  // dead-letter retry setup; without one the count is unknown.
+  /**
+   * Derives the delivery (attempt) count from the `x-death` header.
+   *
+   * RabbitMQ only tracks redeliveries via the `x-death` header populated by a
+   * dead-letter retry setup; without one the count is unknown.
+   *
+   * @param {ConsumeMessage['properties']['headers']} headers - Raw AMQP message headers, if any.
+   * @returns {number | undefined} The current attempt number, or `undefined` when no `x-death` data is present.
+   */
   private static extractDeliveryCount(
     headers: ConsumeMessage['properties']['headers'],
   ): number | undefined {

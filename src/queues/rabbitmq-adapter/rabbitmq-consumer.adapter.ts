@@ -24,10 +24,28 @@ export class RabbitMqConsumerAdapter extends QueueConsumerAdapter {
   private connectionPromise: Promise<ChannelModel> | null = null;
   private readonly consumers = new Map<string, ActiveConsumer>();
 
+  /**
+   * Creates the adapter with the connection URL and topology/QoS options.
+   *
+   * @param {RabbitMqConsumerAdapterOptions} options - RabbitMQ connection URL plus optional topology and prefetch settings.
+   */
   constructor(private readonly options: RabbitMqConsumerAdapterOptions) {
     super();
   }
 
+  /**
+   * Begins consuming a queue, invoking the callback for each delivered message.
+   *
+   * Opens a dedicated channel per queue, optionally asserts the queue and sets
+   * prefetch, then registers the consumer. Duplicate starts for the same queue
+   * are ignored.
+   *
+   * @param {string} queue - Name of the queue to consume.
+   * @param {ConsumerCallback} callback - Handler invoked with the parsed payload and message context.
+   * @returns {Promise<void>} Resolves once the consumer is registered.
+   * @throws {QueueConsumerError} With code `CONSUME_FAILED` if the channel or
+   * consumer cannot be established.
+   */
   async startConsuming(
     queue: string,
     callback: ConsumerCallback,
@@ -75,6 +93,15 @@ export class RabbitMqConsumerAdapter extends QueueConsumerAdapter {
     });
   }
 
+  /**
+   * Stops the consumer for a queue and closes its channel.
+   *
+   * No-op if the queue is not being consumed. Cleanup failures are logged but
+   * not thrown, since the consumer registration is already removed.
+   *
+   * @param {string} queue - Name of the queue to stop consuming.
+   * @returns {Promise<void>} Resolves once the consumer has been cancelled and its channel closed.
+   */
   async stopConsuming(queue: string): Promise<void> {
     const active = this.consumers.get(queue);
     if (!active) return;
@@ -97,9 +124,19 @@ export class RabbitMqConsumerAdapter extends QueueConsumerAdapter {
     });
   }
 
-  // Runs the handler for a single message and applies the implicit ack/nack
-  // contract: ack on success, nack on throw, unless the handler settled the
-  // message explicitly via the context.
+  /**
+   * Runs the handler for a single message and applies the implicit ack/nack
+   * contract: ack on success, nack on throw, unless the handler settled the
+   * message explicitly via the context.
+   *
+   * Settle failures are logged and swallowed so a single bad message cannot
+   * tear down the consumer.
+   *
+   * @param {Channel} channel - Channel the message was delivered on.
+   * @param {ConsumeMessage} message - The raw RabbitMQ delivery.
+   * @param {ConsumerCallback} callback - Handler invoked with the parsed payload and message context.
+   * @returns {Promise<void>} Resolves once the message has been handled and settled (or settling failed and was logged).
+   */
   private async _handleMessage(
     channel: Channel,
     message: ConsumeMessage,
@@ -142,6 +179,12 @@ export class RabbitMqConsumerAdapter extends QueueConsumerAdapter {
     }
   }
 
+  /**
+   * Parses message content as JSON, falling back to the raw string.
+   *
+   * @param {Buffer} content - Raw message body buffer.
+   * @returns {unknown} The parsed JSON value, or the decoded string if it is not valid JSON.
+   */
   private _parseBody(content: Buffer): unknown {
     const text = content.toString();
     try {
@@ -151,6 +194,16 @@ export class RabbitMqConsumerAdapter extends QueueConsumerAdapter {
     }
   }
 
+  /**
+   * Returns the shared connection, lazily establishing it on first use.
+   *
+   * Caches the connection promise so concurrent callers share one connection,
+   * and clears the cache (along with active consumers) on close so the next
+   * start reconnects lazily.
+   *
+   * @returns {Promise<ChannelModel>} Resolves with the established channel model.
+   * @throws Propagates the underlying `connect` error if the connection cannot be established.
+   */
   private async _getConnection(): Promise<ChannelModel> {
     if (!this.connectionPromise) {
       this.connectionPromise = connect(this.options.url)
@@ -177,6 +230,13 @@ export class RabbitMqConsumerAdapter extends QueueConsumerAdapter {
     return this.connectionPromise;
   }
 
+  /**
+   * Logs the failure and builds a wrapped consumer error for a queue.
+   *
+   * @param {string} queue - Queue whose consumer failed to start.
+   * @param {unknown} error - Underlying cause.
+   * @returns {QueueConsumerError} A `QueueConsumerError` with code `CONSUME_FAILED` wrapping the cause.
+   */
   private _consumeError(queue: string, error: unknown): QueueConsumerError {
     this.logger.error({
       message: 'Failed to start RabbitMQ consumer',

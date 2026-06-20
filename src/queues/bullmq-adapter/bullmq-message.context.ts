@@ -17,6 +17,12 @@ export class BullMqMessageContext implements MessageContext {
   private _outcome: 'ack' | 'nack' | null = null;
   private _requeue = true;
 
+  /**
+   * Builds the context from a BullMQ job and its unwrapped headers.
+   *
+   * @param {Job} job - The BullMQ job being processed; supplies the message id and attempt count.
+   * @param {Record<string, string>} headers - Header metadata extracted from the job envelope.
+   */
   constructor(job: Job, headers: Record<string, string>) {
     this.messageId = job.id;
     this.headers = headers;
@@ -24,22 +30,41 @@ export class BullMqMessageContext implements MessageContext {
     this.deliveryCount = job.attemptsMade + 1;
   }
 
+  /** Whether an outcome (ack or nack) has been recorded for this message. */
   get wasAcknowledged(): boolean {
     return this._outcome !== null;
   }
 
+  /** Whether the recorded outcome was a nack. */
   get nacked(): boolean {
     return this._outcome === 'nack';
   }
 
+  /** Whether a nacked message should be requeued for retry. */
   get requeue(): boolean {
     return this._requeue;
   }
 
+  /**
+   * Records intent to acknowledge the message.
+   *
+   * BullMQ has no native ack; the consumer adapter reads this intent and resolves the job processor.
+   *
+   * @returns {Promise<void>} Resolves immediately once the ack intent is recorded.
+   */
   async ack(): Promise<void> {
     this._outcome = 'ack';
   }
 
+  /**
+   * Records intent to negatively acknowledge the message.
+   *
+   * BullMQ has no native nack; the consumer adapter reads this intent and throws from the job processor.
+   * When `requeue` is false, it throws `UnrecoverableError` so remaining retries are skipped.
+   *
+   * @param {{ requeue?: boolean }} [opts] - Options controlling retry behavior; `requeue` defaults to `true`.
+   * @returns {Promise<void>} Resolves immediately once the nack intent is recorded.
+   */
   async nack(opts?: { requeue?: boolean }): Promise<void> {
     this._outcome = 'nack';
     this._requeue = opts?.requeue ?? true;

@@ -8,6 +8,13 @@ import { LoggerService } from '../../../common/logger/abstract/logger.service';
 
 @Module({})
 export class QueueSenderModule {
+  /**
+   * Configures the module with a directly-instantiated adapter (no DI for the
+   * adapter itself).
+   *
+   * @param {QueueSenderModuleOptions} options - Adapter class and global flag.
+   * @returns {DynamicModule} A dynamic module that provides and exports the sender.
+   */
   static forRoot(options: QueueSenderModuleOptions): DynamicModule {
     const { adapter, isGlobal = false } = options;
 
@@ -29,6 +36,13 @@ export class QueueSenderModule {
     };
   }
 
+  /**
+   * Configures the module with an adapter built by a factory, so its
+   * configuration can be resolved from DI.
+   *
+   * @param {QueueSenderModuleAsyncOptions} options - Factory, its injected dependencies, imports, and global flag.
+   * @returns {DynamicModule} A dynamic module that provides and exports the sender.
+   */
   static forRootAsync(options: QueueSenderModuleAsyncOptions): DynamicModule {
     const { isGlobal = false } = options;
 

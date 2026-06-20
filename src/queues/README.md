@@ -291,6 +291,8 @@ messages from one group) and bounds in-flight work to a single handler — so,
 unlike RabbitMQ's `prefetch` or BullMQ's `concurrency`, the SQS consumer has no
 intra-batch parallelism and one slow handler blocks the rest of its batch. For
 higher throughput, lower `maxNumberOfMessages` and run more consumer instances.
+The pause after a failed `ReceiveMessage` (so transient errors don't hot-loop)
+defaults to 1000 ms and is configurable via `receiveErrorBackoffMs`.
 
 **SQS nack limitation.** SQS has no "discard" primitive. `ctx.nack()` (requeue,
 the default) sets the message's visibility timeout to `0` for immediate
@@ -334,6 +336,12 @@ externally.
 **Default-exchange send.** `send(queue, payload)` / `dispatch` publish to the
 default exchange with routing-key = queue name, and forward non-reserved headers
 as AMQP message headers.
+
+**Message persistence.** Published messages are marked persistent by default so
+they survive a broker restart (on durable queues). Set `persistent: false` on
+the sender options to trade durability for throughput. (Queue/exchange
+durability stays on — use `assertTopology: false` and declare your own topology
+if you need non-durable infrastructure.)
 
 **Publisher confirms.** The sender uses a [confirm
 channel](https://www.rabbitmq.com/docs/confirms#publisher-confirms): `send` /
@@ -411,7 +419,9 @@ jobs have no header slot, so the adapter wraps the message as
 `{ payload, headers }` job data and unwraps it on consume; `ctx.messageId` is the
 BullMQ job id and `ctx.deliveryCount` is `attemptsMade + 1`. The sender closes its
 queues on `OnModuleDestroy`. The shared `delay`/`priority` delivery options map
-straight onto BullMQ job options.
+straight onto BullMQ job options. Every job is enqueued under a single job name
+(`'message'` by default, overridable via the `jobName` option) — the worker
+processes all names, so this only affects the BullMQ dashboard label.
 
 **Richer job options — `addJob`.** For BullMQ-specific options beyond the shared
 tier (`attempts`, `backoff`, `jobId`, `lifo`, `removeOnComplete`, …), inject the

@@ -22,6 +22,13 @@ export class SqsMessageContext implements MessageContext {
 
   private _wasAcknowledged = false;
 
+  /**
+   * Captures the message id, headers, and delivery count for a received message.
+   *
+   * @param {SQSClient} client - SQS client used to ack/nack the message.
+   * @param {string} queueUrl - Resolved URL of the queue the message came from.
+   * @param {Message} message - Raw SQS message being wrapped.
+   */
   constructor(
     private readonly client: SQSClient,
     private readonly queueUrl: string,
@@ -35,10 +42,18 @@ export class SqsMessageContext implements MessageContext {
     this.deliveryCount = received ? Number(received) : undefined;
   }
 
+  /** Whether the message has already been acked or nacked. */
   get wasAcknowledged(): boolean {
     return this._wasAcknowledged;
   }
 
+  /**
+   * Acknowledges the message by deleting it from the queue, marking the context
+   * as settled.
+   *
+   * @returns {Promise<void>} Resolves once the message has been deleted.
+   * @throws {QueueConsumerError} With code `ACK_FAILED` if the delete call fails.
+   */
   async ack(): Promise<void> {
     this._wasAcknowledged = true;
     try {
@@ -63,6 +78,12 @@ export class SqsMessageContext implements MessageContext {
    * `requeue: false` leaves it untouched so it reappears only after the queue's
    * visibility timeout lapses (and is routed to a DLQ if a redrive policy is
    * configured).
+   *
+   * @param {{ requeue?: boolean }} [opts] - Settlement options; `requeue` (default true) controls whether
+   *   the message is made immediately visible again.
+   * @returns {Promise<void>} Resolves once the message has been settled.
+   * @throws {QueueConsumerError} With code `NACK_FAILED` if the visibility
+   *   change fails.
    */
   async nack(opts?: { requeue?: boolean }): Promise<void> {
     this._wasAcknowledged = true;
@@ -86,6 +107,13 @@ export class SqsMessageContext implements MessageContext {
     }
   }
 
+  /**
+   * Extracts string-valued message attributes into a plain headers map,
+   * skipping attributes without a string value.
+   *
+   * @param {Message} message - Raw SQS message to read attributes from.
+   * @returns {Record<string, string>} The headers keyed by attribute name.
+   */
   private static extractHeaders(message: Message): Record<string, string> {
     const attributes = message.MessageAttributes ?? {};
     const headers: Record<string, string> = {};
