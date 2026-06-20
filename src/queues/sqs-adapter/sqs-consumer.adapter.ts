@@ -130,6 +130,10 @@ export class SqsConsumerAdapter extends QueueConsumerAdapter {
       signal ? { abortSignal: signal } : {},
     );
 
+    // Messages in a batch are processed serially by design: it keeps FIFO
+    // message-group ordering intact (a batch can hold several ordered messages
+    // from one group) and bounds in-flight work to one handler at a time. For
+    // higher throughput, lower maxNumberOfMessages and run more consumers.
     for (const message of response.Messages ?? []) {
       await this._handleMessage(queueUrl, message, callback);
     }

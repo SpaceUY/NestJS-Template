@@ -81,6 +81,8 @@ export class QueueConsumerModule implements OnModuleInit, OnModuleDestroy {
 
   async onModuleInit(): Promise<void> {
     for (const { queue, handler } of this.consumers) {
+      // `get` resolves singleton-scoped handlers only; request/transient-scoped
+      // handlers are unsupported (see QueueConsumerHandler).
       const instance = this.moduleRef.get(handler);
       await this.adapter.startConsuming(queue, instance.handle.bind(instance));
     }

@@ -284,6 +284,14 @@ long-polling worker loop per queue (configurable `waitTimeSeconds`,
 an `AbortController`. Implicit ack maps to `DeleteMessage`; implicit/explicit
 nack maps to `ChangeMessageVisibility`.
 
+**Serial batch processing (by design).** Messages within a received batch are
+processed one at a time, and the next poll waits for the whole batch to settle.
+This keeps FIFO message-group ordering intact (a batch can carry several ordered
+messages from one group) and bounds in-flight work to a single handler — so,
+unlike RabbitMQ's `prefetch` or BullMQ's `concurrency`, the SQS consumer has no
+intra-batch parallelism and one slow handler blocks the rest of its batch. For
+higher throughput, lower `maxNumberOfMessages` and run more consumer instances.
+
 **SQS nack limitation.** SQS has no "discard" primitive. `ctx.nack()` (requeue,
 the default) sets the message's visibility timeout to `0` for immediate
 redelivery; `ctx.nack({ requeue: false })` is a no-op — the message simply

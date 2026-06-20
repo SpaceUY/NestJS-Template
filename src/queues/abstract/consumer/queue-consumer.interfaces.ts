@@ -27,7 +27,9 @@ export interface ConsumerRegistration {
 
 export interface QueueConsumerModuleOptions {
   // forRoot instantiates the adapter directly (no NestJS DI). Adapters that
-  // need constructor arguments must use forRootAsync instead.
+  // need constructor arguments must use forRootAsync instead. No `imports` here
+  // by design: the sync path uses no DI factory, so there is nothing to import —
+  // use forRootAsync to bring in a non-global module (e.g. a custom logger).
   adapter: new () => QueueConsumerAdapter;
   consumers: ConsumerRegistration[];
   isGlobal?: boolean;
@@ -36,7 +38,12 @@ export interface QueueConsumerModuleOptions {
 export interface QueueConsumerModuleAsyncOptions {
   imports?: ModuleMetadata['imports'];
   inject?: InjectionToken[];
+  // `any[]` mirrors NestJS's own *ModuleAsyncOptions: the factory's args are the
+  // resolved `inject` tokens, whose types this interface can't know. `unknown[]`
+  // would reject typed factories like `(config: Config) => ...` under strict
+  // mode (parameter contravariance), so the explicit-any exception stays.
   useFactory: (
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
     ...args: any[]
   ) => Promise<QueueConsumerAdapter> | QueueConsumerAdapter;
   consumers: ConsumerRegistration[];
