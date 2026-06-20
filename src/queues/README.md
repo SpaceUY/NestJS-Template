@@ -193,6 +193,69 @@ export class OrdersHandler extends QueueConsumerHandler<OrderPayload> {
 - Throw to trigger implicit nack; call `ctx.nack()` for explicit control.
 - Inject any NestJS provider via the constructor.
 
+## Built-in Adapter: AWS SQS
+
+A ready-to-use adapter for Amazon SQS lives in `src/queues/sqs-adapter/`
+(`SqsSenderAdapter` + `SqsConsumerAdapter`). Each builds its own `SQSClient`, so
+the two modules keep independent connections. Credentials are optional — prefer
+IAM roles in remote environments and only pass explicit keys for local
+development (same convention as the secrets-manager adapter).
+
+```ts
+// Sender
+QueueSenderModule.forRoot({
+  adapter: class extends SqsSenderAdapter {
+    constructor() {
+      super({ region: 'us-east-1' });
+    }
+  },
+});
+
+// ...or, with DI-sourced config:
+QueueSenderModule.forRootAsync({
+  inject: [awsConfig.KEY],
+  useFactory: (aws) => new SqsSenderAdapter({ region: aws.region }),
+});
+
+// Consumer
+QueueConsumerModule.forRootAsync({
+  inject: [awsConfig.KEY],
+  useFactory: (aws) =>
+    new SqsConsumerAdapter({ region: aws.region, waitTimeSeconds: 20 }),
+  consumers: [{ queue: 'orders', handler: OrdersHandler }],
+});
+```
+
+**Queue identifier.** The `queue` string is an SQS **queue name**; the adapter
+resolves it to a queue URL via `GetQueueUrl` (cached per name).
+
+**FIFO queues.** For a `.fifo` queue, pass `MessageGroupId` (required) and
+optionally `MessageDeduplicationId` through `dispatch`'s `headers` — the adapter
+lifts these reserved keys into native SQS parameters and maps any remaining
+headers to message attributes. A FIFO send without a `MessageGroupId` throws
+`QueueSenderError(DISPATCH_FAILED)`.
+
+```ts
+await sender.dispatch({
+  queue: 'orders.fifo',
+  payload: { id: 1 },
+  headers: { MessageGroupId: 'tenant-42', traceId: 'abc' },
+});
+```
+
+**Consuming.** SQS has no push delivery, so `SqsConsumerAdapter` runs a
+long-polling worker loop per queue (configurable `waitTimeSeconds`,
+`maxNumberOfMessages`, `visibilityTimeout`). `stopConsuming` aborts the loop via
+an `AbortController`. Implicit ack maps to `DeleteMessage`; implicit/explicit
+nack maps to `ChangeMessageVisibility`.
+
+**SQS nack limitation.** SQS has no "discard" primitive. `ctx.nack()` (requeue,
+the default) sets the message's visibility timeout to `0` for immediate
+redelivery; `ctx.nack({ requeue: false })` is a no-op — the message simply
+reappears after its visibility timeout lapses, going to a dead-letter queue if
+the queue has a redrive policy. This is an SQS constraint, not an adapter
+shortcut.
+
 ## Error Codes
 
 | Class | Code | Meaning |
