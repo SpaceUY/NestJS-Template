@@ -1,4 +1,4 @@
-import { serializeError, serializeErrorToString } from './serialize-error';
+import { serializeError, serializeErrorToString } from '../serialize-error';
 
 describe('serializeError', () => {
   it('serializes an Error into name, message and stack', () => {

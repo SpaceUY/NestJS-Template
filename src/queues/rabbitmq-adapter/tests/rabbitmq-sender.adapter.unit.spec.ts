@@ -1,8 +1,8 @@
 /* eslint-disable @typescript-eslint/no-explicit-any */
 import { connect } from 'amqplib';
-import { RabbitMqSenderAdapter } from './rabbitmq-sender.adapter';
-import { RABBITMQ_RESERVED_HEADERS } from './rabbitmq-adapter.interfaces';
-import { QUEUE_SENDER_ERRORS } from '../abstract/sender/queue-sender.error';
+import { RabbitMqSenderAdapter } from '../rabbitmq-sender.adapter';
+import { RABBITMQ_RESERVED_HEADERS } from '../rabbitmq-adapter.interfaces';
+import { QUEUE_SENDER_ERRORS } from '../../abstract/sender/queue-sender.error';
 
 jest.mock('amqplib', () => ({ connect: jest.fn() }));
 

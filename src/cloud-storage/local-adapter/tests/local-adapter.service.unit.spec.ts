@@ -1,12 +1,12 @@
 import {
   CloudStorageError,
   CLOUD_STORAGE_ERRORS,
-} from '../abstract/cloud-storage.error';
-import { LocalAdapterService } from './local-adapter.service';
+} from '../../abstract/cloud-storage.error';
+import { LocalAdapterService } from '../local-adapter.service';
 import { access, mkdir, unlink, writeFile } from 'node:fs/promises';
 import { v4 as uuidv4 } from 'uuid';
-import { LoggerService } from '../../common/logger/abstract/logger.service';
-import { NestLoggerAdapter } from '../../common/logger/nest-adapter/nest-logger.adapter';
+import { LoggerService } from '../../../common/logger/abstract/logger.service';
+import { NestLoggerAdapter } from '../../../common/logger/nest-adapter/nest-logger.adapter';
 
 jest.mock('node:fs/promises', () => ({
   access: jest.fn(),

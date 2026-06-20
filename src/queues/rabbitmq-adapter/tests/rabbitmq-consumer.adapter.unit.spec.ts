@@ -1,10 +1,10 @@
 /* eslint-disable @typescript-eslint/no-explicit-any */
 import { Buffer } from 'node:buffer';
 import { connect } from 'amqplib';
-import { RabbitMqConsumerAdapter } from './rabbitmq-consumer.adapter';
-import { RabbitMqMessageContext } from './rabbitmq-message.context';
-import { MessageContext } from '../abstract/consumer/queue-consumer.interfaces';
-import { QUEUE_CONSUMER_ERRORS } from '../abstract/consumer/queue-consumer.error';
+import { RabbitMqConsumerAdapter } from '../rabbitmq-consumer.adapter';
+import { RabbitMqMessageContext } from '../rabbitmq-message.context';
+import { MessageContext } from '../../abstract/consumer/queue-consumer.interfaces';
+import { QUEUE_CONSUMER_ERRORS } from '../../abstract/consumer/queue-consumer.error';
 
 jest.mock('amqplib', () => ({ connect: jest.fn() }));
 

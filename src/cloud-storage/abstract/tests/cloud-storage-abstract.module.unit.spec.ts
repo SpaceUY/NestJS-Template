@@ -1,9 +1,9 @@
-import { CloudStorageAbstractModule } from './cloud-storage-abstract.module';
-import { CloudStorageController } from './cloud-storage.controller';
-import { CloudStorageService } from './cloud-storage.service';
-import { LoggerService } from '../../common/logger/abstract/logger.service';
-import { NestLoggerAdapter } from '../../common/logger/nest-adapter/nest-logger.adapter';
-import { CloudStorageUploadFile } from './cloud-storage.interfaces';
+import { CloudStorageAbstractModule } from '../cloud-storage-abstract.module';
+import { CloudStorageController } from '../cloud-storage.controller';
+import { CloudStorageService } from '../cloud-storage.service';
+import { LoggerService } from '../../../common/logger/abstract/logger.service';
+import { NestLoggerAdapter } from '../../../common/logger/nest-adapter/nest-logger.adapter';
+import { CloudStorageUploadFile } from '../cloud-storage.interfaces';
 
 class MockCloudStorageAdapter extends CloudStorageService {
   async uploadFile(

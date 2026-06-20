@@ -1,5 +1,5 @@
 import { Logger } from '@nestjs/common';
-import { NestLoggerAdapter } from './nest-logger.adapter';
+import { NestLoggerAdapter } from '../nest-logger.adapter';
 
 jest.mock('@nestjs/common', () => ({
   Logger: jest.fn().mockImplementation(() => ({

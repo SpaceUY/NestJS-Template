@@ -1,12 +1,12 @@
-import { EmailAbstractModule } from './email-abstract.module';
-import { EmailService } from './email.service';
-import { LoggerService } from '../../common/logger/abstract/logger.service';
-import { NestLoggerAdapter } from '../../common/logger/nest-adapter/nest-logger.adapter';
+import { EmailAbstractModule } from '../email-abstract.module';
+import { EmailService } from '../email.service';
+import { LoggerService } from '../../../common/logger/abstract/logger.service';
+import { NestLoggerAdapter } from '../../../common/logger/nest-adapter/nest-logger.adapter';
 import {
   MailingResponse,
   SendRenderedEmailMultipleParams,
   SendRenderedEmailParams,
-} from './email.interface';
+} from '../email.interface';
 
 class MockEmailAdapter extends EmailService {
   async sendEmail(_: SendRenderedEmailParams): Promise<MailingResponse> {

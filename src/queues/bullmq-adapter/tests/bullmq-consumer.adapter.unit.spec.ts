@@ -1,9 +1,9 @@
 /* eslint-disable @typescript-eslint/no-explicit-any */
 import { UnrecoverableError, Worker } from 'bullmq';
-import { BullMqConsumerAdapter } from './bullmq-consumer.adapter';
-import { BullMqMessageContext } from './bullmq-message.context';
-import { MessageContext } from '../abstract/consumer/queue-consumer.interfaces';
-import { QUEUE_CONSUMER_ERRORS } from '../abstract/consumer/queue-consumer.error';
+import { BullMqConsumerAdapter } from '../bullmq-consumer.adapter';
+import { BullMqMessageContext } from '../bullmq-message.context';
+import { MessageContext } from '../../abstract/consumer/queue-consumer.interfaces';
+import { QUEUE_CONSUMER_ERRORS } from '../../abstract/consumer/queue-consumer.error';
 
 const mockWorkerClose = jest.fn().mockResolvedValue(undefined);
 let capturedProcessor: (job: any) => Promise<void>;

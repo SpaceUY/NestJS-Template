@@ -1,11 +1,11 @@
 import { SecretsManagerClient } from '@aws-sdk/client-secrets-manager';
-import { SecretsManagerConfigAdapter } from './secrets-manager-config.adapter';
+import { SecretsManagerConfigAdapter } from '../secrets-manager-config.adapter';
 import {
   ConfigProviderError,
   CONFIG_PROVIDER_ERRORS,
-} from '../abstract/config-provider.error';
-import { LoggerService } from '../../common/logger/abstract/logger.service';
-import { NestLoggerAdapter } from '../../common/logger/nest-adapter/nest-logger.adapter';
+} from '../../abstract/config-provider.error';
+import { LoggerService } from '../../../common/logger/abstract/logger.service';
+import { NestLoggerAdapter } from '../../../common/logger/nest-adapter/nest-logger.adapter';
 
 const mockSend = jest.fn();
 

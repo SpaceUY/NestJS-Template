@@ -1,11 +1,11 @@
 /* eslint-disable @typescript-eslint/no-explicit-any */
-import { SqsConsumerAdapter } from './sqs-consumer.adapter';
-import { SqsMessageContext } from './sqs-message.context';
+import { SqsConsumerAdapter } from '../sqs-consumer.adapter';
+import { SqsMessageContext } from '../sqs-message.context';
 import {
   MessageContext,
   ConsumerRegistration,
-} from '../abstract/consumer/queue-consumer.interfaces';
-import { QUEUE_CONSUMER_ERRORS } from '../abstract/consumer/queue-consumer.error';
+} from '../../abstract/consumer/queue-consumer.interfaces';
+import { QUEUE_CONSUMER_ERRORS } from '../../abstract/consumer/queue-consumer.error';
 
 const mockSend = jest.fn();
 

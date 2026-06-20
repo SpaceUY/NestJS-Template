@@ -1,4 +1,4 @@
-import { WinstonLoggerAdapter } from './winston-logger.adapter';
+import { WinstonLoggerAdapter } from '../winston-logger.adapter';
 import winston from 'winston';
 
 jest.mock('winston', () => ({

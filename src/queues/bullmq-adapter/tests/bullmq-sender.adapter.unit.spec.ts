@@ -1,7 +1,7 @@
 /* eslint-disable @typescript-eslint/no-explicit-any */
 import { Queue } from 'bullmq';
-import { BullMqSenderAdapter } from './bullmq-sender.adapter';
-import { QUEUE_SENDER_ERRORS } from '../abstract/sender/queue-sender.error';
+import { BullMqSenderAdapter } from '../bullmq-sender.adapter';
+import { QUEUE_SENDER_ERRORS } from '../../abstract/sender/queue-sender.error';
 
 const mockAdd = jest.fn();
 const mockQueueClose = jest.fn().mockResolvedValue(undefined);

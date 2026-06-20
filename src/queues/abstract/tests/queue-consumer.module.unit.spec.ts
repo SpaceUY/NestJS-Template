@@ -1,10 +1,10 @@
 /* eslint-disable @typescript-eslint/no-explicit-any */
 import { Injectable, Module } from '@nestjs/common';
 import { Test } from '@nestjs/testing';
-import { QueueConsumerModule } from './queue-consumer.module';
-import { QueueConsumerAdapter } from './queue-consumer.adapter';
-import { QueueConsumerHandler } from './queue-consumer.handler';
-import { MessageContext } from './queue-consumer.interfaces';
+import { QueueConsumerModule } from '../consumer/queue-consumer.module';
+import { QueueConsumerAdapter } from '../consumer/queue-consumer.adapter';
+import { QueueConsumerHandler } from '../consumer/queue-consumer.handler';
+import { MessageContext } from '../consumer/queue-consumer.interfaces';
 import { LoggerService } from '../../../common/logger/abstract/logger.service';
 import { NestLoggerAdapter } from '../../../common/logger/nest-adapter/nest-logger.adapter';
 

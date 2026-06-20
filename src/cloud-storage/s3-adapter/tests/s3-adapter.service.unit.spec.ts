@@ -3,10 +3,10 @@ import { getSignedUrl } from '@aws-sdk/s3-request-presigner';
 import {
   CloudStorageError,
   CLOUD_STORAGE_ERRORS,
-} from '../abstract/cloud-storage.error';
-import { S3AdapterService } from './s3-adapter.service';
-import { LoggerService } from '../../common/logger/abstract/logger.service';
-import { NestLoggerAdapter } from '../../common/logger/nest-adapter/nest-logger.adapter';
+} from '../../abstract/cloud-storage.error';
+import { S3AdapterService } from '../s3-adapter.service';
+import { LoggerService } from '../../../common/logger/abstract/logger.service';
+import { NestLoggerAdapter } from '../../../common/logger/nest-adapter/nest-logger.adapter';
 
 jest.mock('@aws-sdk/client-s3');
 jest.mock('@aws-sdk/s3-request-presigner', () => ({

@@ -1,11 +1,11 @@
 /* eslint-disable @typescript-eslint/no-explicit-any */
 import { SQSClient } from '@aws-sdk/client-sqs';
-import { SqsSenderAdapter } from './sqs-sender.adapter';
-import { SQS_RESERVED_HEADERS } from './sqs-adapter.interfaces';
+import { SqsSenderAdapter } from '../sqs-sender.adapter';
+import { SQS_RESERVED_HEADERS } from '../sqs-adapter.interfaces';
 import {
   QueueSenderError,
   QUEUE_SENDER_ERRORS,
-} from '../abstract/sender/queue-sender.error';
+} from '../../abstract/sender/queue-sender.error';
 
 const mockSend = jest.fn();
 

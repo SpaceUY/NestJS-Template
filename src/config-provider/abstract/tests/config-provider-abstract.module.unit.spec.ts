@@ -1,13 +1,13 @@
 /* eslint-disable @typescript-eslint/no-explicit-any */
-import { ConfigProviderAbstractModule } from './config-provider-abstract.module';
-import { CONFIG_PROVIDER_ERRORS } from './config-provider.error';
-import { ConfigScopeDefinition } from './config-provider.interfaces';
-import { ConfigProviderService } from './config-provider.service';
-import { ReloadableConfigProviderService } from './reloadable-config-provider.service';
-import { defineConfigScope } from './define-config-scope.util';
-import { SOURCES } from './config-source.util';
-import { LoggerService } from '../../common/logger/abstract/logger.service';
-import { NestLoggerAdapter } from '../../common/logger/nest-adapter/nest-logger.adapter';
+import { ConfigProviderAbstractModule } from '../config-provider-abstract.module';
+import { CONFIG_PROVIDER_ERRORS } from '../config-provider.error';
+import { ConfigScopeDefinition } from '../config-provider.interfaces';
+import { ConfigProviderService } from '../config-provider.service';
+import { ReloadableConfigProviderService } from '../reloadable-config-provider.service';
+import { defineConfigScope } from '../define-config-scope.util';
+import { SOURCES } from '../config-source.util';
+import { LoggerService } from '../../../common/logger/abstract/logger.service';
+import { NestLoggerAdapter } from '../../../common/logger/nest-adapter/nest-logger.adapter';
 
 class MockEnvAdapter extends ConfigProviderService {
   constructor(private readonly store: Record<string, string>) {

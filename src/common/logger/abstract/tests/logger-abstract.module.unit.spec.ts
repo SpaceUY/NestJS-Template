@@ -1,5 +1,5 @@
-import { LoggerAbstractModule } from './logger-abstract.module';
-import { LoggerService } from './logger.service';
+import { LoggerAbstractModule } from '../logger-abstract.module';
+import { LoggerService } from '../logger.service';
 
 class MockAdapter extends LoggerService {
   setContext = jest.fn();
