@@ -327,6 +327,14 @@ externally.
 default exchange with routing-key = queue name, and forward non-reserved headers
 as AMQP message headers.
 
+**Publisher confirms.** The sender uses a [confirm
+channel](https://www.rabbitmq.com/docs/confirms#publisher-confirms): `send` /
+`dispatch` / `publishToExchange` resolve only once the broker has acknowledged
+the message, and a broker nack rejects with `QUEUE_SENDER_SEND_FAILED`. So a
+resolved publish means the broker accepted the message, not merely that it was
+written to the local socket buffer — matching the awaited delivery guarantee of
+the SQS and BullMQ senders. (This adds one broker round-trip per publish.)
+
 **Exchanges — two ways** (per design, both are supported):
 
 1. Dedicated, type-safe method on the concrete sender:

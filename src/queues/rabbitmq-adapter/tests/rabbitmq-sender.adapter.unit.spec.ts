@@ -12,14 +12,22 @@ let mockChannel: any;
 let mockConnection: any;
 
 function wireHappyPath(): void {
+  // Confirm-channel publishes take a callback that the broker invokes on
+  // ack (no error) / nack (error); the happy path acks immediately.
   mockChannel = {
     assertQueue: jest.fn().mockResolvedValue({}),
     assertExchange: jest.fn().mockResolvedValue({}),
-    sendToQueue: jest.fn().mockReturnValue(true),
-    publish: jest.fn().mockReturnValue(true),
+    sendToQueue: jest.fn((_queue, _content, _options, confirm) => {
+      confirm?.(null);
+      return true;
+    }),
+    publish: jest.fn((_exchange, _routingKey, _content, _options, confirm) => {
+      confirm?.(null);
+      return true;
+    }),
   };
   mockConnection = {
-    createChannel: jest.fn().mockResolvedValue(mockChannel),
+    createConfirmChannel: jest.fn().mockResolvedValue(mockChannel),
     on: jest.fn(),
     close: jest.fn().mockResolvedValue(undefined),
   };
@@ -85,7 +93,7 @@ describe('RabbitMqSenderAdapter', () => {
       await adapter.send('orders', { id: 2 });
 
       expect(mockConnect).toHaveBeenCalledTimes(1);
-      expect(mockConnection.createChannel).toHaveBeenCalledTimes(1);
+      expect(mockConnection.createConfirmChannel).toHaveBeenCalledTimes(1);
       expect(mockChannel.assertQueue).toHaveBeenCalledTimes(1); // cached
     });
   });
@@ -201,6 +209,21 @@ describe('RabbitMqSenderAdapter', () => {
       await expect(adapter.send('orders', {})).rejects.toMatchObject({
         code: QUEUE_SENDER_ERRORS.SEND_FAILED,
         data: { target: 'orders', cause: 'channel closed' },
+      });
+    });
+
+    it('throws SEND_FAILED when the broker nacks the message', async () => {
+      mockChannel.sendToQueue.mockImplementation(
+        (_queue, _content, _options, confirm) => {
+          confirm(new Error('broker nack'));
+          return true;
+        },
+      );
+      const adapter = makeAdapter();
+
+      await expect(adapter.send('orders', {})).rejects.toMatchObject({
+        code: QUEUE_SENDER_ERRORS.SEND_FAILED,
+        data: { target: 'orders', cause: 'broker nack' },
       });
     });
   });

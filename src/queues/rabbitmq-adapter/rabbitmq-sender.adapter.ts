@@ -1,6 +1,6 @@
 import { Injectable } from '@nestjs/common';
 import { Buffer } from 'node:buffer';
-import { Channel, ChannelModel, connect } from 'amqplib';
+import { Channel, ChannelModel, ConfirmChannel, connect } from 'amqplib';
 import { QueueSenderService } from '../abstract/sender/queue-sender.service';
 import { QueueEnvelope } from '../abstract/sender/queue-sender.interfaces';
 import {
@@ -17,7 +17,7 @@ import { assertSupportedDeliveryOptions } from '../abstract/sender/queue-deliver
 @Injectable()
 export class RabbitMqSenderAdapter extends QueueSenderService {
   private connectionPromise: Promise<ChannelModel> | null = null;
-  private channelPromise: Promise<Channel> | null = null;
+  private channelPromise: Promise<ConfirmChannel> | null = null;
   private readonly assertedQueues = new Set<string>();
   private readonly assertedExchanges = new Set<string>();
 
@@ -61,13 +61,20 @@ export class RabbitMqSenderAdapter extends QueueSenderService {
     await this._assertQueue(channel, queue);
 
     try {
-      channel.sendToQueue(queue, this._encode(payload), {
-        headers: messageHeaders,
-        persistent: true,
-        ...(options?.priority !== undefined
-          ? { priority: options.priority }
-          : {}),
-      });
+      await this._publishWithConfirm((confirm) =>
+        channel.sendToQueue(
+          queue,
+          this._encode(payload),
+          {
+            headers: messageHeaders,
+            persistent: true,
+            ...(options?.priority !== undefined
+              ? { priority: options.priority }
+              : {}),
+          },
+          confirm,
+        ),
+      );
     } catch (error) {
       throw this._sendError(QUEUE_SENDER_ERRORS.SEND_FAILED, queue, error);
     }
@@ -94,11 +101,19 @@ export class RabbitMqSenderAdapter extends QueueSenderService {
     await this._assertExchange(channel, exchange, type);
 
     try {
-      channel.publish(exchange, routingKey, this._encode(payload), {
-        headers,
-        persistent: true,
-        ...(priority !== undefined ? { priority } : {}),
-      });
+      await this._publishWithConfirm((confirm) =>
+        channel.publish(
+          exchange,
+          routingKey,
+          this._encode(payload),
+          {
+            headers,
+            persistent: true,
+            ...(priority !== undefined ? { priority } : {}),
+          },
+          confirm,
+        ),
+      );
     } catch (error) {
       throw this._sendError(
         QUEUE_SENDER_ERRORS.SEND_FAILED,
@@ -115,6 +130,19 @@ export class RabbitMqSenderAdapter extends QueueSenderService {
 
   private _encode(payload: unknown): Buffer {
     return Buffer.from(JSON.stringify(payload));
+  }
+
+  // Wraps a confirm-channel publish in a promise that settles only once the
+  // broker acks (resolve) or nacks (reject) the message, so a resolved
+  // dispatch means the broker actually accepted it — not just that it was
+  // written to the local socket buffer. A synchronous throw from the publish
+  // call (e.g. closed channel) rejects too.
+  private _publishWithConfirm(
+    publish: (confirm: (err: unknown) => void) => boolean,
+  ): Promise<void> {
+    return new Promise<void>((resolve, reject) => {
+      publish((err) => (err ? reject(err) : resolve()));
+    });
   }
 
   private _stripReservedHeaders(
@@ -154,10 +182,10 @@ export class RabbitMqSenderAdapter extends QueueSenderService {
     this.assertedExchanges.add(exchange);
   }
 
-  private async _getChannel(): Promise<Channel> {
+  private async _getChannel(): Promise<ConfirmChannel> {
     if (!this.channelPromise) {
       this.channelPromise = this._getConnection()
-        .then((connection) => connection.createChannel())
+        .then((connection) => connection.createConfirmChannel())
         .catch((error) => {
           this.channelPromise = null;
           throw this._sendError(
