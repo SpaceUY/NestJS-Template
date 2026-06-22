@@ -1,4 +1,4 @@
-import { Injectable } from '@nestjs/common';
+import { Injectable, OnModuleDestroy } from '@nestjs/common';
 import { Message, ReceiveMessageCommand, SQSClient } from '@aws-sdk/client-sqs';
 import { QueueConsumerAdapter } from '../abstract/consumer/queue-consumer.adapter';
 import { MessageContext } from '../abstract/consumer/queue-consumer.interfaces';
@@ -27,7 +27,10 @@ interface ActiveConsumer {
 }
 
 @Injectable()
-export class SqsConsumerAdapter extends QueueConsumerAdapter {
+export class SqsConsumerAdapter
+  extends QueueConsumerAdapter
+  implements OnModuleDestroy
+{
   private readonly client: SQSClient;
   private readonly urlCache = new Map<string, string>();
   private readonly consumers = new Map<string, ActiveConsumer>();
@@ -112,6 +115,23 @@ export class SqsConsumerAdapter extends QueueConsumerAdapter {
       message: 'Stopped consuming SQS queue',
       data: { queue },
     });
+  }
+
+  /**
+   * Stops every active poll loop and destroys the SQS client on module
+   * teardown, releasing its pooled HTTP sockets.
+   *
+   * `QueueConsumerModule` already calls `stopConsuming` per registered queue;
+   * stopping any remainder here keeps the adapter self-contained, and the
+   * client is destroyed once all loops have wound down.
+   *
+   * @returns {Promise<void>} Resolves once all loops have stopped and the client is destroyed.
+   */
+  async onModuleDestroy(): Promise<void> {
+    await Promise.all(
+      [...this.consumers.keys()].map((queue) => this.stopConsuming(queue)),
+    );
+    this.client.destroy();
   }
 
   /**

@@ -1,4 +1,4 @@
-import { Injectable } from '@nestjs/common';
+import { Injectable, OnModuleDestroy } from '@nestjs/common';
 import { Channel, ChannelModel, ConsumeMessage, connect } from 'amqplib';
 import { QueueConsumerAdapter } from '../abstract/consumer/queue-consumer.adapter';
 import { MessageContext } from '../abstract/consumer/queue-consumer.interfaces';
@@ -20,7 +20,10 @@ interface ActiveConsumer {
 }
 
 @Injectable()
-export class RabbitMqConsumerAdapter extends QueueConsumerAdapter {
+export class RabbitMqConsumerAdapter
+  extends QueueConsumerAdapter
+  implements OnModuleDestroy
+{
   private connectionPromise: Promise<ChannelModel> | null = null;
   private readonly consumers = new Map<string, ActiveConsumer>();
 
@@ -122,6 +125,32 @@ export class RabbitMqConsumerAdapter extends QueueConsumerAdapter {
       message: 'Stopped consuming RabbitMQ queue',
       data: { queue },
     });
+  }
+
+  /**
+   * Closes the shared connection (and any open consumer channels) on module
+   * teardown.
+   *
+   * `QueueConsumerModule` already cancels each consumer via `stopConsuming`;
+   * this closes the underlying connection those channels share, which would
+   * otherwise leak. No-op when nothing was ever connected. The connection's
+   * `close` handler clears the cached state.
+   *
+   * @returns {Promise<void>} Resolves once the connection has been closed.
+   */
+  async onModuleDestroy(): Promise<void> {
+    const connectionPromise = this.connectionPromise;
+    if (!connectionPromise) return;
+
+    try {
+      const connection = await connectionPromise;
+      await connection.close();
+    } catch (error) {
+      this.logger.error({
+        message: 'Failed to close RabbitMQ consumer connection',
+        error,
+      });
+    }
   }
 
   /**

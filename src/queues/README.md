@@ -66,8 +66,11 @@ abstract class QueueConsumerHandler<TPayload = unknown> {
 }
 ```
 
-Handlers are registered as NestJS providers, so they can inject any service from
-the container through their constructor.
+Handlers are registered as NestJS providers, so they can inject services through
+their constructor. Because they resolve within `QueueConsumerModule`'s own
+injector scope, their dependencies must be either globally-provided or reachable
+through a module passed to `forRootAsync`'s `imports` — a non-global provider
+from an un-imported module won't resolve.
 
 ### `MessageContext`
 
@@ -197,7 +200,7 @@ fires immediately is a correctness bug, not a degradation). Support matrix:
 
 | Option | SQS | RabbitMQ | BullMQ |
 |---|---|---|---|
-| `delay` | ✅ `DelaySeconds` (≤15 min) | ❌ throws (needs a delayed-exchange plugin) | ✅ |
+| `delay` | ✅ `DelaySeconds` (≤15 min, standard queues only) | ❌ throws (needs a delayed-exchange plugin) | ✅ |
 | `priority` | ❌ throws | ✅ (needs a priority queue) | ✅ |
 
 Adapters validate via `assertSupportedDeliveryOptions(options, supported, name)`
@@ -268,7 +271,9 @@ resolves it to a queue URL via `GetQueueUrl` (cached per name).
 optionally `MessageDeduplicationId` through `dispatch`'s `headers` — the adapter
 lifts these reserved keys into native SQS parameters and maps any remaining
 headers to message attributes. A FIFO send without a `MessageGroupId` throws
-`QueueSenderError(DISPATCH_FAILED)`.
+`QueueSenderError(DISPATCH_FAILED)`. FIFO queues also reject the shared `delay`
+option (SQS supports delay per-queue only, not per-message), so a FIFO `dispatch`
+with `options.delay` throws `QUEUE_SENDER_UNSUPPORTED_OPTION`.
 
 ```ts
 await sender.dispatch({
@@ -282,7 +287,9 @@ await sender.dispatch({
 long-polling worker loop per queue (configurable `waitTimeSeconds`,
 `maxNumberOfMessages`, `visibilityTimeout`). `stopConsuming` aborts the loop via
 an `AbortController`. Implicit ack maps to `DeleteMessage`; implicit/explicit
-nack maps to `ChangeMessageVisibility`.
+nack maps to `ChangeMessageVisibility`. On module shutdown both SQS adapters
+destroy their `SQSClient` (`OnModuleDestroy`), releasing its pooled HTTP sockets;
+the consumer stops every active poll loop first.
 
 **Serial batch processing (by design).** Messages within a received batch are
 processed one at a time, and the next poll waits for the whole batch to settle.
@@ -309,7 +316,12 @@ A RabbitMQ adapter built directly on `amqplib` lives in
 consumer uses `channel.consume` callbacks (no polling). Each adapter owns its
 connection and connects **lazily** on first use (memoized); on connection
 `close` it drops the cached connection so the next call reconnects — fail-fast,
-no active retry loop.
+no active retry loop. On module shutdown both adapters close their connection
+(`OnModuleDestroy`). Note the reconnect is driven by the *next call*: the sender
+reconnects on its next publish, but a push consumer has no such trigger — if its
+connection drops, in-flight consumers are not auto-restored and consumption stays
+halted until the app restarts (or `startConsuming` is invoked again). Enable a
+broker-side or process supervisor if uninterrupted consumption matters.
 
 ```ts
 // Sender
@@ -464,4 +476,3 @@ the processor throws. The adapter maps the context contract onto that:
 | `QueueConsumerError` | `QUEUE_CONSUMER_CONSUME_FAILED` | consuming a message failed |
 | `QueueConsumerError` | `QUEUE_CONSUMER_ACK_FAILED` | acknowledging failed |
 | `QueueConsumerError` | `QUEUE_CONSUMER_NACK_FAILED` | negative-acknowledging failed |
-| `QueueConsumerError` | `QUEUE_CONSUMER_HANDLER_ERROR` | the handler threw |

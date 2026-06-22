@@ -1,4 +1,4 @@
-import { Injectable } from '@nestjs/common';
+import { Injectable, OnModuleDestroy } from '@nestjs/common';
 import {
   MessageAttributeValue,
   SendMessageCommand,
@@ -21,7 +21,10 @@ import { assertSupportedDeliveryOptions } from '../abstract/sender/queue-deliver
 const MAX_DELAY_MS = 900_000;
 
 @Injectable()
-export class SqsSenderAdapter extends QueueSenderService {
+export class SqsSenderAdapter
+  extends QueueSenderService
+  implements OnModuleDestroy
+{
   private readonly client: SQSClient;
   private readonly urlCache = new Map<string, string>();
 
@@ -102,6 +105,17 @@ export class SqsSenderAdapter extends QueueSenderService {
       );
     }
 
+    // SQS FIFO queues reject per-message DelaySeconds (delay is queue-level
+    // only). Reject up front with the precise option error instead of letting
+    // the SDK fail the send with a generic error.
+    if (queue.endsWith('.fifo') && options?.delay !== undefined) {
+      throw new QueueSenderError(
+        QUEUE_SENDER_ERRORS.UNSUPPORTED_OPTION,
+        `SQS FIFO queue "${queue}" does not support the "delay" delivery option`,
+        { queue, option: 'delay' },
+      );
+    }
+
     const delaySeconds = this._resolveDelaySeconds(queue, options?.delay);
 
     try {
@@ -131,6 +145,16 @@ export class SqsSenderAdapter extends QueueSenderService {
     }
 
     this.logger.debug({ message: 'Message sent to SQS', data: { queue } });
+  }
+
+  /**
+   * Destroys the underlying SQS client on module teardown, releasing its
+   * pooled HTTP sockets.
+   *
+   * @returns {void} Returns once the client has been destroyed.
+   */
+  onModuleDestroy(): void {
+    this.client.destroy();
   }
 
   /**

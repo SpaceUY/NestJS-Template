@@ -8,9 +8,12 @@ import {
 import { QUEUE_CONSUMER_ERRORS } from '../../abstract/consumer/queue-consumer.error';
 
 const mockSend = jest.fn();
+const mockDestroy = jest.fn();
 
 jest.mock('@aws-sdk/client-sqs', () => ({
-  SQSClient: jest.fn().mockImplementation(() => ({ send: mockSend })),
+  SQSClient: jest
+    .fn()
+    .mockImplementation(() => ({ send: mockSend, destroy: mockDestroy })),
   GetQueueUrlCommand: jest.fn().mockImplementation((input) => input),
   ReceiveMessageCommand: jest.fn().mockImplementation((input) => input),
   DeleteMessageCommand: jest.fn().mockImplementation((input) => input),
@@ -197,6 +200,21 @@ describe('SqsConsumerAdapter', () => {
       const adapter = makeAdapter();
 
       await expect(adapter.stopConsuming('nope')).resolves.toBeUndefined();
+    });
+
+    it('stops active consumers and destroys the client on module destroy', async () => {
+      const adapter = makeAdapter();
+      nextReceive = { Messages: [] };
+
+      await adapter.startConsuming(
+        'orders',
+        jest.fn(async () => {}),
+      );
+
+      await adapter.onModuleDestroy();
+
+      expect((adapter as any).consumers.has('orders')).toBe(false);
+      expect(mockDestroy).toHaveBeenCalledTimes(1);
     });
 
     it('throws CONSUME_FAILED when the queue URL cannot be resolved', async () => {

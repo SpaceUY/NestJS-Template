@@ -8,9 +8,12 @@ import {
 } from '../../abstract/sender/queue-sender.error';
 
 const mockSend = jest.fn();
+const mockDestroy = jest.fn();
 
 jest.mock('@aws-sdk/client-sqs', () => ({
-  SQSClient: jest.fn().mockImplementation(() => ({ send: mockSend })),
+  SQSClient: jest
+    .fn()
+    .mockImplementation(() => ({ send: mockSend, destroy: mockDestroy })),
   GetQueueUrlCommand: jest.fn().mockImplementation((input) => input),
   SendMessageCommand: jest.fn().mockImplementation((input) => input),
 }));
@@ -152,6 +155,32 @@ describe('SqsSenderAdapter', () => {
       ).rejects.toMatchObject({
         code: QUEUE_SENDER_ERRORS.DISPATCH_FAILED,
       });
+    });
+
+    it('throws UNSUPPORTED_OPTION for delay on a FIFO queue', async () => {
+      const adapter = makeAdapter();
+
+      await expect(
+        adapter.dispatch({
+          queue: 'orders.fifo',
+          payload: { id: 1 },
+          headers: { [SQS_RESERVED_HEADERS.MESSAGE_GROUP_ID]: 'group-1' },
+          options: { delay: 5000 },
+        }),
+      ).rejects.toMatchObject({
+        code: QUEUE_SENDER_ERRORS.UNSUPPORTED_OPTION,
+        data: { option: 'delay' },
+      });
+    });
+  });
+
+  describe('shutdown', () => {
+    it('destroys the SQS client on module destroy', async () => {
+      const adapter = makeAdapter();
+
+      await adapter.onModuleDestroy();
+
+      expect(mockDestroy).toHaveBeenCalledTimes(1);
     });
   });
 

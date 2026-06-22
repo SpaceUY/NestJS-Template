@@ -231,5 +231,25 @@ describe('RabbitMqConsumerAdapter', () => {
         data: { queue: 'orders', cause: 'no channel' },
       });
     });
+
+    it('closes the connection on module destroy', async () => {
+      const adapter = makeAdapter();
+      await adapter.startConsuming(
+        'orders',
+        jest.fn(async () => {}),
+      );
+
+      await adapter.onModuleDestroy();
+
+      expect(mockConnection.close).toHaveBeenCalledTimes(1);
+    });
+
+    it('module destroy is a no-op when nothing was ever connected', async () => {
+      const adapter = makeAdapter();
+
+      await adapter.onModuleDestroy();
+
+      expect(mockConnection.close).not.toHaveBeenCalled();
+    });
   });
 });

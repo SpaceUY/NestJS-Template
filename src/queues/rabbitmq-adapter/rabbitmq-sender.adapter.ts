@@ -1,4 +1,4 @@
-import { Injectable } from '@nestjs/common';
+import { Injectable, OnModuleDestroy } from '@nestjs/common';
 import { Buffer } from 'node:buffer';
 import { Channel, ChannelModel, ConfirmChannel, connect } from 'amqplib';
 import { QueueSenderService } from '../abstract/sender/queue-sender.service';
@@ -15,7 +15,10 @@ import {
 import { assertSupportedDeliveryOptions } from '../abstract/sender/queue-delivery-options.util';
 
 @Injectable()
-export class RabbitMqSenderAdapter extends QueueSenderService {
+export class RabbitMqSenderAdapter
+  extends QueueSenderService
+  implements OnModuleDestroy
+{
   private connectionPromise: Promise<ChannelModel> | null = null;
   private channelPromise: Promise<ConfirmChannel> | null = null;
   private readonly assertedQueues = new Set<string>();
@@ -161,6 +164,29 @@ export class RabbitMqSenderAdapter extends QueueSenderService {
       message: 'Message published to RabbitMQ exchange',
       data: { exchange, routingKey },
     });
+  }
+
+  /**
+   * Closes the shared connection (and its confirm channel) on module teardown.
+   *
+   * No-op when nothing was ever connected. The connection's `close` handler
+   * clears the cached state via `_reset`.
+   *
+   * @returns {Promise<void>} Resolves once the connection has been closed.
+   */
+  async onModuleDestroy(): Promise<void> {
+    const connectionPromise = this.connectionPromise;
+    if (!connectionPromise) return;
+
+    try {
+      const connection = await connectionPromise;
+      await connection.close();
+    } catch (error) {
+      this.logger.error({
+        message: 'Failed to close RabbitMQ sender connection',
+        error,
+      });
+    }
   }
 
   /**

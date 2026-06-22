@@ -238,4 +238,23 @@ describe('RabbitMqSenderAdapter', () => {
       });
     });
   });
+
+  describe('shutdown', () => {
+    it('closes the connection on module destroy', async () => {
+      const adapter = makeAdapter();
+      await adapter.send('orders', { id: 1 });
+
+      await adapter.onModuleDestroy();
+
+      expect(mockConnection.close).toHaveBeenCalledTimes(1);
+    });
+
+    it('is a no-op when nothing was ever connected', async () => {
+      const adapter = makeAdapter();
+
+      await adapter.onModuleDestroy();
+
+      expect(mockConnection.close).not.toHaveBeenCalled();
+    });
+  });
 });
