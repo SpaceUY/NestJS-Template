@@ -1,5 +1,8 @@
 import { ConfigProviderService } from './config-provider.service';
-import { ConfigProviderError, CONFIG_PROVIDER_ERRORS } from './config-provider.error';
+import {
+  ConfigProviderError,
+  CONFIG_PROVIDER_ERRORS,
+} from './config-provider.error';
 
 export abstract class ReloadableConfigProviderService extends ConfigProviderService {
   private readonly _reloadListeners: Array<() => Promise<void>> = [];

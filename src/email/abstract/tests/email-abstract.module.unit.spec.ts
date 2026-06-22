@@ -1,19 +1,21 @@
-import { EmailAbstractModule } from './email-abstract.module';
-import { EmailService } from './email.service';
-import { LoggerService } from '../../common/logger/abstract/logger.service';
-import { NestLoggerAdapter } from '../../common/logger/nest-adapter/nest-logger.adapter';
+import { EmailAbstractModule } from '../email-abstract.module';
+import { EmailService } from '../email.service';
+import { LoggerService } from '../../../common/logger/abstract/logger.service';
+import { NestLoggerAdapter } from '../../../common/logger/nest-adapter/nest-logger.adapter';
 import {
   MailingResponse,
   SendRenderedEmailMultipleParams,
   SendRenderedEmailParams,
-} from './email.interface';
+} from '../email.interface';
 
 class MockEmailAdapter extends EmailService {
   async sendEmail(_: SendRenderedEmailParams): Promise<MailingResponse> {
     return { statusCode: 200, body: {}, headers: {} };
   }
 
-  async sendEmailBatch(_: SendRenderedEmailMultipleParams): Promise<MailingResponse> {
+  async sendEmailBatch(
+    _: SendRenderedEmailMultipleParams,
+  ): Promise<MailingResponse> {
     return { statusCode: 200, body: {}, headers: {} };
   }
 }
@@ -56,12 +58,16 @@ describe('EmailAbstractModule', () => {
       expect(moduleRef.module).toBe(EmailAbstractModule);
       expect(moduleRef.global).toBe(true);
       expect(instance).toBeInstanceOf(MockEmailAdapter);
-      expect(provider?.inject).toEqual([{ token: LoggerService, optional: true }]);
+      expect(provider?.inject).toEqual([
+        { token: LoggerService, optional: true },
+      ]);
       expect(moduleRef.exports).toContain(EmailService);
     });
 
     it('should call setLogger when a logger is provided', () => {
-      const moduleRef = EmailAbstractModule.forRoot({ adapter: MockEmailAdapter });
+      const moduleRef = EmailAbstractModule.forRoot({
+        adapter: MockEmailAdapter,
+      });
 
       const provider = (moduleRef.providers as ForRootProvider[]).find(
         (p) => p.provide === EmailService,
@@ -73,7 +79,9 @@ describe('EmailAbstractModule', () => {
     });
 
     it('should use NestLoggerAdapter as fallback when no logger is provided', () => {
-      const moduleRef = EmailAbstractModule.forRoot({ adapter: MockEmailAdapter });
+      const moduleRef = EmailAbstractModule.forRoot({
+        adapter: MockEmailAdapter,
+      });
 
       const provider = (moduleRef.providers as ForRootProvider[]).find(
         (p) => p.provide === EmailService,
@@ -107,7 +115,10 @@ describe('EmailAbstractModule', () => {
       const resolved = await provider?.useFactory(undefined, dependencyValue);
 
       expect(moduleRef.global).toBe(true);
-      expect(provider?.inject).toEqual([{ token: LoggerService, optional: true }, dependencyToken]);
+      expect(provider?.inject).toEqual([
+        { token: LoggerService, optional: true },
+        dependencyToken,
+      ]);
       expect(resolved).toBe(emailInstance);
       expect(moduleRef.exports).toContain(EmailService);
     });

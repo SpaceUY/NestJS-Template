@@ -1,7 +1,10 @@
 import * as fs from 'node:fs';
 import * as dotenv from 'dotenv';
-import { EnvConfigAdapter } from './env-config.adapter';
-import { ConfigProviderError, CONFIG_PROVIDER_ERRORS } from '../abstract/config-provider.error';
+import { EnvConfigAdapter } from '../env-config.adapter';
+import {
+  ConfigProviderError,
+  CONFIG_PROVIDER_ERRORS,
+} from '../../abstract/config-provider.error';
 
 jest.mock('node:fs');
 jest.mock('dotenv');

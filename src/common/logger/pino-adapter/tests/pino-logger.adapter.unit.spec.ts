@@ -1,4 +1,4 @@
-import { PinoLoggerAdapter } from './pino-logger.adapter';
+import { PinoLoggerAdapter } from '../pino-logger.adapter';
 
 const mockPinoInstance = {
   info: jest.fn(),

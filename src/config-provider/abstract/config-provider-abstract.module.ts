@@ -5,7 +5,10 @@ import {
   Provider,
 } from '@nestjs/common';
 import { reloadableSourceToken } from './config-provider-tokens';
-import { ConfigProviderError, CONFIG_PROVIDER_ERRORS } from './config-provider.error';
+import {
+  ConfigProviderError,
+  CONFIG_PROVIDER_ERRORS,
+} from './config-provider.error';
 import {
   ConfigProviderModuleAsyncOptions,
   ConfigProviderModuleOptions,
@@ -273,12 +276,18 @@ export class ConfigProviderAbstractModule {
     const sourceProviders: Provider[] = Object.entries(sources).map(
       ([name, src]) => ({
         provide: sourceToken(name),
-        useFactory: async (logger: LoggerService | undefined, ...args: unknown[]) => {
+        useFactory: async (
+          logger: LoggerService | undefined,
+          ...args: unknown[]
+        ) => {
           const instance = await src.useFactory(...args);
           if (logger) instance.setLogger(logger);
           return instance;
         },
-        inject: [{ token: LoggerService, optional: true }, ...(src.inject || [])],
+        inject: [
+          { token: LoggerService, optional: true },
+          ...(src.inject || []),
+        ],
       }),
     );
 
