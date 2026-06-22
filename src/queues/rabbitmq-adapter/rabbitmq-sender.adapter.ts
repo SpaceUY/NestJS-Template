@@ -293,7 +293,22 @@ export class RabbitMqSenderAdapter
   private async _getChannel(): Promise<ConfirmChannel> {
     if (!this.channelPromise) {
       this.channelPromise = this._getConnection()
-        .then((connection) => connection.createConfirmChannel())
+        .then(async (connection) => {
+          const channel = await connection.createConfirmChannel();
+          // A channel can fail independently of its connection (e.g. a
+          // channel-level protocol error). Without an 'error' listener amqplib
+          // would surface it as an uncaught exception; without dropping the
+          // cached promise on 'close' the next publish would reuse a dead
+          // channel forever. Mirror the connection's fail-fast reconnect: log
+          // and clear so the next publish rebuilds the channel.
+          channel.on('error', (error) =>
+            this.logger.error({ message: 'RabbitMQ channel error', error }),
+          );
+          channel.on('close', () => {
+            this.channelPromise = null;
+          });
+          return channel;
+        })
         .catch((error) => {
           this.channelPromise = null;
           throw this._sendError(

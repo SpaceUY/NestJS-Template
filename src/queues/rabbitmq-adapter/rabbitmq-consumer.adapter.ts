@@ -19,6 +19,15 @@ interface ActiveConsumer {
   consumerTag: string;
 }
 
+/**
+ * RabbitMQ push consumer built on `amqplib`, one channel per queue.
+ *
+ * Fail-fast recovery: a dropped channel or connection halts the affected
+ * consumer(s) — the adapter does not auto-restore push subscriptions. Each
+ * queue's callback is retained so an operator can re-subscribe manually via
+ * `resume()` (e.g. an ops endpoint) without restarting the app. Auto-resubscribe
+ * is intentionally deferred and would build on `resume()`.
+ */
 @Injectable()
 export class RabbitMqConsumerAdapter
   extends QueueConsumerAdapter
@@ -26,6 +35,10 @@ export class RabbitMqConsumerAdapter
 {
   private connectionPromise: Promise<ChannelModel> | null = null;
   private readonly consumers = new Map<string, ActiveConsumer>();
+  // Callback per registered queue, kept independently of `consumers` (the
+  // active subscriptions) so a queue whose channel/connection dropped can be
+  // re-subscribed via `resume()` without the caller re-supplying the handler.
+  private readonly callbacks = new Map<string, ConsumerCallback>();
 
   /**
    * Creates the adapter with the connection URL and topology/QoS options.
@@ -66,6 +79,18 @@ export class RabbitMqConsumerAdapter
       const connection = await this._getConnection();
       // One channel per queue isolates prefetch/QoS and channel failures.
       channel = await connection.createChannel();
+      // Without an 'error' listener amqplib surfaces a channel-level failure as
+      // an uncaught exception; the 'close' listener deregisters the (now dead)
+      // consumer so it isn't left as a stale active subscription. Recovery is
+      // manual via `resume()` — see the class-level fail-fast note.
+      channel.on('error', (error) =>
+        this.logger.error({
+          message: 'RabbitMQ consumer channel error',
+          data: { queue },
+          error,
+        }),
+      );
+      channel.on('close', () => this._onChannelClose(queue));
     } catch (error) {
       throw this._consumeError(queue, error);
     }
@@ -85,6 +110,7 @@ export class RabbitMqConsumerAdapter
       });
 
       this.consumers.set(queue, { channel, consumerTag });
+      this.callbacks.set(queue, callback);
     } catch (error) {
       await channel.close().catch(() => undefined);
       throw this._consumeError(queue, error);
@@ -107,6 +133,11 @@ export class RabbitMqConsumerAdapter
    */
   async stopConsuming(queue: string): Promise<void> {
     const active = this.consumers.get(queue);
+    // Drop the registration on an intentional stop so the queue's `close` event
+    // is recognized as deliberate (no halt warning) and `resume()` won't revive
+    // it. A queue whose channel already dropped has no active entry but may
+    // still hold a registration — clear it too.
+    this.callbacks.delete(queue);
     if (!active) return;
 
     this.consumers.delete(queue);
@@ -125,6 +156,34 @@ export class RabbitMqConsumerAdapter
       message: 'Stopped consuming RabbitMQ queue',
       data: { queue },
     });
+  }
+
+  /**
+   * Re-subscribes queues whose consumer halted after a channel or connection
+   * drop. This is the manual recovery lever: the adapter does not auto-restore
+   * push consumers (see the connection `close` handling), so an operator calls
+   * this — e.g. from an ops endpoint or script — to resume without restarting
+   * the app. Auto-resubscribe (a backoff loop calling this on `close`) is
+   * intentionally deferred; `resume` is the building block it would reuse.
+   *
+   * @param {string} [queue] - Queue to resume; when omitted, resumes every
+   *   registered queue that is not currently active.
+   * @returns {Promise<void>} Resolves once the targeted queues have been re-subscribed.
+   */
+  async resume(queue?: string): Promise<void> {
+    const targets = queue ? [queue] : [...this.callbacks.keys()];
+    for (const target of targets) {
+      if (this.consumers.has(target)) continue;
+      const callback = this.callbacks.get(target);
+      if (!callback) {
+        this.logger.warn({
+          message: 'No registered consumer to resume for queue',
+          data: { queue: target },
+        });
+        continue;
+      }
+      await this.startConsuming(target, callback);
+    }
   }
 
   /**
@@ -244,7 +303,8 @@ export class RabbitMqConsumerAdapter
             }),
           );
           // Fail-fast: drop the cached connection on close so the next start
-          // reconnects lazily. In-flight consumers are not auto-restored.
+          // reconnects lazily. In-flight consumers are not auto-restored;
+          // registrations are kept so `resume()` can re-subscribe them.
           connection.on('close', () => {
             this.connectionPromise = null;
             this.consumers.clear();
@@ -257,6 +317,24 @@ export class RabbitMqConsumerAdapter
         });
     }
     return this.connectionPromise;
+  }
+
+  /**
+   * Handles an unexpected channel `close` by deregistering the active consumer
+   * and warning that consumption has halted. The registration (callback) is
+   * kept so `resume()` can re-subscribe. A deliberate stop deletes the active
+   * entry first, so this becomes a no-op and emits no spurious warning.
+   *
+   * @param {string} queue - Queue whose channel closed.
+   */
+  private _onChannelClose(queue: string): void {
+    if (!this.consumers.has(queue)) return;
+    this.consumers.delete(queue);
+    this.logger.warn({
+      message:
+        'RabbitMQ consumer channel closed; consumption halted. Call resume() to re-subscribe.',
+      data: { queue },
+    });
   }
 
   /**

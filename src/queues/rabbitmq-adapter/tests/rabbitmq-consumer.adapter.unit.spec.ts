@@ -22,6 +22,7 @@ function wireHappyPath(): void {
     close: jest.fn().mockResolvedValue(undefined),
     ack: jest.fn(),
     nack: jest.fn(),
+    on: jest.fn(),
   };
   mockConnection = {
     createChannel: jest.fn().mockResolvedValue(mockChannel),
@@ -250,6 +251,88 @@ describe('RabbitMqConsumerAdapter', () => {
       await adapter.onModuleDestroy();
 
       expect(mockConnection.close).not.toHaveBeenCalled();
+    });
+  });
+
+  describe('channel recovery', () => {
+    // The adapter registers an 'error' and a 'close' listener per channel; this
+    // pulls the latest 'close' handler the mock recorded.
+    function latestCloseHandler(): () => void {
+      const closeCalls = mockChannel.on.mock.calls.filter(
+        (call: any[]) => call[0] === 'close',
+      );
+      return closeCalls[closeCalls.length - 1][1];
+    }
+
+    it('deregisters the consumer when its channel closes unexpectedly', async () => {
+      const adapter = makeAdapter();
+      await adapter.startConsuming(
+        'orders',
+        jest.fn(async () => {}),
+      );
+      expect((adapter as any).consumers.has('orders')).toBe(true);
+
+      latestCloseHandler()();
+
+      expect((adapter as any).consumers.has('orders')).toBe(false);
+    });
+
+    it('resume() re-subscribes a halted queue with the stored callback', async () => {
+      const adapter = makeAdapter();
+      const callback = jest.fn(async () => {});
+      await adapter.startConsuming('orders', callback);
+
+      latestCloseHandler()();
+      expect((adapter as any).consumers.has('orders')).toBe(false);
+
+      await adapter.resume('orders');
+
+      expect((adapter as any).consumers.has('orders')).toBe(true);
+      expect(mockConnection.createChannel).toHaveBeenCalledTimes(2);
+    });
+
+    it('resume() with no argument resumes every halted queue', async () => {
+      const adapter = makeAdapter();
+      await adapter.startConsuming(
+        'orders',
+        jest.fn(async () => {}),
+      );
+      latestCloseHandler()();
+      await adapter.startConsuming(
+        'emails',
+        jest.fn(async () => {}),
+      );
+      latestCloseHandler()();
+
+      await adapter.resume();
+
+      expect((adapter as any).consumers.has('orders')).toBe(true);
+      expect((adapter as any).consumers.has('emails')).toBe(true);
+    });
+
+    it('resume() skips a queue that is still active', async () => {
+      const adapter = makeAdapter();
+      await adapter.startConsuming(
+        'orders',
+        jest.fn(async () => {}),
+      );
+
+      await adapter.resume('orders');
+
+      expect(mockConnection.createChannel).toHaveBeenCalledTimes(1);
+    });
+
+    it('does not resume a queue after an intentional stop', async () => {
+      const adapter = makeAdapter();
+      await adapter.startConsuming(
+        'orders',
+        jest.fn(async () => {}),
+      );
+      await adapter.stopConsuming('orders');
+
+      await adapter.resume('orders');
+
+      expect((adapter as any).consumers.has('orders')).toBe(false);
     });
   });
 });

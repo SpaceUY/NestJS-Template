@@ -316,12 +316,41 @@ A RabbitMQ adapter built directly on `amqplib` lives in
 consumer uses `channel.consume` callbacks (no polling). Each adapter owns its
 connection and connects **lazily** on first use (memoized); on connection
 `close` it drops the cached connection so the next call reconnects — fail-fast,
-no active retry loop. On module shutdown both adapters close their connection
-(`OnModuleDestroy`). Note the reconnect is driven by the *next call*: the sender
-reconnects on its next publish, but a push consumer has no such trigger — if its
+no active retry loop. The same applies one level down: each adapter attaches
+`error`/`close` listeners to its channel(s), so a channel that fails on its own
+(a channel-level protocol error, while the connection stays up) is dropped rather
+than reused dead or surfaced as an uncaught exception. On module shutdown both
+adapters close their connection (`OnModuleDestroy`).
+
+Note the reconnect is driven by the *next call*: the **sender** reconnects on its
+next publish (channel and connection both rebuild lazily), so it self-heals with
+no operator action. A **push consumer** has no such trigger — if its channel or
 connection drops, in-flight consumers are not auto-restored and consumption stays
-halted until the app restarts (or `startConsuming` is invoked again). Enable a
-broker-side or process supervisor if uninterrupted consumption matters.
+halted. Each registered queue's handler is retained, so recovery is a manual
+lever rather than a restart: inject the concrete `RabbitMqConsumerAdapter` and
+call `resume(queue)` (or `resume()` for every halted queue).
+
+**Why this is deferred, not missing.** Reconnection *policy* — how long to back
+off, when to alert, when to give up and let the process restart — is a genuine
+operational concern, and the right decision depends on context the adapter
+doesn't have. So the adapter deliberately stays mechanism-only (fail loudly,
+expose `resume`) and leaves policy to whatever already owns supervision in your
+deployment:
+
+- **Process/orchestrator supervision** (Kubernetes liveness probe, systemd) —
+  let the pod fail and restart with the platform's existing backoff. Often the
+  simplest correct answer; you may not need `resume` at all.
+- **An ops endpoint or admin command** that calls `resume()` — manual or scripted
+  recovery without a full restart.
+- **A thin in-process watcher** (health check / interval) that calls `resume()` —
+  auto-recovery on your own backoff terms, in ~10 lines of app code reusing the
+  lever rather than complexity baked into the shared adapter. This is the
+  building block a future built-in auto-resubscribe would reuse.
+
+What makes this safe rather than a silent outage: a channel/connection `close`
+logs a **warning naming the halted queue**. Wire that warning to alerting (e.g.
+Grafana, per the stack) so "consumption halted" is observable and something —
+operator, supervisor, or watcher — pulls the lever.
 
 ```ts
 // Sender

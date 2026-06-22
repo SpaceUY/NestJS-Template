@@ -25,6 +25,7 @@ function wireHappyPath(): void {
       confirm?.(null);
       return true;
     }),
+    on: jest.fn(),
   };
   mockConnection = {
     createConfirmChannel: jest.fn().mockResolvedValue(mockChannel),
@@ -236,6 +237,33 @@ describe('RabbitMqSenderAdapter', () => {
         code: QUEUE_SENDER_ERRORS.SEND_FAILED,
         data: { target: 'orders', cause: 'broker nack' },
       });
+    });
+  });
+
+  describe('channel recovery', () => {
+    it('drops the cached channel on close so the next publish rebuilds it', async () => {
+      const adapter = makeAdapter();
+      await adapter.send('orders', { id: 1 });
+      expect(mockConnection.createConfirmChannel).toHaveBeenCalledTimes(1);
+
+      // A channel-level close while the connection stays up.
+      const closeHandler = mockChannel.on.mock.calls.find(
+        (call: any[]) => call[0] === 'close',
+      )?.[1];
+      closeHandler();
+
+      await adapter.send('orders', { id: 2 });
+      expect(mockConnection.createConfirmChannel).toHaveBeenCalledTimes(2);
+    });
+
+    it('handles channel errors without rethrowing', async () => {
+      const adapter = makeAdapter();
+      await adapter.send('orders', { id: 1 });
+
+      const errorHandler = mockChannel.on.mock.calls.find(
+        (call: any[]) => call[0] === 'error',
+      )?.[1];
+      expect(() => errorHandler(new Error('channel boom'))).not.toThrow();
     });
   });
 
