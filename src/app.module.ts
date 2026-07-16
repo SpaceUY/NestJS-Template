@@ -38,6 +38,8 @@ import { ResendAdapterService } from './email/resend-adapter/resend-adapter.serv
 import { LoggerAbstractModule } from './common/logger/abstract/logger-abstract.module';
 import { LoggerService } from './common/logger/abstract/logger.service';
 import { NestLoggerAdapter } from './common/logger/nest-adapter/nest-logger.adapter';
+import { TraceContextLoggerDecorator } from './common/logger/trace-context/trace-context-logger.decorator';
+import { trace } from '@opentelemetry/api';
 @Module({
   imports: [
     ConfigProviderAbstractModule.forRootAsync({
@@ -61,9 +63,17 @@ import { NestLoggerAdapter } from './common/logger/nest-adapter/nest-logger.adap
     MiddlewareModule,
     SpaceshipModule,
     DatabaseModule,
-    LoggerAbstractModule.forRoot({
-      adapter: NestLoggerAdapter,
+    LoggerAbstractModule.forRootAsync({
       isGlobal: true,
+      useFactory: () =>
+        new TraceContextLoggerDecorator(new NestLoggerAdapter()),
+      telemetryHook: (level, input, context) => {
+        trace.getActiveSpan()?.addEvent(input.message, {
+          level,
+          context,
+          ...input.data,
+        });
+      },
     }),
     TemplateModule.forRoot({
       adapter: PugAdapterModule.register({}),
