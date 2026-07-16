@@ -31,15 +31,20 @@ specifically for wiring a tracing span event without touching any adapter
   underlying libraries have genuinely different APIs).
 - Give local development a working, self-contained way to see traces without
   depending on any hosted backend.
-- Connect the existing `telemetryHook` so log lines appear as span events on the
-  active trace, with zero changes to any logger adapter.
+- Correlate logs with traces **both directions**, with zero changes to any
+  existing logger adapter file: (a) connect the existing `telemetryHook` so log
+  lines appear as span events when looking at a trace, and (b) stamp
+  `trace_id`/`span_id` onto the actual log line so a log store (Loki, CloudWatch,
+  etc.) can be filtered by trace — matching what Grafana's "Trace to Logs" panel
+  correlation expects.
 
 ## Non-goals (explicitly out of scope for this pass)
 
-- No changes to any logger adapter (Nest/Pino/Winston) and no
-  `@opentelemetry/instrumentation-winston` / `-pino` — log-to-trace correlation
-  goes through the existing `telemetryHook` → `span.addEvent()`, not by injecting
-  `trace_id`/`span_id` into the raw JSON log line.
+- No changes to any existing logger adapter file (`nest-logger.adapter.ts`,
+  `pino-logger.adapter.ts`, `winston-logger.adapter.ts`) and no
+  `@opentelemetry/instrumentation-winston` / `-pino` — trace/log correlation is
+  added via a new decorator class that wraps whichever adapter is configured
+  (see Architecture), not by modifying the adapters themselves.
 - No retrofitting of `@Span()` onto any existing service method — the decorator
   ships ready to use; adoption is a separate, later effort.
 - No metrics work — `nestjs-prometheus`/Prometheus stay exactly as they are.
@@ -60,9 +65,9 @@ main.ts
                                                 required — already patched
 
 app.module.ts
-  └─ LoggerAbstractModule.forRoot({
-       adapter: NestLoggerAdapter,
+  └─ LoggerAbstractModule.forRootAsync({
        isGlobal: true,
+       useFactory: () => new TraceContextLoggerDecorator(new NestLoggerAdapter()),
        telemetryHook: (level, input, context) => {
          trace.getActiveSpan()?.addEvent(input.message, { level, context, ...input.data });
        },
@@ -82,6 +87,19 @@ the style of a `*.scope.ts` file without depending on the DI-based resolution
 machinery. This is the one place in the codebase that reads env vars directly
 instead of through the config-provider abstraction, and it's called out here so
 it doesn't read as an inconsistency later.
+
+**How trace/log correlation actually works, both directions:**
+`TraceContextLoggerDecorator` (new — see Components) wraps whatever concrete
+adapter is configured (`NestLoggerAdapter` here, but works with any). It
+implements `LoggerService` itself, so from the outside nothing changes — callers
+still inject `LoggerService` and call `.log(...)` exactly as today. Internally,
+before delegating to the wrapped adapter, it reads
+`trace.getActiveSpan()?.spanContext()` and merges `traceId`/`spanId` into
+`input.data` — so the wrapped adapter (Nest/Pino/Winston, untouched) writes those
+fields as part of its normal structured output. The decorator then also fires
+`emitTelemetry(...)` itself (using the *enriched* input) so the existing
+`telemetryHook` → `span.addEvent()` path keeps working unchanged. One class, two
+correlation paths, zero adapter changes.
 
 ## Components / files
 
@@ -107,11 +125,30 @@ it doesn't read as an inconsistency later.
 - `otel-env.unit.spec.ts`, `span.decorator.unit.spec.ts` — unit tests, following
   the project's existing `*.unit.spec.ts` convention (see `logger/abstract/`).
 
+**New — `src/common/logger/trace-context/`:**
+
+- `trace-context-logger.decorator.ts` — `TraceContextLoggerDecorator extends
+  LoggerService`. Constructor takes the wrapped `LoggerService` instance. Tracks
+  its own `context` string (set via `setContext`, relayed to the wrapped
+  instance). `log/warn/error/debug` each: read the active span's context, merge
+  `traceId`/`spanId` into `input.data` when a span is active (no-op when it
+  isn't), delegate to the wrapped instance with the enriched input, then call
+  `this.emitTelemetry(level, enrichedInput, this.context)` so the outer
+  `telemetryHook` fires with the same enriched data. Depends only on
+  `@opentelemetry/api` and the existing `LoggerService`/`LogInput` types — no
+  changes to either.
+- `trace-context-logger.decorator.unit.spec.ts` — verifies: enriches `data` with
+  `traceId`/`spanId` when a span is active; passes input through unchanged when
+  no span is active; delegates to the wrapped instance; fires the outer
+  `telemetryHook` with the enriched input, not the original.
+
 **Modified:**
 
 - `src/main.ts` — add `import './tracing/tracing.bootstrap';` as the first line.
-- `src/app.module.ts` — add the `telemetryHook` to the existing
-  `LoggerAbstractModule.forRoot(...)` call.
+- `src/app.module.ts` — switch the existing `LoggerAbstractModule.forRoot(...)`
+  call to `forRootAsync`, with a `useFactory` that returns
+  `new TraceContextLoggerDecorator(new NestLoggerAdapter())` instead of a bare
+  `NestLoggerAdapter`, and add the `telemetryHook`.
 - `.env.example` — add commented `OTEL_EXPORTER_OTLP_ENDPOINT` (defaulted in the
   comment to `http://localhost:4317`, matching the new Jaeger service),
   `OTEL_EXPORTER_OTLP_HEADERS`, `OTEL_SERVICE_NAME`.
@@ -134,6 +171,10 @@ it doesn't read as an inconsistency later.
 - `LoggerService.emitTelemetry` already wraps the hook call in try/catch
   (pre-existing code) — a throwing `telemetryHook` cannot break a log call. No
   changes needed there.
+- `trace.getActiveSpan()` never throws (returns `undefined` when there's no
+  active span, e.g. no tracing configured, or a log written outside any
+  request) — `TraceContextLoggerDecorator` has no new failure mode to guard
+  against; logging behaves identically to today when tracing is off.
 
 ## Testing
 
@@ -141,6 +182,8 @@ it doesn't read as an inconsistency later.
   default.
 - `span.decorator.unit.spec.ts`: wraps sync and async methods, ends the span on
   success, records exception + sets error status + re-throws on failure.
+- `trace-context-logger.decorator.unit.spec.ts`: see Components — active span
+  present/absent, delegation, telemetry hook receives enriched input.
 - No e2e test requiring a live OTLP collector — out of scope.
 
 ## Alternatives considered
@@ -156,7 +199,17 @@ it doesn't read as an inconsistency later.
    instrumentations explicitly. Rejected: pulls in ~50 instrumentations for
    libraries not in this project (Kafka, Cassandra, GraphQL, Mongoose, etc.),
    making it unclear from the code which instrumentations are actually active.
-4. **Injecting `trace_id`/`span_id` into the logger's own JSON output** (would
-   need adapter changes). Rejected in favor of the already-designed
-   `telemetryHook` → `span.addEvent()` path, which requires zero adapter changes
-   and was explicitly anticipated by the existing logger README.
+4. **Where to inject `trace_id`/`span_id` into the log line.** Three shapes
+   considered: (a) modify each adapter directly — rejected, touches
+   Nest/Pino/Winston internals for the same three lines of logic each; (b)
+   restructure `LoggerService` into a template method (public methods enrich
+   `data` then call a new protected `write()` that adapters implement instead
+   of today's public methods) — rejected, requires renaming a method in every
+   adapter for a problem a wrapper solves without touching them; (c) a
+   `Proxy`-based wrapper around any `LoggerService` instance — rejected as too
+   implicit/hard to step through compared to an explicit class; **chosen: a
+   decorator class (`TraceContextLoggerDecorator`) that implements
+   `LoggerService` and wraps another instance** — standard OOP pattern, already
+   consistent with how the codebase adds new `LoggerService` implementations
+   (see "Adding a Custom Adapter" in the logger README), touches zero existing
+   files besides the `app.module.ts` wiring.
