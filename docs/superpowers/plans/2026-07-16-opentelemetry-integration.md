@@ -15,7 +15,11 @@
 - No third-party NestJS OpenTelemetry wrapper packages (see design spec's "Alternatives considered" — `amplication/opentelemetry-nestjs` and `pragmaticivan/nestjs-otel` were both evaluated and rejected).
 - No changes to `src/common/logger/nest-adapter/nest-logger.adapter.ts`, `pino-logger.adapter.ts`, or `winston-logger.adapter.ts`.
 - No changes to `src/common/logger/abstract/logger.service.ts` or `logger.interfaces.ts`.
-- OTLP exporter protocol is gRPC only — no HTTP option in this pass.
+- OTLP exporter protocol is HTTP only (`@opentelemetry/exporter-trace-otlp-http`) —
+  the gRPC exporter's config type omits `headers` in favor of a `grpc.Metadata`
+  object, discovered while implementing Task 3; switched to avoid adding
+  `@grpc/grpc-js` as a direct dependency just to build one. No protocol option
+  in this pass.
 - No metrics work — `nestjs-prometheus`/Prometheus are untouched.
 - Conventional commits (`feat:`, `fix:`, `chore:`, `docs:`, `test:`) on the current branch (`feat/monitoring`).
 - Test files follow the existing `*.unit.spec.ts` convention, colocated next to the source file.
@@ -34,16 +38,23 @@
 - Produces: the following packages available to import in every later task —
   `@opentelemetry/api`, `@opentelemetry/sdk-node`, `@opentelemetry/sdk-trace-node`,
   `@opentelemetry/resources`, `@opentelemetry/semantic-conventions`,
-  `@opentelemetry/exporter-trace-otlp-grpc`, `@opentelemetry/instrumentation-http`,
+  `@opentelemetry/exporter-trace-otlp-http`, `@opentelemetry/instrumentation-http`,
   `@opentelemetry/instrumentation-nestjs-core`, `@opentelemetry/instrumentation-pg`,
   `@opentelemetry/instrumentation-ioredis` (dependencies); `@opentelemetry/sdk-trace-base`
   (devDependency, test-only).
+
+  > **Amended after Task 3 revealed the gRPC exporter's config type omits
+  > `headers`.** Task 1 originally installed `@opentelemetry/exporter-trace-otlp-grpc`;
+  > it has since been swapped for `@opentelemetry/exporter-trace-otlp-http`
+  > (commit `f24768e`, done at the controller level, not by an implementer
+  > subagent). Any resumption of this plan should treat the package list
+  > above — with `-http`, not `-grpc` — as current.
 
 - [ ] **Step 1: Install runtime dependencies**
 
 Run:
 ```bash
-pnpm add @opentelemetry/api @opentelemetry/sdk-node @opentelemetry/sdk-trace-node @opentelemetry/resources @opentelemetry/semantic-conventions @opentelemetry/exporter-trace-otlp-grpc @opentelemetry/instrumentation-http @opentelemetry/instrumentation-nestjs-core @opentelemetry/instrumentation-pg @opentelemetry/instrumentation-ioredis
+pnpm add @opentelemetry/api @opentelemetry/sdk-node @opentelemetry/sdk-trace-node @opentelemetry/resources @opentelemetry/semantic-conventions @opentelemetry/exporter-trace-otlp-http @opentelemetry/instrumentation-http @opentelemetry/instrumentation-nestjs-core @opentelemetry/instrumentation-pg @opentelemetry/instrumentation-ioredis
 ```
 
 Expected: `package.json` gains the 10 packages under `dependencies`, `pnpm-lock.yaml` updates, command exits 0.
@@ -264,7 +275,7 @@ describe('buildSdk', () => {
     const config: OtelConfig = {
       enabled: true,
       serviceName: 'test-service',
-      endpoint: 'http://localhost:4317',
+      endpoint: 'http://localhost:4318',
       headers: {},
     };
 
@@ -286,7 +297,7 @@ Create `src/tracing/tracing.bootstrap.ts`:
 import { NodeSDK } from '@opentelemetry/sdk-node';
 import { resourceFromAttributes } from '@opentelemetry/resources';
 import { ATTR_SERVICE_NAME } from '@opentelemetry/semantic-conventions';
-import { OTLPTraceExporter } from '@opentelemetry/exporter-trace-otlp-grpc';
+import { OTLPTraceExporter } from '@opentelemetry/exporter-trace-otlp-http';
 import { HttpInstrumentation } from '@opentelemetry/instrumentation-http';
 import { NestInstrumentation } from '@opentelemetry/instrumentation-nestjs-core';
 import { PgInstrumentation } from '@opentelemetry/instrumentation-pg';
@@ -832,7 +843,7 @@ git commit -m "feat: wire TraceContextLoggerDecorator and telemetryHook into App
 
 **Interfaces:**
 - Consumes: nothing.
-- Produces: a running OTLP receiver at `http://localhost:4317` for Task 8's end-to-end verification.
+- Produces: a running OTLP receiver at `http://localhost:4318` (HTTP — see Task 3's amendment) for Task 8's end-to-end verification.
 
 - [ ] **Step 1: Add the Jaeger service to `docker-compose.yml`**
 
@@ -861,8 +872,8 @@ services:
     restart: always
     ports:
       - '16686:16686' # UI
-      - '4317:4317'   # OTLP gRPC receiver
-      - '4318:4318'   # OTLP HTTP receiver (unused by our exporter, exposed for free)
+      - '4318:4318'   # OTLP HTTP receiver — used by our exporter
+      - '4317:4317'   # OTLP gRPC receiver (unused by our exporter, exposed for free)
     environment:
       COLLECTOR_OTLP_ENABLED: 'true'
 
@@ -888,7 +899,7 @@ Add to `.env.example` (append at the end, with a comment):
 ```
 # OpenTelemetry — leave OTEL_EXPORTER_OTLP_ENDPOINT unset to disable tracing entirely.
 # Local dev default points at the Jaeger container from docker-compose.yml.
-OTEL_EXPORTER_OTLP_ENDPOINT=http://localhost:4317
+OTEL_EXPORTER_OTLP_ENDPOINT=http://localhost:4318
 OTEL_EXPORTER_OTLP_HEADERS=
 OTEL_SERVICE_NAME=nestjs-template
 ```
@@ -914,7 +925,7 @@ git commit -m "feat: add local Jaeger service for OpenTelemetry development"
 
 In your local `.env` (not `.env.example`), set:
 ```
-OTEL_EXPORTER_OTLP_ENDPOINT=http://localhost:4317
+OTEL_EXPORTER_OTLP_ENDPOINT=http://localhost:4318
 OTEL_SERVICE_NAME=nestjs-template
 ```
 

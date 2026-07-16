@@ -48,8 +48,13 @@ specifically for wiring a tracing span event without touching any adapter
 - No retrofitting of `@Span()` onto any existing service method — the decorator
   ships ready to use; adoption is a separate, later effort.
 - No metrics work — `nestjs-prometheus`/Prometheus stay exactly as they are.
-- No OTLP protocol option (HTTP vs gRPC) — gRPC only, matching Jaeger's default
-  receiver port. Revisit only if a future backend specifically needs HTTP.
+- No OTLP protocol option (HTTP vs gRPC) — HTTP only. (Originally scoped as
+  "gRPC only"; switched during implementation of Task 3 of the plan because
+  `@opentelemetry/exporter-trace-otlp-grpc`'s config type omits `headers` in
+  favor of a `grpc.Metadata` object, which would have required adding
+  `@grpc/grpc-js` as a direct dependency just to build one. The HTTP exporter
+  accepts a plain `headers: Record<string, string>`, matching `OtelConfig`
+  as designed. Jaeger's HTTP OTLP receiver is on port 4318, not 4317.)
 
 ## Architecture
 
