@@ -401,6 +401,20 @@ git commit -m "feat: initialize OpenTelemetry NodeSDK before Nest bootstraps"
 > and every later test silently records into a shut-down provider, producing
 > empty span arrays. The `afterEach` below already calls `trace.disable()` to
 > fix this — do not remove it.
+>
+> **Third, independent fix (in the implementation itself, Step 3 below):**
+> `trace.getTracer(name)` must be called *inside* the decorator's returned
+> wrapper function, on every invocation — not once at module scope. Confirmed
+> against `@opentelemetry/api`'s installed `ProxyTracer` source:
+> `ProxyTracer._getTracer()` caches its resolved delegate tracer forever after
+> the first successful resolution (`if (this._delegate) return this._delegate;`)
+> and never re-checks it. A module-scope `const tracer = trace.getTracer(...)`
+> would permanently lock onto whichever provider was registered at the moment
+> of the *first* call across the whole test file (or, in production, at the
+> moment this module is first imported — a real latent bug if that happens
+> before `tracing.bootstrap.ts` finishes registering the real SDK). The
+> implementation below already resolves `tracer` inside `descriptor.value`,
+> not at the top of the file — do not hoist it back out.
 
 - [ ] **Step 1: Write the failing test**
 
@@ -524,8 +538,6 @@ Create `src/tracing/span.decorator.ts`:
 ```typescript
 import { trace, SpanStatusCode } from '@opentelemetry/api';
 
-const tracer = trace.getTracer('nestjs-template');
-
 export function Span(name?: string): MethodDecorator {
   return (
     target: object,
@@ -537,6 +549,7 @@ export function Span(name?: string): MethodDecorator {
       name ?? `${target.constructor.name}.${String(propertyKey)}`;
 
     descriptor.value = function (this: unknown, ...args: unknown[]) {
+      const tracer = trace.getTracer('nestjs-template');
       return tracer.startActiveSpan(spanName, (span) => {
         try {
           const result = original.apply(this, args);
