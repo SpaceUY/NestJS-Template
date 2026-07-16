@@ -385,6 +385,13 @@ git commit -m "feat: initialize OpenTelemetry NodeSDK before Nest bootstraps"
 - Consumes: `@opentelemetry/api`.
 - Produces: `export function Span(name?: string): MethodDecorator` — available for any service method in the codebase to use (not applied to any existing method in this plan; see Global Constraints).
 
+> **Note on the installed SDK version:** `@opentelemetry/sdk-trace-base`/`-node`
+> resolved to `2.9.0`, which removed `TracerProvider.addSpanProcessor()` — span
+> processors are constructor-only now, via a `spanProcessors: SpanProcessor[]`
+> option (confirmed against the installed `.d.ts` after Task 4's first attempt
+> hit `provider.addSpanProcessor is not a function`). The test below already
+> uses the corrected constructor form.
+
 - [ ] **Step 1: Write the failing test**
 
 Create `src/tracing/span.decorator.unit.spec.ts`:
@@ -404,8 +411,9 @@ describe('Span decorator', () => {
 
   beforeEach(() => {
     exporter = new InMemorySpanExporter();
-    provider = new NodeTracerProvider();
-    provider.addSpanProcessor(new SimpleSpanProcessor(exporter));
+    provider = new NodeTracerProvider({
+      spanProcessors: [new SimpleSpanProcessor(exporter)],
+    });
     provider.register();
   });
 
