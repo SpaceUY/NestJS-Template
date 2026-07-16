@@ -391,13 +391,23 @@ git commit -m "feat: initialize OpenTelemetry NodeSDK before Nest bootstraps"
 > option (confirmed against the installed `.d.ts` after Task 4's first attempt
 > hit `provider.addSpanProcessor is not a function`). The test below already
 > uses the corrected constructor form.
+>
+> **Second, independent fix:** `trace.setGlobalTracerProvider()` (called
+> internally by `provider.register()`) silently no-ops if a provider is
+> already registered globally — confirmed against `@opentelemetry/api`'s
+> `TraceAPI.setGlobalTracerProvider` (`returns true if... else false`) and its
+> `disable()` method ("Remove the global tracer provider"). Without resetting
+> between tests, only the first `it()` block's provider actually takes effect
+> and every later test silently records into a shut-down provider, producing
+> empty span arrays. The `afterEach` below already calls `trace.disable()` to
+> fix this — do not remove it.
 
 - [ ] **Step 1: Write the failing test**
 
 Create `src/tracing/span.decorator.unit.spec.ts`:
 
 ```typescript
-import { SpanStatusCode } from '@opentelemetry/api';
+import { SpanStatusCode, trace } from '@opentelemetry/api';
 import { NodeTracerProvider } from '@opentelemetry/sdk-trace-node';
 import {
   InMemorySpanExporter,
@@ -420,6 +430,7 @@ describe('Span decorator', () => {
   afterEach(async () => {
     exporter.reset();
     await provider.shutdown();
+    trace.disable();
   });
 
   it('wraps a sync method, ending the span and returning the value', () => {
@@ -586,6 +597,12 @@ git commit -m "feat: add @Span() method decorator for manual tracing"
 - Consumes: `LoggerService`, `LogInput` from `../abstract/logger.service` and `../abstract/logger.interfaces` (existing, untouched); `trace` from `@opentelemetry/api`.
 - Produces: `export class TraceContextLoggerDecorator extends LoggerService` with constructor `(inner: LoggerService)` — this is what Task 6 wires into `app.module.ts`.
 
+> **Note carried over from Task 4:** the test below already includes
+> `trace.disable()` in `afterEach`, needed because
+> `trace.setGlobalTracerProvider()` no-ops once a provider is registered
+> globally — without resetting it, only the first test's provider actually
+> takes effect. Do not remove it.
+
 - [ ] **Step 1: Write the failing test**
 
 Create `src/common/logger/trace-context/trace-context-logger.decorator.unit.spec.ts`:
@@ -635,6 +652,7 @@ describe('TraceContextLoggerDecorator', () => {
 
   afterEach(async () => {
     await provider.shutdown();
+    trace.disable();
   });
 
   it('passes the input through unchanged when there is no active span', () => {
