@@ -265,7 +265,7 @@ export class AnalyticsAbstractModule {
 - [ ] **Step 4: Run test to verify it passes**
 
 Run: `pnpm test -- analytics-abstract.module.unit.spec.ts`
-Expected: PASS (7 tests)
+Expected: PASS (4 tests)
 
 - [ ] **Step 5: Commit**
 
