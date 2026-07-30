@@ -40,6 +40,14 @@ import { LoggerService } from './common/observability/logger/abstract/logger.ser
 import { NestLoggerAdapter } from './common/observability/logger/nest-adapter/nest-logger.adapter';
 import { TraceContextLoggerDecorator } from './common/observability/logger/trace-context/trace-context-logger.decorator';
 import { trace } from '@opentelemetry/api';
+import {
+  analyticsScope,
+  AnalyticsScopeConfig,
+  ANALYTICS_ADAPTERS,
+} from './common/observability/analytics/config/analytics.scope';
+import { AnalyticsAbstractModule } from './common/observability/analytics/abstract/analytics-abstract.module';
+import { PosthogAdapterService } from './common/observability/analytics/posthog-adapter/posthog-adapter.service';
+import { ConsoleAdapterService as AnalyticsConsoleAdapterService } from './common/observability/analytics/console-adapter/console-adapter.service';
 @Module({
   imports: [
     ConfigProviderAbstractModule.forRootAsync({
@@ -57,6 +65,7 @@ import { trace } from '@opentelemetry/api';
         emailScope,
         expoScope,
         databaseScope,
+        analyticsScope,
       ],
     }),
     AuthModule,
@@ -138,6 +147,17 @@ import { trace } from '@opentelemetry/api';
         }),
       }),
       useDefaultController: true,
+      isGlobal: true,
+    }),
+    AnalyticsAbstractModule.forRootAsync({
+      inject: [analyticsScope.KEY],
+      useFactory: (analytics: AnalyticsScopeConfig) =>
+        analytics.adapter === ANALYTICS_ADAPTERS.POSTHOG
+          ? new PosthogAdapterService({
+              apiKey: analytics.posthogApiKey,
+              host: analytics.posthogHost,
+            })
+          : new AnalyticsConsoleAdapterService(),
       isGlobal: true,
     }),
   ],
