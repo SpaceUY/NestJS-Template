@@ -213,16 +213,19 @@ New dependency: `posthog-node`.
 
 ## Testing
 
-Unit specs per file, matching the coverage level already present under
-`src/email/` and `src/common/observability/logger/`:
+Matches `src/email/`'s actual coverage level exactly (checked against the
+real repo state, not assumed): no `*.scope.ts` file in this codebase has a
+unit spec, and none of the email adapters (`sendgrid`, `resend`, `aws-ses`,
+`console`) have one either — only `logger/`'s adapters and abstract module
+are tested. Since analytics is modeled on `email/`, it follows `email/`'s
+level, not `logger/`'s:
 
-- `analytics.scope.unit.spec.ts` — Joi defaults and validation.
-- `analytics-abstract.module.unit.spec.ts` — `forRoot`/`forRootAsync` wiring.
-- `posthog-adapter.service.unit.spec.ts` — mocks the `posthog-node` client;
-  verifies `capture()`/flag methods delegate correctly, `capture()` swallows a
-  throwing client, and `onModuleDestroy` calls `shutdown()`.
-- `console-adapter.service.unit.spec.ts` — verifies it logs instead of
-  throwing and returns the documented no-op values.
+- `analytics-abstract.module.unit.spec.ts` — `forRoot`/`forRootAsync` wiring
+  (the one piece with real conditional logic worth testing, same reasoning
+  as `logger-abstract.module.unit.spec.ts`).
+- No spec for `analytics.scope.ts`, `posthog-adapter.service.ts`, or
+  `console-adapter.service.ts` — consistent with zero test files existing for
+  the equivalent email scope/adapters today.
 
 ## Alternatives considered
 
