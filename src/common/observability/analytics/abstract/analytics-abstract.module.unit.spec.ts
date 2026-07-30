@@ -1,6 +1,5 @@
 import { AnalyticsAbstractModule } from './analytics-abstract.module';
 import { AnalyticsService } from './analytics.service';
-import { CaptureEventInput } from './analytics.interfaces';
 
 class MockAdapter extends AnalyticsService {
   capture = jest.fn();
@@ -11,7 +10,9 @@ class MockAdapter extends AnalyticsService {
 describe('AnalyticsAbstractModule', () => {
   describe('forRoot', () => {
     it('should bind the adapter class to AnalyticsService', () => {
-      const moduleRef = AnalyticsAbstractModule.forRoot({ adapter: MockAdapter });
+      const moduleRef = AnalyticsAbstractModule.forRoot({
+        adapter: MockAdapter,
+      });
 
       const provider = (
         moduleRef.providers as Array<{

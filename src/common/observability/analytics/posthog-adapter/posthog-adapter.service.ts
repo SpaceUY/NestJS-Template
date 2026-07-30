@@ -38,6 +38,12 @@ export class PosthogAdapterService
 
   async isFeatureEnabled(key: string, distinctId: string): Promise<boolean> {
     const result = await this.client.isFeatureEnabled(key, distinctId);
+    if (result === undefined) {
+      this.logger.debug({
+        message: 'PostHog isFeatureEnabled returned undefined',
+        data: { key, distinctId },
+      });
+    }
     return result ?? false;
   }
 
@@ -45,7 +51,14 @@ export class PosthogAdapterService
     key: string,
     distinctId: string,
   ): Promise<string | boolean | undefined> {
-    return this.client.getFeatureFlag(key, distinctId);
+    const result = await this.client.getFeatureFlag(key, distinctId);
+    if (result === undefined) {
+      this.logger.debug({
+        message: 'PostHog getFeatureFlag returned undefined',
+        data: { key, distinctId },
+      });
+    }
+    return result;
   }
 
   // `PostHog#shutdown()` (inherited from `PostHogCoreStateless` in

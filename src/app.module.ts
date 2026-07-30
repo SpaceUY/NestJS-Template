@@ -150,14 +150,17 @@ import { ConsoleAdapterService as AnalyticsConsoleAdapterService } from './commo
       isGlobal: true,
     }),
     AnalyticsAbstractModule.forRootAsync({
-      inject: [analyticsScope.KEY],
-      useFactory: (analytics: AnalyticsScopeConfig) =>
+      inject: [analyticsScope.KEY, LoggerService],
+      useFactory: (analytics: AnalyticsScopeConfig, logger: LoggerService) =>
         analytics.adapter === ANALYTICS_ADAPTERS.POSTHOG
-          ? new PosthogAdapterService({
-              apiKey: analytics.posthogApiKey,
-              host: analytics.posthogHost,
-            })
-          : new AnalyticsConsoleAdapterService(),
+          ? new PosthogAdapterService(
+              {
+                apiKey: analytics.posthogApiKey,
+                host: analytics.posthogHost,
+              },
+              logger,
+            )
+          : new AnalyticsConsoleAdapterService(logger),
       isGlobal: true,
     }),
   ],

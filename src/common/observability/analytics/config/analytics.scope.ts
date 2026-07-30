@@ -18,8 +18,15 @@ const validate = (raw) => {
     adapter: Joi.string()
       .valid(...Object.values(ANALYTICS_ADAPTERS))
       .default(ANALYTICS_ADAPTERS.CONSOLE),
-    posthogApiKey: Joi.string().optional().default(''),
-    posthogHost: Joi.string().optional().default('https://us.i.posthog.com'),
+    posthogApiKey: Joi.string().when('adapter', {
+      is: ANALYTICS_ADAPTERS.POSTHOG,
+      then: Joi.string().min(1).required(),
+      otherwise: Joi.string().allow('').optional().default(''),
+    }),
+    posthogHost: Joi.string()
+      .allow('')
+      .optional()
+      .default('https://us.i.posthog.com'),
   });
 
   const { error, value } = schema.validate(raw, { abortEarly: false });
