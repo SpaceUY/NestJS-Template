@@ -1,5 +1,16 @@
 import * as Joi from 'joi';
 
+// Deliberately doesn't use defineConfigScope/ConfigProviderAbstractModule like
+// every other *.scope.ts file. That system resolves values through Nest DI at
+// module-registration time, but this file is read by tracing.bootstrap.ts,
+// which runs as the first line of main.ts — before NestFactory.create(), so
+// before the Nest module graph (and its DI container) exists. OTel's
+// instrumentations must patch http/pg/ioredis before those modules are
+// require()'d anywhere else, including inside ConfigProviderAbstractModule
+// itself; waiting for Nest DI would make that impossible. This mirrors a
+// *.scope.ts file's style (typed config, Joi validation) but reads
+// process.env directly — the one deliberate exception in this codebase.
+
 export interface OtelConfig {
   enabled: boolean;
   serviceName: string;
