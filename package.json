@@ -65,6 +65,7 @@
     "passport-jwt": "^4.0.1",
     "passport-local": "^1.0.0",
     "pg": "^8.15.1",
+    "posthog-node": "^5.46.1",
     "pug": "^3.0.3",
     "reflect-metadata": "^0.2.2",
     "resend": "^4.6.0",
