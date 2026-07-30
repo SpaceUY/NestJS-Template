@@ -16,7 +16,7 @@ export function buildSdk(config: OtelConfig): NodeSDK | null {
       [ATTR_SERVICE_NAME]: config.serviceName,
     }),
     traceExporter: new OTLPTraceExporter({
-      url: config.endpoint,
+      url: `${config.endpoint.replace(/\/+$/, '')}/v1/traces`,
       headers: config.headers,
     }),
     instrumentations: [
