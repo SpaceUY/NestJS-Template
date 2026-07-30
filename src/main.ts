@@ -1,4 +1,4 @@
-import './tracing/tracing.bootstrap';
+import './common/observability/telemetry/tracing.bootstrap';
 import { ValidationPipe } from '@nestjs/common';
 import { NestFactory } from '@nestjs/core';
 import { AppModule } from './app.module';

@@ -8,8 +8,8 @@ import {
 import { SendgridAdapterConfig } from './sendgrid-adapter-config.interface';
 import * as sgMail from '@sendgrid/mail';
 import { ClientResponse } from '@sendgrid/mail';
-import { LoggerService } from '../../common/logger/abstract/logger.service';
-import { NestLoggerAdapter } from '../../common/logger/nest-adapter/nest-logger.adapter';
+import { LoggerService } from '../../common/observability/logger/abstract/logger.service';
+import { NestLoggerAdapter } from '../../common/observability/logger/nest-adapter/nest-logger.adapter';
 import { executeHtmlEmailSend } from '../utils/execute-html-email-send';
 
 @Injectable()

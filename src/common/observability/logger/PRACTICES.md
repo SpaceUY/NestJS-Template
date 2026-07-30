@@ -12,7 +12,7 @@ constructor:
 
 ```ts
 import { Injectable } from '@nestjs/common';
-import { LoggerService } from './common/logger/abstract/logger.service';
+import { LoggerService } from './common/observability/logger/abstract/logger.service';
 
 @Injectable()
 export class PaymentService {

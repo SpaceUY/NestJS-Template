@@ -2,7 +2,7 @@ import {
   MailingResponse,
   RenderedEmailContent,
 } from '../abstract/email.interface';
-import { LoggerService } from '../../common/logger/abstract/logger.service';
+import { LoggerService } from '../../common/observability/logger/abstract/logger.service';
 import { EMAIL_ERRORS, EmailError } from '../abstract/email.error';
 
 interface ExecuteHtmlEmailSendOptions<TProviderResponse> {

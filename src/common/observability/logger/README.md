@@ -37,7 +37,7 @@ interface LogInput {
 ## Directory Structure
 
 ```
-src/common/logger/
+src/common/observability/logger/
 ├── abstract/
 │   ├── logger-abstract.module.ts      ← forRoot / forRootAsync
 │   ├── logger.service.ts              ← abstract class (the DI token)
@@ -61,8 +61,8 @@ src/common/logger/
 ### 1) `forRoot` — no runtime config needed
 
 ```ts
-import { LoggerAbstractModule } from '@/common/logger/abstract/logger-abstract.module';
-import { NestLoggerAdapter } from '@/common/logger/nest-adapter/nest-logger.adapter';
+import { LoggerAbstractModule } from '@/common/observability/logger/abstract/logger-abstract.module';
+import { NestLoggerAdapter } from '@/common/observability/logger/nest-adapter/nest-logger.adapter';
 
 LoggerAbstractModule.forRoot({
   adapter: NestLoggerAdapter,
@@ -73,8 +73,8 @@ LoggerAbstractModule.forRoot({
 ### 2) `forRootAsync` — config-driven instantiation
 
 ```ts
-import { LoggerAbstractModule } from '@/common/logger/abstract/logger-abstract.module';
-import { PinoLoggerAdapter } from '@/common/logger/pino-adapter/pino-logger.adapter';
+import { LoggerAbstractModule } from '@/common/observability/logger/abstract/logger-abstract.module';
+import { PinoLoggerAdapter } from '@/common/observability/logger/pino-adapter/pino-logger.adapter';
 
 LoggerAbstractModule.forRootAsync({
   isGlobal: true,
@@ -95,8 +95,8 @@ application instance is what actually handles the output.
 ```ts
 // app.module.ts
 import { Module } from '@nestjs/common';
-import { LoggerAbstractModule } from './common/logger/abstract/logger-abstract.module';
-import { NestLoggerAdapter } from './common/logger/nest-adapter/nest-logger.adapter';
+import { LoggerAbstractModule } from './common/observability/logger/abstract/logger-abstract.module';
+import { NestLoggerAdapter } from './common/observability/logger/nest-adapter/nest-logger.adapter';
 
 @Module({
   imports: [
@@ -175,7 +175,7 @@ references a specific adapter class.
 
 ```ts
 import { Injectable } from '@nestjs/common';
-import { LoggerService } from './common/logger/abstract/logger.service';
+import { LoggerService } from './common/observability/logger/abstract/logger.service';
 
 @Injectable()
 export class SomeService {

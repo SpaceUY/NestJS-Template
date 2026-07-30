@@ -35,10 +35,10 @@ import { ConsoleAdapterService } from './email/console-adapter/console-adapter.s
 import { AwsSesAdapterService } from './email/aws-ses-adapter/aws-ses-adapter.service';
 import { SendgridAdapterService } from './email/sendgrid-adapter/sendgrid-adapter.service';
 import { ResendAdapterService } from './email/resend-adapter/resend-adapter.service';
-import { LoggerAbstractModule } from './common/logger/abstract/logger-abstract.module';
-import { LoggerService } from './common/logger/abstract/logger.service';
-import { NestLoggerAdapter } from './common/logger/nest-adapter/nest-logger.adapter';
-import { TraceContextLoggerDecorator } from './common/logger/trace-context/trace-context-logger.decorator';
+import { LoggerAbstractModule } from './common/observability/logger/abstract/logger-abstract.module';
+import { LoggerService } from './common/observability/logger/abstract/logger.service';
+import { NestLoggerAdapter } from './common/observability/logger/nest-adapter/nest-logger.adapter';
+import { TraceContextLoggerDecorator } from './common/observability/logger/trace-context/trace-context-logger.decorator';
 import { trace } from '@opentelemetry/api';
 @Module({
   imports: [
