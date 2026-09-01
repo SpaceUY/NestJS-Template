@@ -3,7 +3,7 @@ import { Spaceship } from '../database/entities/spaceship.entity';
 import { CreateSpaceshipDto } from './dto/create-spaceship.dto';
 import { UpdateSpaceshipDto } from './dto/update-spaceship.dto';
 import { SpaceshipRepository } from './spaceship.repository';
-import { SpaceshipNotificationProducer } from './queue/spaceship-notification.producer';
+import { SpaceshipNotificationProducer } from '../queues/notification/notification.producer';
 import { LoggerService } from '../common/logger/abstract/logger.service';
 
 @Injectable()

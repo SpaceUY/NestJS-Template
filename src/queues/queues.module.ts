@@ -19,4 +19,4 @@ import {
     }),
   ],
 })
-export class QueueModule {}
+export class QueuesModule {}

@@ -1,7 +1,7 @@
 import { Test, TestingModule } from '@nestjs/testing';
 import { SpaceshipService } from './spaceship.service';
 import { SpaceshipRepository } from './spaceship.repository';
-import { SpaceshipNotificationProducer } from './queue/spaceship-notification.producer';
+import { SpaceshipNotificationProducer } from '../queues/notification/notification.producer';
 import { LoggerService } from '../common/logger/abstract/logger.service';
 import { UpdateSpaceshipDto } from './dto/update-spaceship.dto';
 

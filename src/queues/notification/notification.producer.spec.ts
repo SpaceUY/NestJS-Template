@@ -1,10 +1,10 @@
 import { Test, TestingModule } from '@nestjs/testing';
 import { getQueueToken } from '@nestjs/bullmq';
-import { SpaceshipNotificationProducer } from './spaceship-notification.producer';
+import { SpaceshipNotificationProducer } from './notification.producer';
 import {
   SPACESHIP_NOTIFICATION_QUEUE,
   SPACESHIP_CREATED_JOB,
-} from './spaceship-notification.constants';
+} from './notification.constants';
 
 describe('SpaceshipNotificationProducer', () => {
   let producer: SpaceshipNotificationProducer;
