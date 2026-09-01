@@ -1,16 +1,16 @@
 import { Inject } from '@nestjs/common';
 import { OnWorkerEvent, Processor, WorkerHost } from '@nestjs/bullmq';
 import { Job } from 'bullmq';
-import { SPACESHIP_NOTIFICATION_QUEUE } from './spaceship-notification.constants';
-import { SpaceshipCreatedJobData } from './spaceship-notification.types';
+import { SPACESHIP_NOTIFICATION_QUEUE } from './notification.constants';
+import { SpaceshipCreatedJobData } from './notification.types';
 import { EmailService } from '../../email/abstract/email.service';
 import { TemplateService } from '../../templating/abstract/template.service';
 import { LoggerService } from '../../common/logger/abstract/logger.service';
 import { emailScope, EmailScopeConfig } from '../../email/config/email.scope';
 import {
-  spaceshipNotificationScope,
-  SpaceshipNotificationScopeConfig,
-} from '../config/spaceship-notification.scope';
+  notificationRecipientsScope,
+  NotificationRecipientsScopeConfig,
+} from './config/notification-recipients.scope';
 import {
   TEMPLATES,
   TEMPLATE_PATHS,
@@ -25,8 +25,8 @@ export class SpaceshipNotificationProcessor extends WorkerHost {
     private readonly logger: LoggerService,
     @Inject(emailScope.KEY)
     private readonly emailConfig: EmailScopeConfig,
-    @Inject(spaceshipNotificationScope.KEY)
-    private readonly notificationConfig: SpaceshipNotificationScopeConfig,
+    @Inject(notificationRecipientsScope.KEY)
+    private readonly notificationConfig: NotificationRecipientsScopeConfig,
   ) {
     super();
     this.logger.setContext(SpaceshipNotificationProcessor.name);

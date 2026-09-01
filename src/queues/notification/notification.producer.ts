@@ -4,8 +4,8 @@ import { Queue } from 'bullmq';
 import {
   SPACESHIP_NOTIFICATION_QUEUE,
   SPACESHIP_CREATED_JOB,
-} from './spaceship-notification.constants';
-import { SpaceshipCreatedJobData } from './spaceship-notification.types';
+} from './notification.constants';
+import { SpaceshipCreatedJobData } from './notification.types';
 
 @Injectable()
 export class SpaceshipNotificationProducer {

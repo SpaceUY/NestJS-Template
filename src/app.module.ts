@@ -38,9 +38,9 @@ import { ResendAdapterService } from './email/resend-adapter/resend-adapter.serv
 import { LoggerAbstractModule } from './common/logger/abstract/logger-abstract.module';
 import { LoggerService } from './common/logger/abstract/logger.service';
 import { NestLoggerAdapter } from './common/logger/nest-adapter/nest-logger.adapter';
-import { QueueModule } from './queue/queue.module';
-import { redisQueueScope } from './queue/config/redis-queue.scope';
-import { spaceshipNotificationScope } from './spaceship/config/spaceship-notification.scope';
+import { QueuesModule } from './queues/queues.module';
+import { redisQueueScope } from './queues/config/redis-queue.scope';
+import { notificationRecipientsScope } from './queues/notification/config/notification-recipients.scope';
 @Module({
   imports: [
     ConfigProviderAbstractModule.forRootAsync({
@@ -59,12 +59,12 @@ import { spaceshipNotificationScope } from './spaceship/config/spaceship-notific
         expoScope,
         databaseScope,
         redisQueueScope,
-        spaceshipNotificationScope,
+        notificationRecipientsScope,
       ],
     }),
     AuthModule,
     MiddlewareModule,
-    QueueModule,
+    QueuesModule,
     SpaceshipModule,
     DatabaseModule,
     LoggerAbstractModule.forRoot({

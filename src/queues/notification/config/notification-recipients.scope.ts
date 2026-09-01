@@ -1,18 +1,18 @@
 import * as Joi from 'joi';
-import { configSources as from } from '../../config-provider/abstract/config-source.util';
-import { defineConfigScope } from '../../config-provider/abstract/define-config-scope.util';
+import { configSources as from } from '../../../config-provider/abstract/config-source.util';
+import { defineConfigScope } from '../../../config-provider/abstract/define-config-scope.util';
 
-export type SpaceshipNotificationScopeConfig = {
+export type NotificationRecipientsScopeConfig = {
   employeeEmails: string[];
 };
 
-const schema = Joi.object<SpaceshipNotificationScopeConfig>({
+const schema = Joi.object<NotificationRecipientsScopeConfig>({
   employeeEmails: Joi.array().items(Joi.string().email()).default([]),
 });
 
-export const spaceshipNotificationScope =
-  defineConfigScope<SpaceshipNotificationScopeConfig>(
-    'spaceshipNotification',
+export const notificationRecipientsScope =
+  defineConfigScope<NotificationRecipientsScopeConfig>(
+    'notificationRecipients',
     {
       employeeEmails: from.env('NOTIFICATION_EMPLOYEE_EMAILS'),
     },

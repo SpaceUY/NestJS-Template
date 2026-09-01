@@ -1,17 +1,17 @@
 import { Test, TestingModule } from '@nestjs/testing';
 import { Job } from 'bullmq';
-import { SpaceshipNotificationProcessor } from './spaceship-notification.processor';
+import { SpaceshipNotificationProcessor } from './notification.processor';
 import { EmailService } from '../../email/abstract/email.service';
 import { TemplateService } from '../../templating/abstract/template.service';
 import { LoggerService } from '../../common/logger/abstract/logger.service';
 import { emailScope } from '../../email/config/email.scope';
-import { spaceshipNotificationScope } from '../config/spaceship-notification.scope';
+import { notificationRecipientsScope } from './config/notification-recipients.scope';
 import {
   TEMPLATES,
   TEMPLATE_PATHS,
   TEMPLATE_SUBJECTS,
 } from '../../templates/template.const';
-import { SpaceshipCreatedJobData } from './spaceship-notification.types';
+import { SpaceshipCreatedJobData } from './notification.types';
 
 describe('SpaceshipNotificationProcessor', () => {
   let processor: SpaceshipNotificationProcessor;
@@ -39,7 +39,7 @@ describe('SpaceshipNotificationProcessor', () => {
         { provide: LoggerService, useValue: mockLogger },
         { provide: emailScope.KEY, useValue: mockEmailConfig },
         {
-          provide: spaceshipNotificationScope.KEY,
+          provide: notificationRecipientsScope.KEY,
           useValue: mockNotificationConfig,
         },
       ],
