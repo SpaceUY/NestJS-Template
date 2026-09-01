@@ -115,7 +115,8 @@ describe('SpaceshipNotificationProcessor', () => {
       expect(mockTemplateService.compile).not.toHaveBeenCalled();
       expect(mockEmailService.sendEmailBatch).not.toHaveBeenCalled();
       expect(mockLogger.warn).toHaveBeenCalledWith({
-        message: 'Skipped spaceship-created notification: no recipients configured',
+        message:
+          'Skipped spaceship-created notification: no recipients configured',
         data: { spaceshipUuid: 'ship-uuid-1' },
       });
     });

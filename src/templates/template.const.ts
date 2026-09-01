@@ -7,7 +7,8 @@ export const TEMPLATES = {
 export const TEMPLATE_PATHS = {
   [TEMPLATES.WELCOME]: 'src/templates/onboarding/welcome.pug',
   [TEMPLATES.VERIFICATION]: 'src/templates/auth/verification.pug',
-  [TEMPLATES.SPACESHIP_CREATED]: 'src/templates/spaceship/spaceship-created.pug',
+  [TEMPLATES.SPACESHIP_CREATED]:
+    'src/templates/spaceship/spaceship-created.pug',
 } as const;
 
 export const TEMPLATE_SUBJECTS = {
