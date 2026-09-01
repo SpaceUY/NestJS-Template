@@ -1,18 +1,17 @@
 import { Test, TestingModule } from '@nestjs/testing';
-import { getRepositoryToken } from '@nestjs/typeorm';
 import { SpaceshipService } from './spaceship.service';
-import { Spaceship } from '../database/entities/spaceship.entity';
+import { SpaceshipRepository } from './spaceship.repository';
 import { UpdateSpaceshipDto } from './dto/update-spaceship.dto';
 
 describe('SpaceshipService', () => {
   let service: SpaceshipService;
 
-  const mockRepo = {
+  const mockRepository = {
     create: jest.fn(),
     save: jest.fn(),
-    find: jest.fn(),
-    findOne: jest.fn(),
-    findOneOrFail: jest.fn(),
+    findAll: jest.fn(),
+    findByUuid: jest.fn(),
+    findByUuidOrFail: jest.fn(),
     update: jest.fn(),
     softRemove: jest.fn(),
   };
@@ -21,7 +20,7 @@ describe('SpaceshipService', () => {
     const module: TestingModule = await Test.createTestingModule({
       providers: [
         SpaceshipService,
-        { provide: getRepositoryToken(Spaceship), useValue: mockRepo },
+        { provide: SpaceshipRepository, useValue: mockRepository },
       ],
     }).compile();
 
@@ -39,16 +38,16 @@ describe('SpaceshipService', () => {
       const entity = { ...dto, captainId: userId };
       const saved = { id: 'ship-1', ...entity };
 
-      mockRepo.create.mockReturnValue(entity);
-      mockRepo.save.mockResolvedValue(saved);
+      mockRepository.create.mockReturnValue(entity);
+      mockRepository.save.mockResolvedValue(saved);
 
       const result = await service.createSpaceship(dto, userId);
 
-      expect(mockRepo.create).toHaveBeenCalledWith({
+      expect(mockRepository.create).toHaveBeenCalledWith({
         ...dto,
         captainId: userId,
       });
-      expect(mockRepo.save).toHaveBeenCalledWith(entity);
+      expect(mockRepository.save).toHaveBeenCalledWith(entity);
       expect(result).toEqual(saved);
     });
   });
@@ -56,11 +55,11 @@ describe('SpaceshipService', () => {
   describe('getAllSpaceships', () => {
     it('returns all spaceships', async () => {
       const ships = [{ id: 'ship-1', name: 'Falcon', fleet: 'Alpha' }];
-      mockRepo.find.mockResolvedValue(ships);
+      mockRepository.findAll.mockResolvedValue(ships);
 
       const result = await service.getAllSpaceships();
 
-      expect(mockRepo.find).toHaveBeenCalled();
+      expect(mockRepository.findAll).toHaveBeenCalled();
       expect(result).toEqual(ships);
     });
   });
@@ -73,22 +72,21 @@ describe('SpaceshipService', () => {
         name: 'Falcon',
         fleet: 'Alpha',
       };
-      mockRepo.findOne.mockResolvedValue(ship);
+      mockRepository.findByUuidOrFail.mockResolvedValue(ship);
 
       const result = await service.getSpaceshipById('ship-uuid-1');
 
-      expect(mockRepo.findOne).toHaveBeenCalledWith({
-        where: { uuid: 'ship-uuid-1' },
-      });
+      expect(mockRepository.findByUuidOrFail).toHaveBeenCalledWith(
+        'ship-uuid-1',
+      );
       expect(result).toEqual(ship);
     });
 
-    it('returns null when not found', async () => {
-      mockRepo.findOne.mockResolvedValue(null);
+    it('propagates the not-found error from the repository', async () => {
+      const error = new Error('not found');
+      mockRepository.findByUuidOrFail.mockRejectedValue(error);
 
-      const result = await service.getSpaceshipById('unknown');
-
-      expect(result).toBeNull();
+      await expect(service.getSpaceshipById('unknown')).rejects.toThrow(error);
     });
   });
 
@@ -102,18 +100,15 @@ describe('SpaceshipService', () => {
         fleet: 'Alpha',
       };
 
-      mockRepo.update.mockResolvedValue({ affected: 1 });
-      mockRepo.findOneOrFail.mockResolvedValue(updated);
+      mockRepository.update.mockResolvedValue(undefined);
+      mockRepository.findByUuidOrFail.mockResolvedValue(updated);
 
       const result = await service.updateSpaceship('ship-uuid-1', dto);
 
-      expect(mockRepo.update).toHaveBeenCalledWith(
-        { uuid: 'ship-uuid-1' },
-        dto,
+      expect(mockRepository.update).toHaveBeenCalledWith('ship-uuid-1', dto);
+      expect(mockRepository.findByUuidOrFail).toHaveBeenCalledWith(
+        'ship-uuid-1',
       );
-      expect(mockRepo.findOneOrFail).toHaveBeenCalledWith({
-        where: { uuid: 'ship-uuid-1' },
-      });
       expect(result).toEqual(updated);
     });
   });
@@ -129,15 +124,15 @@ describe('SpaceshipService', () => {
       };
       const softDeleted = { ...ship, deletedAt: new Date() };
 
-      mockRepo.findOneOrFail.mockResolvedValue(ship);
-      mockRepo.softRemove.mockResolvedValue(softDeleted);
+      mockRepository.findByUuidOrFail.mockResolvedValue(ship);
+      mockRepository.softRemove.mockResolvedValue(softDeleted);
 
       const result = await service.deleteSpaceship('ship-uuid-1');
 
-      expect(mockRepo.findOneOrFail).toHaveBeenCalledWith({
-        where: { uuid: 'ship-uuid-1' },
-      });
-      expect(mockRepo.softRemove).toHaveBeenCalledWith(ship);
+      expect(mockRepository.findByUuidOrFail).toHaveBeenCalledWith(
+        'ship-uuid-1',
+      );
+      expect(mockRepository.softRemove).toHaveBeenCalledWith(ship);
       expect(result.uuid).toBe('ship-uuid-1');
       expect(result.deletedAt).toBeInstanceOf(Date);
     });
