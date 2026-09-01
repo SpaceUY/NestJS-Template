@@ -1,4 +1,4 @@
-import Joi from 'joi';
+import * as Joi from 'joi';
 import { configSources as from } from '../../config-provider/abstract/config-source.util';
 import { defineConfigScope } from '../../config-provider/abstract/define-config-scope.util';
 
@@ -19,7 +19,8 @@ export const spaceshipNotificationScope =
     (raw) => {
       const parsedRaw = {
         employeeEmails:
-          typeof raw.employeeEmails === 'string' && raw.employeeEmails.length > 0
+          typeof raw.employeeEmails === 'string' &&
+          raw.employeeEmails.length > 0
             ? raw.employeeEmails
                 .split(',')
                 .map((email) => email.trim())
