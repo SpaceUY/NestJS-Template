@@ -14,9 +14,7 @@ export class SpaceshipNotificationProducer {
     private readonly queue: Queue<SpaceshipCreatedJobData>,
   ) {}
 
-  async enqueueSpaceshipCreated(
-    data: SpaceshipCreatedJobData,
-  ): Promise<void> {
+  async enqueueSpaceshipCreated(data: SpaceshipCreatedJobData): Promise<void> {
     await this.queue.add(SPACESHIP_CREATED_JOB, data, {
       attempts: 3,
       backoff: { type: 'exponential', delay: 5000 },
