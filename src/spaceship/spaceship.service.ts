@@ -3,10 +3,18 @@ import { Spaceship } from '../database/entities/spaceship.entity';
 import { CreateSpaceshipDto } from './dto/create-spaceship.dto';
 import { UpdateSpaceshipDto } from './dto/update-spaceship.dto';
 import { SpaceshipRepository } from './spaceship.repository';
+import { SpaceshipNotificationProducer } from './queue/spaceship-notification.producer';
+import { LoggerService } from '../common/logger/abstract/logger.service';
 
 @Injectable()
 export class SpaceshipService {
-  constructor(private readonly spaceshipRepository: SpaceshipRepository) {}
+  constructor(
+    private readonly spaceshipRepository: SpaceshipRepository,
+    private readonly notificationProducer: SpaceshipNotificationProducer,
+    private readonly logger: LoggerService,
+  ) {
+    this.logger.setContext(SpaceshipService.name);
+  }
 
   async createSpaceship(
     data: CreateSpaceshipDto,
@@ -16,7 +24,23 @@ export class SpaceshipService {
       ...data,
       captainId: userId,
     });
-    return this.spaceshipRepository.save(spaceship);
+    const saved = await this.spaceshipRepository.save(spaceship);
+
+    try {
+      await this.notificationProducer.enqueueSpaceshipCreated({
+        spaceshipUuid: saved.uuid,
+        name: saved.name,
+        fleet: saved.fleet,
+      });
+    } catch (error) {
+      this.logger.error({
+        message: 'Failed to enqueue spaceship-created notification',
+        data: { spaceshipUuid: saved.uuid },
+        error,
+      });
+    }
+
+    return saved;
   }
 
   async getAllSpaceships(): Promise<Spaceship[]> {

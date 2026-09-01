@@ -1,6 +1,8 @@
 import { Test, TestingModule } from '@nestjs/testing';
 import { SpaceshipService } from './spaceship.service';
 import { SpaceshipRepository } from './spaceship.repository';
+import { SpaceshipNotificationProducer } from './queue/spaceship-notification.producer';
+import { LoggerService } from '../common/logger/abstract/logger.service';
 import { UpdateSpaceshipDto } from './dto/update-spaceship.dto';
 
 describe('SpaceshipService', () => {
@@ -16,11 +18,28 @@ describe('SpaceshipService', () => {
     softRemove: jest.fn(),
   };
 
+  const mockNotificationProducer = {
+    enqueueSpaceshipCreated: jest.fn(),
+  };
+
+  const mockLogger = {
+    setContext: jest.fn(),
+    log: jest.fn(),
+    warn: jest.fn(),
+    error: jest.fn(),
+    debug: jest.fn(),
+  };
+
   beforeEach(async () => {
     const module: TestingModule = await Test.createTestingModule({
       providers: [
         SpaceshipService,
         { provide: SpaceshipRepository, useValue: mockRepository },
+        {
+          provide: SpaceshipNotificationProducer,
+          useValue: mockNotificationProducer,
+        },
+        { provide: LoggerService, useValue: mockLogger },
       ],
     }).compile();
 
@@ -36,10 +55,13 @@ describe('SpaceshipService', () => {
       const dto = { name: 'Falcon', fleet: 'Alpha' };
       const userId = 1;
       const entity = { ...dto, captainId: userId };
-      const saved = { id: 'ship-1', ...entity };
+      const saved = { id: 1, uuid: 'ship-uuid-1', ...entity };
 
       mockRepository.create.mockReturnValue(entity);
       mockRepository.save.mockResolvedValue(saved);
+      mockNotificationProducer.enqueueSpaceshipCreated.mockResolvedValue(
+        undefined,
+      );
 
       const result = await service.createSpaceship(dto, userId);
 
@@ -49,6 +71,48 @@ describe('SpaceshipService', () => {
       });
       expect(mockRepository.save).toHaveBeenCalledWith(entity);
       expect(result).toEqual(saved);
+    });
+
+    it('enqueues the spaceship-created notification with the minimal payload', async () => {
+      const dto = { name: 'Falcon', fleet: 'Alpha' };
+      const saved = { id: 1, uuid: 'ship-uuid-1', ...dto, captainId: 1 };
+
+      mockRepository.create.mockReturnValue(saved);
+      mockRepository.save.mockResolvedValue(saved);
+      mockNotificationProducer.enqueueSpaceshipCreated.mockResolvedValue(
+        undefined,
+      );
+
+      await service.createSpaceship(dto, 1);
+
+      expect(
+        mockNotificationProducer.enqueueSpaceshipCreated,
+      ).toHaveBeenCalledWith({
+        spaceshipUuid: 'ship-uuid-1',
+        name: 'Falcon',
+        fleet: 'Alpha',
+      });
+    });
+
+    it('returns the created spaceship and logs the error when enqueueing fails', async () => {
+      const dto = { name: 'Falcon', fleet: 'Alpha' };
+      const saved = { id: 1, uuid: 'ship-uuid-1', ...dto, captainId: 1 };
+      const enqueueError = new Error('Redis down');
+
+      mockRepository.create.mockReturnValue(saved);
+      mockRepository.save.mockResolvedValue(saved);
+      mockNotificationProducer.enqueueSpaceshipCreated.mockRejectedValue(
+        enqueueError,
+      );
+
+      const result = await service.createSpaceship(dto, 1);
+
+      expect(result).toEqual(saved);
+      expect(mockLogger.error).toHaveBeenCalledWith({
+        message: 'Failed to enqueue spaceship-created notification',
+        data: { spaceshipUuid: 'ship-uuid-1' },
+        error: enqueueError,
+      });
     });
   });
 
