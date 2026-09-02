@@ -39,8 +39,14 @@ import { LoggerAbstractModule } from './common/logger/abstract/logger-abstract.m
 import { LoggerService } from './common/logger/abstract/logger.service';
 import { NestLoggerAdapter } from './common/logger/nest-adapter/nest-logger.adapter';
 import { QueuesModule } from './queues/queues.module';
-import { redisQueueScope } from './queues/config/redis-queue.scope';
+import {
+  redisQueueScope,
+  RedisQueueScopeConfig,
+} from './queues/config/redis-queue.scope';
 import { notificationRecipientsScope } from './queues/notification/config/notification-recipients.scope';
+import { spaceshipCacheScope } from './spaceship/config/spaceship-cache.scope';
+import { CacheAbstractModule } from './cache/abstract/cache-abstract.module';
+import { RedisCacheAdapterService } from './cache/redis-adapter/redis-adapter.service';
 @Module({
   imports: [
     ConfigProviderAbstractModule.forRootAsync({
@@ -60,11 +66,23 @@ import { notificationRecipientsScope } from './queues/notification/config/notifi
         databaseScope,
         redisQueueScope,
         notificationRecipientsScope,
+        spaceshipCacheScope,
       ],
     }),
     AuthModule,
     MiddlewareModule,
     QueuesModule,
+    CacheAbstractModule.forRootAsync({
+      isGlobal: true,
+      inject: [redisQueueScope.KEY],
+      useFactory: (redis: RedisQueueScopeConfig) =>
+        new RedisCacheAdapterService({
+          protocol: 'redis',
+          host: redis.host,
+          port: redis.port,
+          password: redis.password || undefined,
+        }),
+    }),
     SpaceshipModule,
     DatabaseModule,
     LoggerAbstractModule.forRoot({
