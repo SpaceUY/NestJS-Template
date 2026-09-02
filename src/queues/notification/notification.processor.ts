@@ -35,6 +35,11 @@ export class SpaceshipNotificationProcessor extends WorkerHost {
   async process(job: Job<SpaceshipCreatedJobData>): Promise<void> {
     const { spaceshipUuid, name, fleet } = job.data;
 
+    this.logger.log({
+      message: 'Processing spaceship-created notification',
+      data: { spaceshipUuid, jobId: job.id, attemptsMade: job.attemptsMade },
+    });
+
     if (this.notificationConfig.employeeEmails.length === 0) {
       this.logger.warn({
         message:
