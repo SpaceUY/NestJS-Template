@@ -58,6 +58,8 @@ describe('SpaceshipNotificationProcessor', () => {
   describe('process', () => {
     it('renders the template and sends the batch email to the configured recipients', async () => {
       const job = {
+        id: 'job-1',
+        attemptsMade: 0,
         data: {
           spaceshipUuid: 'ship-uuid-1',
           name: 'Falcon',
@@ -82,6 +84,10 @@ describe('SpaceshipNotificationProcessor', () => {
         from: mockEmailConfig.from,
         subject: TEMPLATE_SUBJECTS[TEMPLATES.SPACESHIP_CREATED],
         content: { html: '<html>rendered</html>' },
+      });
+      expect(mockLogger.log).toHaveBeenCalledWith({
+        message: 'Processing spaceship-created notification',
+        data: { spaceshipUuid: 'ship-uuid-1', jobId: 'job-1', attemptsMade: 0 },
       });
     });
 
