@@ -3,6 +3,9 @@ import { SpaceshipService } from './spaceship.service';
 import { SpaceshipRepository } from './spaceship.repository';
 import { SpaceshipNotificationProducer } from '../queues/notification/notification.producer';
 import { LoggerService } from '../common/logger/abstract/logger.service';
+import { CacheService } from '../cache/abstract/cache.service';
+import { spaceshipCacheScope } from './config/spaceship-cache.scope';
+import { SPACESHIP_LIST_CACHE_KEY } from './spaceship.constants';
 import { UpdateSpaceshipDto } from './dto/update-spaceship.dto';
 
 describe('SpaceshipService', () => {
@@ -30,6 +33,15 @@ describe('SpaceshipService', () => {
     debug: jest.fn(),
   };
 
+  const mockCache = {
+    get: jest.fn(),
+    set: jest.fn(),
+    del: jest.fn(),
+    clear: jest.fn(),
+  };
+
+  const mockCacheConfig = { listTtlSeconds: 60 };
+
   beforeEach(async () => {
     const module: TestingModule = await Test.createTestingModule({
       providers: [
@@ -40,6 +52,8 @@ describe('SpaceshipService', () => {
           useValue: mockNotificationProducer,
         },
         { provide: LoggerService, useValue: mockLogger },
+        { provide: CacheService, useValue: mockCache },
+        { provide: spaceshipCacheScope.KEY, useValue: mockCacheConfig },
       ],
     }).compile();
 
@@ -71,6 +85,41 @@ describe('SpaceshipService', () => {
       });
       expect(mockRepository.save).toHaveBeenCalledWith(entity);
       expect(result).toEqual(saved);
+    });
+
+    it('invalidates the spaceship list cache after saving', async () => {
+      const dto = { name: 'Falcon', fleet: 'Alpha' };
+      const saved = { id: 1, uuid: 'ship-uuid-1', ...dto, captainId: 1 };
+
+      mockRepository.create.mockReturnValue(saved);
+      mockRepository.save.mockResolvedValue(saved);
+      mockNotificationProducer.enqueueSpaceshipCreated.mockResolvedValue(
+        undefined,
+      );
+
+      await service.createSpaceship(dto, 1);
+
+      expect(mockCache.del).toHaveBeenCalledWith(SPACESHIP_LIST_CACHE_KEY);
+    });
+
+    it('does not fail creation when cache invalidation fails', async () => {
+      const dto = { name: 'Falcon', fleet: 'Alpha' };
+      const saved = { id: 1, uuid: 'ship-uuid-1', ...dto, captainId: 1 };
+
+      mockRepository.create.mockReturnValue(saved);
+      mockRepository.save.mockResolvedValue(saved);
+      mockNotificationProducer.enqueueSpaceshipCreated.mockResolvedValue(
+        undefined,
+      );
+      mockCache.del.mockRejectedValue(new Error('Redis down'));
+
+      const result = await service.createSpaceship(dto, 1);
+
+      expect(result).toEqual(saved);
+      expect(mockLogger.warn).toHaveBeenCalledWith({
+        message: 'Failed to invalidate spaceship list cache',
+        error: expect.any(Error),
+      });
     });
 
     it('enqueues the spaceship-created notification with the minimal payload', async () => {
@@ -117,14 +166,62 @@ describe('SpaceshipService', () => {
   });
 
   describe('getAllSpaceships', () => {
-    it('returns all spaceships', async () => {
+    it('returns the cached list without querying the database on a cache hit', async () => {
       const ships = [{ id: 'ship-1', name: 'Falcon', fleet: 'Alpha' }];
+      mockCache.get.mockResolvedValue(JSON.stringify(ships));
+
+      const result = await service.getAllSpaceships();
+
+      expect(mockCache.get).toHaveBeenCalledWith(SPACESHIP_LIST_CACHE_KEY);
+      expect(mockRepository.findAll).not.toHaveBeenCalled();
+      expect(result).toEqual(ships);
+    });
+
+    it('queries the database and populates the cache on a cache miss', async () => {
+      const ships = [{ id: 'ship-1', name: 'Falcon', fleet: 'Alpha' }];
+      mockCache.get.mockResolvedValue(null);
+      mockRepository.findAll.mockResolvedValue(ships);
+
+      const result = await service.getAllSpaceships();
+
+      expect(mockRepository.findAll).toHaveBeenCalled();
+      expect(mockCache.set).toHaveBeenCalledWith(
+        SPACESHIP_LIST_CACHE_KEY,
+        JSON.stringify(ships),
+        mockCacheConfig.listTtlSeconds,
+      );
+      expect(result).toEqual(ships);
+    });
+
+    it('falls back to the database when reading from cache fails', async () => {
+      const ships = [{ id: 'ship-1', name: 'Falcon', fleet: 'Alpha' }];
+      mockCache.get.mockRejectedValue(new Error('Redis down'));
       mockRepository.findAll.mockResolvedValue(ships);
 
       const result = await service.getAllSpaceships();
 
       expect(mockRepository.findAll).toHaveBeenCalled();
       expect(result).toEqual(ships);
+      expect(mockLogger.warn).toHaveBeenCalledWith({
+        message:
+          'Failed to read spaceship list from cache, falling back to database',
+        error: expect.any(Error),
+      });
+    });
+
+    it('still returns the database result when writing to cache fails', async () => {
+      const ships = [{ id: 'ship-1', name: 'Falcon', fleet: 'Alpha' }];
+      mockCache.get.mockResolvedValue(null);
+      mockRepository.findAll.mockResolvedValue(ships);
+      mockCache.set.mockRejectedValue(new Error('Redis down'));
+
+      const result = await service.getAllSpaceships();
+
+      expect(result).toEqual(ships);
+      expect(mockLogger.warn).toHaveBeenCalledWith({
+        message: 'Failed to write spaceship list to cache',
+        error: expect.any(Error),
+      });
     });
   });
 
@@ -175,6 +272,18 @@ describe('SpaceshipService', () => {
       );
       expect(result).toEqual(updated);
     });
+
+    it('invalidates the spaceship list cache after updating', async () => {
+      const dto = { name: 'Millennium Falcon' } as UpdateSpaceshipDto;
+      const updated = { id: 1, uuid: 'ship-uuid-1', ...dto };
+
+      mockRepository.update.mockResolvedValue(undefined);
+      mockRepository.findByUuidOrFail.mockResolvedValue(updated);
+
+      await service.updateSpaceship('ship-uuid-1', dto);
+
+      expect(mockCache.del).toHaveBeenCalledWith(SPACESHIP_LIST_CACHE_KEY);
+    });
   });
 
   describe('deleteSpaceship', () => {
@@ -199,6 +308,18 @@ describe('SpaceshipService', () => {
       expect(mockRepository.softRemove).toHaveBeenCalledWith(ship);
       expect(result.uuid).toBe('ship-uuid-1');
       expect(result.deletedAt).toBeInstanceOf(Date);
+    });
+
+    it('invalidates the spaceship list cache after deleting', async () => {
+      const ship = { id: 1, uuid: 'ship-uuid-1', name: 'Falcon' };
+      const softDeleted = { ...ship, deletedAt: new Date() };
+
+      mockRepository.findByUuidOrFail.mockResolvedValue(ship);
+      mockRepository.softRemove.mockResolvedValue(softDeleted);
+
+      await service.deleteSpaceship('ship-uuid-1');
+
+      expect(mockCache.del).toHaveBeenCalledWith(SPACESHIP_LIST_CACHE_KEY);
     });
   });
 });
