@@ -1,21 +1,21 @@
 import * as Joi from 'joi';
-import { configSources as from } from '../../config-provider/abstract/config-source.util';
-import { defineConfigScope } from '../../config-provider/abstract/define-config-scope.util';
+import { configSources as from } from '../../../config-provider/abstract/config-source.util';
+import { defineConfigScope } from '../../../config-provider/abstract/define-config-scope.util';
 
-export type RedisQueueScopeConfig = {
+export type BullmqRedisScopeConfig = {
   host: string;
   port: number;
   password: string;
 };
 
-const schema = Joi.object<RedisQueueScopeConfig>({
+const schema = Joi.object<BullmqRedisScopeConfig>({
   host: Joi.string().default('localhost'),
   port: Joi.number().integer().default(6379),
   password: Joi.string().optional().allow('').default(''),
 });
 
-export const redisQueueScope = defineConfigScope<RedisQueueScopeConfig>(
-  'redisQueue',
+export const bullmqRedisScope = defineConfigScope<BullmqRedisScopeConfig>(
+  'bullmqRedis',
   {
     host: from.env('REDIS_HOST'),
     port: from.env('REDIS_PORT'),

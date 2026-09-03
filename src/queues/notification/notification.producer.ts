@@ -1,6 +1,6 @@
-import { Injectable } from '@nestjs/common';
-import { InjectQueue } from '@nestjs/bullmq';
-import { Queue } from 'bullmq';
+import { Inject, Injectable } from '@nestjs/common';
+import { QueueProducer } from '../abstract/queue-producer.service';
+import { getQueueProducerToken } from '../abstract/queue.tokens';
 import {
   SPACESHIP_NOTIFICATION_QUEUE,
   SPACESHIP_CREATED_JOB,
@@ -11,22 +11,23 @@ import { LoggerService } from '../../common/logger/abstract/logger.service';
 @Injectable()
 export class SpaceshipNotificationProducer {
   constructor(
-    @InjectQueue(SPACESHIP_NOTIFICATION_QUEUE)
-    private readonly queue: Queue<SpaceshipCreatedJobData>,
+    @Inject(getQueueProducerToken(SPACESHIP_NOTIFICATION_QUEUE))
+    private readonly queueProducer: QueueProducer,
     private readonly logger: LoggerService,
   ) {
     this.logger.setContext(SpaceshipNotificationProducer.name);
   }
 
   async enqueueSpaceshipCreated(data: SpaceshipCreatedJobData): Promise<void> {
-    const job = await this.queue.add(SPACESHIP_CREATED_JOB, data, {
-      attempts: 3,
-      backoff: { type: 'exponential', delay: 5000 },
-    });
+    const result = await this.queueProducer.enqueue(
+      SPACESHIP_CREATED_JOB,
+      data,
+      { attempts: 3, backoff: { type: 'exponential', delayMs: 5000 } },
+    );
 
     this.logger.log({
       message: 'Spaceship-created notification enqueued',
-      data: { spaceshipUuid: data.spaceshipUuid, jobId: job.id },
+      data: { spaceshipUuid: data.spaceshipUuid, jobId: result.id },
     });
   }
 }

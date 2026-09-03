@@ -1,22 +1,7 @@
 import { Module } from '@nestjs/common';
-import { BullModule } from '@nestjs/bullmq';
-import {
-  redisQueueScope,
-  RedisQueueScopeConfig,
-} from './config/redis-queue.scope';
+import { QueueAbstractModule } from './abstract/queue-abstract.module';
 
 @Module({
-  imports: [
-    BullModule.forRootAsync({
-      inject: [redisQueueScope.KEY],
-      useFactory: (redis: RedisQueueScopeConfig) => ({
-        connection: {
-          host: redis.host,
-          port: redis.port,
-          password: redis.password || undefined,
-        },
-      }),
-    }),
-  ],
+  imports: [QueueAbstractModule.forRoot()],
 })
 export class QueuesModule {}
