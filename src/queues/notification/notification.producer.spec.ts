@@ -1,6 +1,6 @@
 import { Test, TestingModule } from '@nestjs/testing';
-import { getQueueToken } from '@nestjs/bullmq';
 import { SpaceshipNotificationProducer } from './notification.producer';
+import { getQueueProducerToken } from '../abstract/queue.tokens';
 import {
   SPACESHIP_NOTIFICATION_QUEUE,
   SPACESHIP_CREATED_JOB,
@@ -10,9 +10,7 @@ import { LoggerService } from '../../common/logger/abstract/logger.service';
 describe('SpaceshipNotificationProducer', () => {
   let producer: SpaceshipNotificationProducer;
 
-  const mockQueue = {
-    add: jest.fn(),
-  };
+  const mockQueueProducer = { enqueue: jest.fn() };
   const mockLogger = {
     setContext: jest.fn(),
     log: jest.fn(),
@@ -26,8 +24,8 @@ describe('SpaceshipNotificationProducer', () => {
       providers: [
         SpaceshipNotificationProducer,
         {
-          provide: getQueueToken(SPACESHIP_NOTIFICATION_QUEUE),
-          useValue: mockQueue,
+          provide: getQueueProducerToken(SPACESHIP_NOTIFICATION_QUEUE),
+          useValue: mockQueueProducer,
         },
         { provide: LoggerService, useValue: mockLogger },
       ],
@@ -48,14 +46,15 @@ describe('SpaceshipNotificationProducer', () => {
       name: 'Falcon',
       fleet: 'Alpha',
     };
-    mockQueue.add.mockResolvedValue({ id: 'job-1' });
+    mockQueueProducer.enqueue.mockResolvedValue({ id: 'job-1' });
 
     await producer.enqueueSpaceshipCreated(data);
 
-    expect(mockQueue.add).toHaveBeenCalledWith(SPACESHIP_CREATED_JOB, data, {
-      attempts: 3,
-      backoff: { type: 'exponential', delay: 5000 },
-    });
+    expect(mockQueueProducer.enqueue).toHaveBeenCalledWith(
+      SPACESHIP_CREATED_JOB,
+      data,
+      { attempts: 3, backoff: { type: 'exponential', delayMs: 5000 } },
+    );
   });
 
   it('logs the enqueue with the spaceship uuid and job id', async () => {
@@ -64,7 +63,7 @@ describe('SpaceshipNotificationProducer', () => {
       name: 'Falcon',
       fleet: 'Alpha',
     };
-    mockQueue.add.mockResolvedValue({ id: 'job-1' });
+    mockQueueProducer.enqueue.mockResolvedValue({ id: 'job-1' });
 
     await producer.enqueueSpaceshipCreated(data);
 

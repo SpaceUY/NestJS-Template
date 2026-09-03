@@ -40,9 +40,11 @@ import { LoggerService } from './common/logger/abstract/logger.service';
 import { NestLoggerAdapter } from './common/logger/nest-adapter/nest-logger.adapter';
 import { QueuesModule } from './queues/queues.module';
 import {
-  redisQueueScope,
-  RedisQueueScopeConfig,
-} from './queues/config/redis-queue.scope';
+  redisCacheScope,
+  RedisCacheScopeConfig,
+} from './cache/redis-adapter/config/redis-cache.scope';
+import { bullmqRedisScope } from './queues/bullmq-adapter/config/bullmq-redis.scope';
+import { rabbitmqScope } from './queues/rabbitmq-adapter/config/rabbitmq.scope';
 import { notificationRecipientsScope } from './queues/notification/config/notification-recipients.scope';
 import { spaceshipCacheScope } from './spaceship/config/spaceship-cache.scope';
 import { CacheAbstractModule } from './cache/abstract/cache-abstract.module';
@@ -64,7 +66,9 @@ import { RedisCacheAdapterService } from './cache/redis-adapter/redis-adapter.se
         emailScope,
         expoScope,
         databaseScope,
-        redisQueueScope,
+        bullmqRedisScope,
+        rabbitmqScope,
+        redisCacheScope,
         notificationRecipientsScope,
         spaceshipCacheScope,
       ],
@@ -74,8 +78,8 @@ import { RedisCacheAdapterService } from './cache/redis-adapter/redis-adapter.se
     QueuesModule,
     CacheAbstractModule.forRootAsync({
       isGlobal: true,
-      inject: [redisQueueScope.KEY],
-      useFactory: (redis: RedisQueueScopeConfig) =>
+      inject: [redisCacheScope.KEY],
+      useFactory: (redis: RedisCacheScopeConfig) =>
         new RedisCacheAdapterService({
           protocol: 'redis',
           host: redis.host,
