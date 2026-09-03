@@ -7,16 +7,7 @@ import { RabbitmqProducerService } from '../rabbitmq-adapter/rabbitmq-producer.s
 import { bullmqRedisScope } from '../bullmq-adapter/config/bullmq-redis.scope';
 import { rabbitmqScope } from '../rabbitmq-adapter/config/rabbitmq.scope';
 
-// This spec compiles the REAL NestJS module graph produced by
-// QueueAbstractModule (unlike queue-abstract.module.unit.spec.ts, which
-// only inspects the returned DynamicModule shape). It exists specifically
-// to catch export/DI-wiring mistakes that only surface when Nest actually
-// validates and resolves the module graph — e.g. re-exporting a raw token
-// from a child module instead of the module itself, which Nest's exports
-// validation rejects at compile time but a shape-only test cannot see.
-//
-// bullmq's Queue and amqplib's connect() are mocked so this stays a real
-// DI test without requiring a live Redis or RabbitMQ broker.
+// Compiles the real Nest module graph (unlike the .unit.spec shape-only test) to catch export/DI-wiring mistakes Nest only surfaces on actual resolution.
 jest.mock('bullmq', () => ({
   Queue: jest.fn().mockImplementation(() => ({
     close: jest.fn().mockResolvedValue(undefined),
