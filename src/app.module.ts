@@ -53,7 +53,7 @@ import { RedisCacheAdapterService } from './cache/redis-adapter/redis-adapter.se
       isGlobal: true,
       sources: {
         env: {
-          useFactory: () => new EnvConfigAdapter(),
+          useFactory: () => new EnvConfigAdapter({ envFilePath: '.env' }),
         },
       },
       scopes: [

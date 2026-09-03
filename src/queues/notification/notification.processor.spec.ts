@@ -5,7 +5,7 @@ import { EmailService } from '../../email/abstract/email.service';
 import { TemplateService } from '../../templating/abstract/template.service';
 import { LoggerService } from '../../common/logger/abstract/logger.service';
 import { emailScope } from '../../email/config/email.scope';
-import { notificationRecipientsScope } from './config/notification-recipients.scope';
+import { NotificationRecipientsProvider } from './notification-recipients.provider';
 import {
   TEMPLATES,
   TEMPLATE_PATHS,
@@ -26,11 +26,12 @@ describe('SpaceshipNotificationProcessor', () => {
     debug: jest.fn(),
   };
   const mockEmailConfig = { from: 'noreply@spacedev.io' };
-  const mockNotificationConfig = {
-    employeeEmails: ['a@spacedev.io', 'b@spacedev.io'],
-  };
+  const mockRecipientsProvider = { getRecipients: jest.fn() };
+  const defaultRecipients = ['a@spacedev.io', 'b@spacedev.io'];
 
   beforeEach(async () => {
+    mockRecipientsProvider.getRecipients.mockResolvedValue(defaultRecipients);
+
     const module: TestingModule = await Test.createTestingModule({
       providers: [
         SpaceshipNotificationProcessor,
@@ -39,8 +40,8 @@ describe('SpaceshipNotificationProcessor', () => {
         { provide: LoggerService, useValue: mockLogger },
         { provide: emailScope.KEY, useValue: mockEmailConfig },
         {
-          provide: notificationRecipientsScope.KEY,
-          useValue: mockNotificationConfig,
+          provide: NotificationRecipientsProvider,
+          useValue: mockRecipientsProvider,
         },
       ],
     }).compile();
@@ -52,7 +53,6 @@ describe('SpaceshipNotificationProcessor', () => {
 
   afterEach(() => {
     jest.clearAllMocks();
-    mockNotificationConfig.employeeEmails = ['a@spacedev.io', 'b@spacedev.io'];
   });
 
   describe('process', () => {
@@ -80,7 +80,7 @@ describe('SpaceshipNotificationProcessor', () => {
         { name: 'Falcon', fleet: 'Alpha' },
       );
       expect(mockEmailService.sendEmailBatch).toHaveBeenCalledWith({
-        to: mockNotificationConfig.employeeEmails,
+        to: defaultRecipients,
         from: mockEmailConfig.from,
         subject: TEMPLATE_SUBJECTS[TEMPLATES.SPACESHIP_CREATED],
         content: { html: '<html>rendered</html>' },
@@ -107,7 +107,7 @@ describe('SpaceshipNotificationProcessor', () => {
     });
 
     it('skips sending and logs a warning when there are no configured recipients', async () => {
-      mockNotificationConfig.employeeEmails = [];
+      mockRecipientsProvider.getRecipients.mockResolvedValue([]);
       const job = {
         data: {
           spaceshipUuid: 'ship-uuid-1',

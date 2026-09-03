@@ -7,10 +7,7 @@ import { EmailService } from '../../email/abstract/email.service';
 import { TemplateService } from '../../templating/abstract/template.service';
 import { LoggerService } from '../../common/logger/abstract/logger.service';
 import { emailScope, EmailScopeConfig } from '../../email/config/email.scope';
-import {
-  notificationRecipientsScope,
-  NotificationRecipientsScopeConfig,
-} from './config/notification-recipients.scope';
+import { NotificationRecipientsProvider } from './notification-recipients.provider';
 import {
   TEMPLATES,
   TEMPLATE_PATHS,
@@ -25,8 +22,7 @@ export class SpaceshipNotificationProcessor extends WorkerHost {
     private readonly logger: LoggerService,
     @Inject(emailScope.KEY)
     private readonly emailConfig: EmailScopeConfig,
-    @Inject(notificationRecipientsScope.KEY)
-    private readonly notificationConfig: NotificationRecipientsScopeConfig,
+    private readonly recipientsProvider: NotificationRecipientsProvider,
   ) {
     super();
     this.logger.setContext(SpaceshipNotificationProcessor.name);
@@ -40,7 +36,9 @@ export class SpaceshipNotificationProcessor extends WorkerHost {
       data: { spaceshipUuid, jobId: job.id, attemptsMade: job.attemptsMade },
     });
 
-    if (this.notificationConfig.employeeEmails.length === 0) {
+    const recipients = await this.recipientsProvider.getRecipients();
+
+    if (recipients.length === 0) {
       this.logger.warn({
         message:
           'Skipped spaceship-created notification: no recipients configured',
@@ -55,7 +53,7 @@ export class SpaceshipNotificationProcessor extends WorkerHost {
     );
 
     await this.emailService.sendEmailBatch({
-      to: this.notificationConfig.employeeEmails,
+      to: recipients,
       from: this.emailConfig.from,
       subject: TEMPLATE_SUBJECTS[TEMPLATES.SPACESHIP_CREATED],
       content: { html },
@@ -63,10 +61,7 @@ export class SpaceshipNotificationProcessor extends WorkerHost {
 
     this.logger.log({
       message: 'Spaceship-created notification sent',
-      data: {
-        spaceshipUuid,
-        recipients: this.notificationConfig.employeeEmails.length,
-      },
+      data: { spaceshipUuid, recipients: recipients.length },
     });
   }
 
