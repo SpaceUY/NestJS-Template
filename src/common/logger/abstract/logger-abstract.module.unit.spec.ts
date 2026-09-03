@@ -1,3 +1,4 @@
+import { Scope } from '@nestjs/common';
 import { LoggerAbstractModule } from './logger-abstract.module';
 import { LoggerService } from './logger.service';
 
@@ -25,6 +26,16 @@ describe('LoggerAbstractModule', () => {
       expect(moduleRef.global).toBe(false);
       expect(provider?.useFactory()).toBeInstanceOf(MockAdapter);
       expect(moduleRef.exports).toContain(LoggerService);
+    });
+
+    it('should register the provider as transient so each consumer gets its own instance', () => {
+      const moduleRef = LoggerAbstractModule.forRoot({ adapter: MockAdapter });
+
+      const provider = (
+        moduleRef.providers as Array<{ provide: unknown; scope: Scope }>
+      ).find((p) => p.provide === LoggerService);
+
+      expect(provider?.scope).toBe(Scope.TRANSIENT);
     });
 
     it('should set isGlobal when specified', () => {
@@ -102,6 +113,18 @@ describe('LoggerAbstractModule', () => {
       expect(provider!.inject).toEqual([token]);
       expect(resolved).toBe(adapterInstance);
       expect(moduleRef.exports).toContain(LoggerService);
+    });
+
+    it('should register the provider as transient so each consumer gets its own instance', () => {
+      const moduleRef = LoggerAbstractModule.forRootAsync({
+        useFactory: () => new MockAdapter(),
+      });
+
+      const provider = (
+        moduleRef.providers as Array<{ provide: unknown; scope: Scope }>
+      ).find((p) => p.provide === LoggerService);
+
+      expect(provider?.scope).toBe(Scope.TRANSIENT);
     });
 
     it('should wire the telemetryHook on the async-resolved instance', async () => {

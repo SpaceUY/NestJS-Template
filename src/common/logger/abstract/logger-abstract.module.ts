@@ -3,6 +3,7 @@ import {
   InjectionToken,
   Module,
   ModuleMetadata,
+  Scope,
 } from '@nestjs/common';
 import { ClassConstructor } from 'class-transformer';
 import { LoggerService } from './logger.service';
@@ -34,6 +35,7 @@ export class LoggerAbstractModule {
       providers: [
         {
           provide: LoggerService,
+          scope: Scope.TRANSIENT,
           useFactory: () => {
             const instance = new adapter();
             if (telemetryHook) instance.withTelemetry(telemetryHook);
@@ -55,6 +57,7 @@ export class LoggerAbstractModule {
       providers: [
         {
           provide: LoggerService,
+          scope: Scope.TRANSIENT,
           // eslint-disable-next-line @typescript-eslint/no-explicit-any
           useFactory: async (...args: any[]) => {
             const instance = await options.useFactory(...args);

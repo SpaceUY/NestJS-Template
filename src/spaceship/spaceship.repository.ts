@@ -1,9 +1,11 @@
 import { Injectable } from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
-import { Repository } from 'typeorm';
+import { QueryFailedError, Repository } from 'typeorm';
 import { RequestException } from '../common/exception/core/ExceptionBase';
 import { Exceptions } from '../common/exception/exceptions';
 import { Spaceship } from '../database/entities/spaceship.entity';
+
+const POSTGRES_UNIQUE_VIOLATION_CODE = '23505';
 
 @Injectable()
 export class SpaceshipRepository {
@@ -16,8 +18,25 @@ export class SpaceshipRepository {
     return this.repository.create(data);
   }
 
-  save(spaceship: Spaceship): Promise<Spaceship> {
-    return this.repository.save(spaceship);
+  async save(spaceship: Spaceship): Promise<Spaceship> {
+    try {
+      return await this.repository.save(spaceship);
+    } catch (error) {
+      if (
+        error instanceof QueryFailedError &&
+        (error as unknown as { code?: string }).code ===
+          POSTGRES_UNIQUE_VIOLATION_CODE
+      ) {
+        throw new RequestException(
+          Exceptions.database.alreadyExists({
+            entity: 'Spaceship',
+            field: 'captainId',
+            value: String(spaceship.captainId),
+          }),
+        );
+      }
+      throw error;
+    }
   }
 
   findAll(): Promise<Spaceship[]> {

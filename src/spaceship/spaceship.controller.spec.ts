@@ -75,12 +75,13 @@ describe('SpaceshipController', () => {
       expect(result).toMatchObject(ship);
     });
 
-    it('returns null when the service finds nothing', async () => {
-      mockService.getSpaceshipById.mockResolvedValue(null);
+    it('propagates the not-found error thrown by the service', async () => {
+      const notFoundError = new Error('Spaceship unknown not found');
+      mockService.getSpaceshipById.mockRejectedValue(notFoundError);
 
-      const result = await controller.getSpaceshipById('unknown');
-
-      expect(result).toBeNull();
+      await expect(controller.getSpaceshipById('unknown')).rejects.toBe(
+        notFoundError,
+      );
     });
   });
 
