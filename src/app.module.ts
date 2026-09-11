@@ -15,7 +15,11 @@ import {
 import { ConfigProviderAbstractModule } from './config-provider/abstract/config-provider-abstract.module';
 import { EnvConfigAdapter } from './config-provider/env-adapter/env-config.adapter';
 import { EmailAbstractModule } from './email/abstract/email-abstract.module';
-import { emailScope, EMAIL_ADAPTERS } from './email/config/email.scope';
+import {
+  emailScope,
+  EMAIL_ADAPTERS,
+  EmailScopeConfig,
+} from './email/config/email.scope';
 import { DatabaseModule } from './database/database.module';
 import { databaseScope } from './database/config/database.scope';
 import { PushNotificationAbstractModule } from './push-notification/abstract/push-notification-abstract.module.ts';
@@ -66,18 +70,14 @@ import { NestLoggerAdapter } from './common/logger/nest-adapter/nest-logger.adap
       isGlobal: true,
     }),
     EmailAbstractModule.forRootAsync({
-      inject: [emailConfig.KEY, awsConfig.KEY, LoggerService],
-      useFactory: (
-        email: ConfigType<typeof emailConfig>,
-        aws: ConfigType<typeof awsConfig>,
-        logger: LoggerService,
-      ) => {
+      inject: [emailScope.KEY, LoggerService],
+      useFactory: (email: EmailScopeConfig, logger: LoggerService) => {
         const configuredAdapter = email.adapter?.toUpperCase();
 
         if (configuredAdapter === EMAIL_ADAPTERS.SENDGRID) {
           return new SendgridAdapterService(
             {
-              sendgridApiKey: email.sendgrid.apiKey,
+              sendgridApiKey: email.sendgridApiKey,
               emailFrom: email.from,
             },
             logger,
@@ -87,8 +87,8 @@ import { NestLoggerAdapter } from './common/logger/nest-adapter/nest-logger.adap
         if (configuredAdapter === EMAIL_ADAPTERS.RESEND) {
           return new ResendAdapterService(
             {
-              resendApiKey: email.resend.apiKey,
-              emailFrom: email.resend.emailFrom || email.from,
+              resendApiKey: email.resendApiKey,
+              emailFrom: email.resendEmailFrom || email.from,
             },
             logger,
           );
