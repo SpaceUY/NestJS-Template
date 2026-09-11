@@ -93,8 +93,9 @@ Four files still violate this (finding `N6`); do not add a fifth.
 
 **T6 — Named exports, explicit return types, no `any`.** No default exports.
 Every function and method declares its return type.
-`@typescript-eslint/no-explicit-any` is enforced, and already failing on 16
-pre-existing sites (finding `L1`) — do not add a seventeenth.
+`@typescript-eslint/no-explicit-any` is enforced and the tree is clean: no new
+`any` without a per-line disable that explains why, following the precedent in
+`src/config-provider/abstract/config-provider.interfaces.ts`.
 
 **T7 — Every module carries its own `CLAUDE.md`.** A new top-level directory
 under `src/` is not done until it has one, built from the skeleton in
@@ -140,16 +141,16 @@ Recorded in `docs/audit/2026-09-11-template-audit.md`. The ones that will bite
 you first:
 
 **`pnpm run build` and `pnpm run lint` both fail on `master` right now.** That is
-the baseline — it is not something you broke.
+still true there; both pass on `fix/build-and-lint`.
 
-- **`B1`** — `src/app.module.ts` does not compile: `emailConfig`, `awsConfig` and
-  `ConfigType` are referenced but never imported. Six TypeScript errors.
-- **`L1`** — `pnpm run lint` exits 1 with 23 errors, so the pipeline is red on
+- **`B1`** — ~~`src/app.module.ts` does not compile: `emailConfig`, `awsConfig` and
+  `ConfigType` are referenced but never imported. Six TypeScript errors.~~ **Fixed on `fix/build-and-lint`.**
+- **`L1`** — ~~`pnpm run lint` exits 1 with 23 errors, so the pipeline is red on
   every PR. `eslint.config.mjs` spreads the recommended configs *after* its own
-  rules block, which silently re-enables `@typescript-eslint/no-explicit-any`.
-- **`L3`** — the `lint` script runs with `--fix`, so invoking it rewrites 20
+  rules block, which silently re-enables `@typescript-eslint/no-explicit-any`.~~ **Fixed on `fix/build-and-lint`.**
+- **`L3`** — ~~the `lint` script runs with `--fix`, so invoking it rewrites 20
   files with Prettier formatting. **Check `git status` after linting** and do not
-  commit that reformat alongside unrelated work.
+  commit that reformat alongside unrelated work.~~ **Fixed on `fix/build-and-lint`.**
 - **`B2`** — `package.json` declares `dotenv` twice.
 - **`B3`** — `Dockerfile` uses `apk` on a Debian image and runs `prisma generate`
   in a TypeORM project.

@@ -103,9 +103,10 @@ drop the optional logger parameter.
 
 See `docs/audit/2026-09-11-template-audit.md`.
 
-- **`B1`** — the email factory in `src/app.module.ts` references `emailConfig`,
+- **`B1`** — ~~the email factory in `src/app.module.ts` references `emailConfig`,
   `awsConfig` and `ConfigType`, none of which is imported; the app does not
-  compile. It should use the already-imported `emailScope`.
+  compile. It should use the already-imported `emailScope`.~~ **Fixed by
+  switching the factory to the already-registered `emailScope`.**
 - **`D2`** — `src/email/README.md` documents `utils/email-logger.adapter.ts`,
   `abstract/email-logger.interface.ts` and `!src/config/email.config.ts`, none of
   which exist, and still teaches `@nestjs/config`.

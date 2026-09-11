@@ -5,11 +5,12 @@ completed and all three gates executed:
 
 | Gate | Result |
 |---|---|
-| `pnpm run build` | **FAILS** — 6 TypeScript errors, all in `src/app.module.ts` (finding `B1`) |
-| `pnpm run lint` | **FAILS** — 23 errors, 8 warnings (findings `L1`-`L3`) |
+| `pnpm run build` | **PASSES** — exit 0 |
+| `pnpm exec eslint` | **PASSES** — 0 errors, 8 warnings |
 | `pnpm test` | **PASSES** — 15 suites, 120 tests |
 
-Two of the three gates the Bitbucket pipeline runs are red on `master` today.
+This reflects branch `fix/build-and-lint`; `master` is still red on `build` and
+`lint` (findings `B1`, `L1`-`L3`).
 
 Finding IDs are stable and are cited from the `## Known gaps` section of each
 module's `CLAUDE.md`. When a finding is fixed, strike it here rather than
@@ -19,7 +20,7 @@ deleting it, so the citations stay resolvable.
 
 | ID | Finding |
 |----|---------|
-| **B1** | `src/app.module.ts:72-76` references `emailConfig`, `awsConfig` and `ConfigType` — none of the three is imported. `emailScope` and `EMAIL_ADAPTERS` *are* imported (lines 18-21) but never used. The project does not compile as committed. |
+| **B1** | ~~`src/app.module.ts:72-76` references `emailConfig`, `awsConfig` and `ConfigType` — none of the three is imported. `emailScope` and `EMAIL_ADAPTERS` *are* imported (lines 18-21) but never used. The project does not compile as committed.~~ **Fixed on `fix/build-and-lint`.** |
 | **B2** | `package.json` declares `"dotenv"` twice — `^16.0.0` at line 38 and `^17.4.2` at line 49. The later key silently wins (lockfile resolves 17.4.2). |
 | **B3** | `Dockerfile` runs `apk add dumb-init` on `node:24.15.0`, a Debian-based image with no `apk`; and `pnpm exec prisma generate`, though the project uses TypeORM and has no Prisma dependency. The image cannot build. |
 
@@ -67,9 +68,9 @@ deleting it, so the citations stay resolvable.
 
 | ID | Finding |
 |----|---------|
-| **L1** | `pnpm run lint` exits 1 with **23 errors**, so the `test-build` step of `bitbucket-pipelines.yml` fails on every pull request today. The cause is flat-config ordering in `eslint.config.mjs`: the custom rules block sets `@typescript-eslint/no-explicit-any` to `'off'`, but `eslint.configs.recommended` and `tseslint.configs.recommended` are spread **after** it, and in flat config the later entry wins — so the rule is on. Sixteen of the errors are `no-explicit-any`; the rest are `no-unused-vars` (`src/auth/google/google.controller.ts:22`, `src/common/exception/exceptions.ts:8`, `src/cloud-storage/abstract/cloud-storage-abstract.module.unit.spec.ts:8`, and four unused Swagger imports in `src/push-notification/abstract/push-notification.controller.ts:9-12`). Either move the rules block after the recommended configs or fix the 23 errors — but decide deliberately, because "no `any`" *is* the SpaceDev standard and the config author's intent to disable it is the part that conflicts with it. |
-| **L2** | `src/cache/redis-adapter/utils/logger.ts:25` carries an inline disable for `ts/no-explicit-any`, a rule name that does not exist in this config. ESLint reports it as an error (`Definition for rule 'ts/no-explicit-any' was not found`) and the `any` on the next line is flagged anyway. The correct prefix is `@typescript-eslint/`. |
-| **L3** | The `lint` script is `eslint … --fix`, so running the CI lint command **rewrites 20 source files** with Prettier formatting (`prettier/prettier` is an `error` here). The committed tree is not Prettier-clean. CI does not notice because the rewrite happens before the report, but any developer running `pnpm run lint` gets an unrelated 20-file diff. CI should run `eslint` without `--fix`, and the tree should be formatted once. |
+| **L1** | ~~`pnpm run lint` exits 1 with **23 errors**, so the `test-build` step of `bitbucket-pipelines.yml` fails on every pull request today. The cause is flat-config ordering in `eslint.config.mjs`: the custom rules block sets `@typescript-eslint/no-explicit-any` to `'off'`, but `eslint.configs.recommended` and `tseslint.configs.recommended` are spread **after** it, and in flat config the later entry wins — so the rule is on. Sixteen of the errors are `no-explicit-any`; the rest are `no-unused-vars` (`src/auth/google/google.controller.ts:22`, `src/common/exception/exceptions.ts:8`, `src/cloud-storage/abstract/cloud-storage-abstract.module.unit.spec.ts:8`, and four unused Swagger imports in `src/push-notification/abstract/push-notification.controller.ts:9-12`). Either move the rules block after the recommended configs or fix the 23 errors — but decide deliberately, because "no `any`" *is* the SpaceDev standard and the config author's intent to disable it is the part that conflicts with it.~~ **Fixed on `fix/build-and-lint`.** |
+| **L2** | ~~`src/cache/redis-adapter/utils/logger.ts:25` carries an inline disable for `ts/no-explicit-any`, a rule name that does not exist in this config. ESLint reports it as an error (`Definition for rule 'ts/no-explicit-any' was not found`) and the `any` on the next line is flagged anyway. The correct prefix is `@typescript-eslint/`.~~ **Fixed on `fix/build-and-lint`.** |
+| **L3** | ~~The `lint` script is `eslint … --fix`, so running the CI lint command **rewrites 20 source files** with Prettier formatting (`prettier/prettier` is an `error` here). The committed tree is not Prettier-clean. CI does not notice because the rewrite happens before the report, but any developer running `pnpm run lint` gets an unrelated 20-file diff. CI should run `eslint` without `--fix`, and the tree should be formatted once.~~ **Fixed on `fix/build-and-lint`.** |
 
 ### Reference-module quality
 

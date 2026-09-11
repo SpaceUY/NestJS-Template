@@ -105,8 +105,9 @@ See `docs/audit/2026-09-11-template-audit.md`.
   registration; the project uses config-provider scopes and `@nestjs/config` is
   not a dependency.
 - **`G1`** — no adapter or extension tests.
-- **`L2`** — `src/cache/redis-adapter/utils/logger.ts:25` disables a rule named
+- **`L2`** — ~~`src/cache/redis-adapter/utils/logger.ts:25` disables a rule named
   `ts/no-explicit-any`, which does not exist; ESLint errors on the bogus name and
-  flags the `any` anyway. The prefix should be `@typescript-eslint/`.
+  flags the `any` anyway. The prefix should be `@typescript-eslint/`.~~ **Fixed:
+  the prefix was corrected to `@typescript-eslint/`.**
 - The module is not registered in `src/app.module.ts`, so no scope file exists
   for it yet; a project enabling it adds `!src/cache/config/cache.scope.ts`.
