@@ -15,10 +15,7 @@ import {
 import { ConfigProviderAbstractModule } from './config-provider/abstract/config-provider-abstract.module';
 import { EnvConfigAdapter } from './config-provider/env-adapter/env-config.adapter';
 import { EmailAbstractModule } from './email/abstract/email-abstract.module';
-import {
-  emailScope,
-  EMAIL_ADAPTERS,
-} from './email/config/email.scope';
+import { emailScope, EMAIL_ADAPTERS } from './email/config/email.scope';
 import { DatabaseModule } from './database/database.module';
 import { databaseScope } from './database/config/database.scope';
 import { PushNotificationAbstractModule } from './push-notification/abstract/push-notification-abstract.module.ts';

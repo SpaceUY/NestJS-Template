@@ -1,7 +1,7 @@
-import { CloudStorageAbstractModule } from "./cloud-storage-abstract.module";
-import { CloudStorageController } from "./cloud-storage.controller";
-import { CloudStorageService } from "./cloud-storage.service";
-import { CloudStorageUploadFile } from "./cloud-storage.interfaces";
+import { CloudStorageAbstractModule } from './cloud-storage-abstract.module';
+import { CloudStorageController } from './cloud-storage.controller';
+import { CloudStorageService } from './cloud-storage.service';
+import { CloudStorageUploadFile } from './cloud-storage.interfaces';
 
 class MockCloudStorageAdapter extends CloudStorageService {
   async uploadFile(
