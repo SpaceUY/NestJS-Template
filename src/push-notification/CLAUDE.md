@@ -19,7 +19,7 @@ domain concern; the template does not model it.
 
 | Import | From | Purpose |
 |---|---|---|
-| `PushNotificationService` | `src/push-notification/abstract/push-notification.service.ts` | The contract — inject this |
+| `PushNotificationService` | `src/push-notification/abstract/push-notification.service.ts` | The contract — `sendPushNotification`, `sendPushNotificationInChunks` — inject this |
 | `PushNotificationAbstractModule` | `src/push-notification/abstract/push-notification-abstract.module.ts.ts` | `forRoot` only |
 | `IPushNotification` and siblings | `src/push-notification/abstract/push-notification.interface.ts` | Payload shapes |
 | `PushNotificationDto` | `src/push-notification/abstract/dto/push-notification.dto.ts` | Request DTO |
@@ -50,8 +50,9 @@ is fixed.
    `PushNotificationController` is a **test endpoint** that sends to an arbitrary
    token with no authentication. Set it to `false` for anything deployed, and
    pass your own guarded controller through `controllers`.
-4. Send in chunks. `sendNotificationByChunks` exists because Expo rate-limits
-   large sends; do not loop over the single-send method.
+4. Send in chunks. Use `sendPushNotificationInChunks`, which exists because
+   Expo rate-limits large sends; do not loop over `sendPushNotification`, the
+   single-send method.
 5. A device token is a credential. Never log it, never return it in a response.
 6. Failures throw `PushNotificationException`, which is an `HttpException` — this
    module does not follow the plain-`Error` shape the other adapter modules use

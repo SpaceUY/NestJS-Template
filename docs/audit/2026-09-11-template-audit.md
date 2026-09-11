@@ -20,7 +20,7 @@ deleting it, so the citations stay resolvable.
 | ID | Finding |
 |----|---------|
 | **B1** | `src/app.module.ts:72-76` references `emailConfig`, `awsConfig` and `ConfigType` — none of the three is imported. `emailScope` and `EMAIL_ADAPTERS` *are* imported (lines 18-21) but never used. The project does not compile as committed. |
-| **B2** | `package.json` declares `"dotenv"` twice — `^16.0.0` at line 37 and `^17.4.2` at line 48. The later key silently wins (lockfile resolves 17.4.2). |
+| **B2** | `package.json` declares `"dotenv"` twice — `^16.0.0` at line 38 and `^17.4.2` at line 49. The later key silently wins (lockfile resolves 17.4.2). |
 | **B3** | `Dockerfile` runs `apk add dumb-init` on `node:24.15.0`, a Debian-based image with no `apk`; and `pnpm exec prisma generate`, though the project uses TypeORM and has no Prisma dependency. The image cannot build. |
 
 ### Structural / naming inconsistency

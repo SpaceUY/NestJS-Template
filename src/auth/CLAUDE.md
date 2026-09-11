@@ -18,7 +18,7 @@ does not own the `User` entity, which lives in `src/database/entities/user.entit
 | Import | From | Purpose |
 |---|---|---|
 | `AuthModule` | `src/auth/auth.module.ts` | Import into any module with protected routes |
-| `AuthTokenService` | `src/auth/core/auth-token/auth-token.service.ts` | `generateAuthToken`, `validateAuthToken` |
+| `AuthTokenService` | `src/auth/core/auth-token/auth-token.service.ts` | `generateAuthToken`, `validateAuthToken` — injecting it requires importing `AuthTokenModule` (`src/auth/core/auth-token/auth-token.module.ts`); `AuthModule` does not re-export it |
 | `AuthTokenPayload` | `src/auth/core/auth-token/auth-token.service.ts` | JWT payload shape |
 | `AuthType` | `src/auth/core/auth-type.enum.ts` | `EMAIL` / `GOOGLE`; stored on `User.authType` |
 | `jwtScope`, `JwtScopeConfig` | `src/auth/config/jwt.scope.ts` | JWT config |

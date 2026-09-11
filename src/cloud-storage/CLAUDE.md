@@ -23,7 +23,7 @@ project that needs those adds a domain module that consumes `CloudStorageService
 | `FileResponseDto` | `src/cloud-storage/abstract/dto/file-response.dto.ts` | Response shape |
 | `CloudStorageController` | `src/cloud-storage/abstract/cloud-storage.controller.ts` | Mounted only via `useDefaultController: true` |
 | `S3AdapterService` | `src/cloud-storage/s3-adapter/s3-adapter.service.ts` | Named only in `src/app.module.ts` |
-| `LocalAdapterService` | `src/cloud-storage/local-adapter/local-adapter.service.ts` | Named only in `src/app.module.ts` |
+| `LocalAdapterService` | `src/cloud-storage/local-adapter/local-adapter.service.ts` | Not currently registered in `src/app.module.ts`; wire it through `forRoot` for local development |
 | `s3Scope`, `S3ScopeConfig` | `src/cloud-storage/s3-adapter/config/s3.scope.ts` | S3 config |
 
 ## Configuration
