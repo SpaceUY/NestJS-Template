@@ -1,16 +1,13 @@
 import { CloudStorageAbstractModule } from './cloud-storage-abstract.module';
 import { CloudStorageController } from './cloud-storage.controller';
 import { CloudStorageService } from './cloud-storage.service';
-import { CloudStorageUploadFile } from './cloud-storage.interfaces';
 
 class MockCloudStorageAdapter extends CloudStorageService {
-  async uploadFile(
-    _: CloudStorageUploadFile,
-  ): Promise<{ url: string; id: string }> {
+  async uploadFile(): Promise<{ url: string; id: string }> {
     return { url: 'https://example.com/file', id: 'file-id' };
   }
 
-  async deleteFile(_: string): Promise<void> {
+  async deleteFile(): Promise<void> {
     return undefined;
   }
 

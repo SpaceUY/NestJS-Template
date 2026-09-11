@@ -7,6 +7,11 @@ import { googleScope, GoogleScopeConfig } from './config/google.scope';
 import { User } from '../../database/entities/user.entity';
 import { AuthType } from '../core/auth-type.enum';
 
+interface GoogleProfile {
+  emails: Array<{ value: string }>;
+  name: { givenName: string; familyName: string };
+}
+
 @Injectable()
 export class GoogleStrategy extends PassportStrategy(Strategy, 'google') {
   constructor(
@@ -26,7 +31,7 @@ export class GoogleStrategy extends PassportStrategy(Strategy, 'google') {
   async validate(
     accessToken: string,
     refreshToken: string,
-    profile: any,
+    profile: GoogleProfile,
     done: VerifyCallback,
   ): Promise<void> {
     try {

@@ -10,7 +10,7 @@ import {
  */
 export type EmailConfig<
   TEMPLATES extends Record<string, string>,
-  PARAMS extends Record<TEMPLATES[keyof TEMPLATES], Record<string, any>>,
+  PARAMS extends Record<TEMPLATES[keyof TEMPLATES], Record<string, unknown>>,
 > = {
   templates: TEMPLATES;
   params: PARAMS;

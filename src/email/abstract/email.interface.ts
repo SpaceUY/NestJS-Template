@@ -33,12 +33,12 @@ export interface RenderedEmailContent {
   /** The template ID to use for the email */
   templateId?: string;
   /** The parameters to be used in the template */
-  params?: Record<string, any>;
+  params?: Record<string, unknown>;
 }
 
 type TemplateNameToParams<
   Templates extends Record<string, string>,
-  Params extends Record<Templates[keyof Templates], any>,
+  Params extends Record<Templates[keyof Templates], unknown>,
 > = {
   [K in Templates[keyof Templates]]: {
     name: K;
@@ -49,7 +49,7 @@ type TemplateNameToParams<
 
 export type RenderEmailTemplateParams<
   Templates extends Record<string, string>,
-  Params extends Record<Templates[keyof Templates], any>,
+  Params extends Record<Templates[keyof Templates], unknown>,
 > = TemplateNameToParams<Templates, Params>;
 
 // /**
