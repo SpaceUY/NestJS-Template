@@ -10,7 +10,10 @@ import {
  */
 export type EmailConfig<
   TEMPLATES extends Record<string, string>,
-  PARAMS extends Record<TEMPLATES[keyof TEMPLATES], Record<string, unknown>>,
+  // Caller-supplied template data of arbitrary shape. `unknown` is wrong here:
+  // it rejects interface-typed objects, which have no implicit index signature.
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  PARAMS extends Record<TEMPLATES[keyof TEMPLATES], Record<string, any>>,
 > = {
   templates: TEMPLATES;
   params: PARAMS;

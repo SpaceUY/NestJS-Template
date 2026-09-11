@@ -33,7 +33,10 @@ export interface RenderedEmailContent {
   /** The template ID to use for the email */
   templateId?: string;
   /** The parameters to be used in the template */
-  params?: Record<string, unknown>;
+  // Caller-supplied template data of arbitrary shape. `unknown` is wrong here:
+  // it rejects interface-typed objects, which have no implicit index signature.
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  params?: Record<string, any>;
 }
 
 type TemplateNameToParams<
