@@ -2381,7 +2381,7 @@ for id in B1 B2 B3 N1 N2 N3 N4 N5 N6 N7 D1 D2 D3 D4 D5 \
 done
 ```
 
-Expected: `C3`, `D5`, `T3` and `L2` may be reported — they are template-wide or
+Expected: `C3`, `D5`, `TS3` and `L2` may be reported — they are template-wide or
 single-file and live only in the audit document. Any other ID appearing here
 means a module doc is missing a gap it should warn about; add it.
 
