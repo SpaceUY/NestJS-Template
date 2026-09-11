@@ -59,9 +59,9 @@ deleting it, so the citations stay resolvable.
 
 | ID | Finding |
 |----|---------|
-| **T1** | `tsconfig.json` does not set `"strict": true`, and explicitly disables `noImplicitAny`, `strictBindCallApply` and `forceConsistentCasingInFileNames`. This contradicts the SpaceDev standard ("TypeScript strict mode; no `any`"). `any` appears in every abstract module's `useFactory` signature, in `src/auth/google/google.strategy.ts:29` and in `src/email/abstract/templates.abstract.ts:2`. |
-| **T2** | `src/app.scope.ts:11` and `src/email/config/email.scope.ts:23` declare `const validate = (raw) => …` with an untyped parameter — implicitly `any`, permitted only because `noImplicitAny` is off. |
-| **T3** | `typescript-eslint` is listed under `dependencies` rather than `devDependencies` in `package.json`. |
+| **TS1** | `tsconfig.json` does not set `"strict": true`, and explicitly disables `noImplicitAny`, `strictBindCallApply` and `forceConsistentCasingInFileNames`. This contradicts the SpaceDev standard ("TypeScript strict mode; no `any`"). `any` appears in every abstract module's `useFactory` signature, in `src/auth/google/google.strategy.ts:29` and in `src/email/abstract/templates.abstract.ts:2`. |
+| **TS2** | `src/app.scope.ts:11` and `src/email/config/email.scope.ts:23` declare `const validate = (raw) => …` with an untyped parameter — implicitly `any`, permitted only because `noImplicitAny` is off. |
+| **TS3** | `typescript-eslint` is listed under `dependencies` rather than `devDependencies` in `package.json`. |
 
 ### Lint
 

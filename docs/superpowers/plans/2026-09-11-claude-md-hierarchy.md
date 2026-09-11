@@ -82,9 +82,9 @@ Two of the three gates the Bitbucket pipeline runs are red on `master` today.
 
 | ID | Finding |
 |----|---------|
-| **T1** | `tsconfig.json` does not set `"strict": true`, and explicitly disables `noImplicitAny`, `strictBindCallApply` and `forceConsistentCasingInFileNames`. This contradicts the SpaceDev standard ("TypeScript strict mode; no `any`"). `any` appears in every abstract module's `useFactory` signature, in `src/auth/google/google.strategy.ts:29` and in `src/email/abstract/templates.abstract.ts:2`. |
-| **T2** | `src/app.scope.ts:11` and `src/email/config/email.scope.ts:23` declare `const validate = (raw) => …` with an untyped parameter — implicitly `any`, permitted only because `noImplicitAny` is off. |
-| **T3** | `typescript-eslint` is listed under `dependencies` rather than `devDependencies` in `package.json`. |
+| **TS1** | `tsconfig.json` does not set `"strict": true`, and explicitly disables `noImplicitAny`, `strictBindCallApply` and `forceConsistentCasingInFileNames`. This contradicts the SpaceDev standard ("TypeScript strict mode; no `any`"). `any` appears in every abstract module's `useFactory` signature, in `src/auth/google/google.strategy.ts:29` and in `src/email/abstract/templates.abstract.ts:2`. |
+| **TS2** | `src/app.scope.ts:11` and `src/email/config/email.scope.ts:23` declare `const validate = (raw) => …` with an untyped parameter — implicitly `any`, permitted only because `noImplicitAny` is off. |
+| **TS3** | `typescript-eslint` is listed under `dependencies` rather than `devDependencies` in `package.json`. |
 
 ### Lint
 
@@ -500,8 +500,9 @@ never `src/cache/abstract/cache.service`. A module that reaches for an absolute
 Four files still violate this (finding `N6`); do not add a fifth.
 
 **T6 — Named exports, explicit return types, no `any`.** No default exports.
-Every function and method declares its return type. `any` is currently tolerated
-by the lint config (finding `T1`) — do not rely on that; type new code fully.
+Every function and method declares its return type.
+`@typescript-eslint/no-explicit-any` is enforced, and already failing on 16
+pre-existing sites (finding `L1`) — do not add a seventeenth.
 
 **T7 — Every module carries its own `CLAUDE.md`.** A new top-level directory
 under `src/` is not done until it has one, built from the skeleton in
@@ -561,7 +562,7 @@ the baseline — it is not something you broke.
   in a TypeORM project.
 - **`G2`** — CI runs lint and build only; `pnpm test` never runs in the pipeline,
   even though all 120 tests pass.
-- **`T1`** — `tsconfig.json` is not in strict mode, contrary to the SpaceDev
+- **`TS1`** — `tsconfig.json` is not in strict mode, contrary to the SpaceDev
   standard.
 
 Do not fix these opportunistically as part of unrelated work. They are tracked;
@@ -810,7 +811,7 @@ is not listed there is never resolved and its `KEY` will not inject.
    `Joi.boolean()` for flags, `Joi.string().valid(...)` for enums. The raw values
    arriving from any source are strings.
 3. Type the `validate` parameter — `(raw: Record<string, unknown>)`. Two existing
-   scopes leave it implicit (finding `T2`); do not copy them.
+   scopes leave it implicit (finding `TS2`); do not copy them.
 4. `scope.KEY` is a plain string token (`CONFIG_SCOPE_<NAME>`). Inject with
    `@Inject(xScope.KEY) private readonly conf: XScopeConfig`. Always annotate the
    property with the scope's exported config type.
@@ -867,7 +868,7 @@ See `docs/audit/2026-09-11-template-audit.md`.
   that does not exist; the real file is `abstract/config-provider.error.ts`.
 - **`C1`** — `.env.example` is missing most keys the scopes read.
 - **`C2`** — `jwtScope` defaults its secret to a public literal.
-- **`T2`** — `src/app.scope.ts` and `src/email/config/email.scope.ts` take an
+- **`TS2`** — `src/app.scope.ts` and `src/email/config/email.scope.ts` take an
   untyped `raw`.
 ````
 
@@ -2375,7 +2376,7 @@ module doc or from the root file, so an agent working in that area meets it:
 
 ```bash
 for id in B1 B2 B3 N1 N2 N3 N4 N5 N6 N7 D1 D2 D3 D4 D5 \
-          C1 C2 C3 C4 C5 T1 T2 T3 L1 L2 L3 R1 R2 R3 R4 G1 G2; do
+          C1 C2 C3 C4 C5 TS1 TS2 TS3 L1 L2 L3 R1 R2 R3 R4 G1 G2; do
   grep -rlq "\`$id\`" --include=CLAUDE.md . || echo "uncited finding: $id"
 done
 ```

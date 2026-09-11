@@ -94,7 +94,7 @@ async function check() {
     }
   }
 
-  return violations;
+  return [...new Set(violations)];
 }
 
 const violations = await check();

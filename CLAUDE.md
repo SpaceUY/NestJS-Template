@@ -91,8 +91,9 @@ never `src/cache/abstract/cache.service`. A module that reaches for an absolute
 Four files still violate this (finding `N6`); do not add a fifth.
 
 **T6 — Named exports, explicit return types, no `any`.** No default exports.
-Every function and method declares its return type. `any` is currently tolerated
-by the lint config (finding `T1`) — do not rely on that; type new code fully.
+Every function and method declares its return type.
+`@typescript-eslint/no-explicit-any` is enforced, and already failing on 16
+pre-existing sites (finding `L1`) — do not add a seventeenth.
 
 **T7 — Every module carries its own `CLAUDE.md`.** A new top-level directory
 under `src/` is not done until it has one, built from the skeleton in
@@ -152,7 +153,7 @@ the baseline — it is not something you broke.
   in a TypeORM project.
 - **`G2`** — CI runs lint and build only; `pnpm test` never runs in the pipeline,
   even though all 120 tests pass.
-- **`T1`** — `tsconfig.json` is not in strict mode, contrary to the SpaceDev
+- **`TS1`** — `tsconfig.json` is not in strict mode, contrary to the SpaceDev
   standard.
 
 Do not fix these opportunistically as part of unrelated work. They are tracked;
