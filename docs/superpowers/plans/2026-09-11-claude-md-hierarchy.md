@@ -51,7 +51,7 @@ Two of the three gates the Bitbucket pipeline runs are red on `master` today.
 | ID | Finding |
 |----|---------|
 | **N1** | `src/push-notification/abstract/push-notification-abstract.module.ts.ts` — doubled `.ts` extension, imported with that name from `src/app.module.ts:24`. |
-| **N2** | Three competing error models. (a) POJO constant + plain `Error` subclass with `code`/`message`/`data`: `cache`, `cloud-storage`, `email`, `config-provider`. (b) `RequestException extends HttpException` + a central `Exceptions` registry: `auth`, `common`. (c) `PushNotificationException extends HttpException` + `PUSH_NOTIFICATION_ERRORS`, whose three codes are all `CLOUD_STORAGE_*` copy-paste leftovers (`src/push-notification/abstract/push-notification-error-codes.ts:5`, `:11`, `:16`). Plus `src/common/exception/api.exception.ts` (`ApiException`) which has no callers anywhere. |
+| **N2** | Four competing error models. (a) POJO constant + plain `Error` subclass with `code`/`message`/`data`: `cache`, `cloud-storage`, `email`, `config-provider`. (b) `RequestException extends HttpException` + a central `Exceptions` registry: `auth`, `common`. (c) `PushNotificationException extends HttpException` + `PUSH_NOTIFICATION_ERRORS`, whose three codes are all `CLOUD_STORAGE_*` copy-paste leftovers (`src/push-notification/abstract/push-notification-error-codes.ts:5`, `:11`, `:16`). (d) `ApiException` (`src/common/exception/api.exception.ts`), a plain `Error` carrying no HTTP status, thrown three times from the cloud-storage default controller (`src/cloud-storage/abstract/cloud-storage.controller.ts:43`, `:58`, `:73`) for validation failures that intend a `400`. Because `RequestExceptionFilter` is `@Catch(HttpException)` and `ApiException` does not extend `HttpException`, all three escape the filter and surface as unhandled `500`s — so (d) is not merely a fourth shape but a live bug. See `C4`. |
 | **N3** | Two competing adapter-wiring styles. (a) adapter-as-class bound through `forRoot`/`forRootAsync`: `email`, `cloud-storage`, `common/logger`, `cache`. (b) adapter-as-module bound through a provider token and `register`/`registerAsync`: `push-notification`, `templating`. `TemplateModule` has no `forRootAsync` at all; `PushNotificationAbstractModule` has none either and closes with a literal `// TODO: Add forRootAsync`. |
 | **N4** | Test naming is split: 11 files use `*.unit.spec.ts`, 4 use `*.spec.ts` (`src/app.controller.spec.ts`, `src/auth/email/email.controller.spec.ts`, `src/spaceship/spaceship.controller.spec.ts`, `src/spaceship/spaceship.service.spec.ts`). |
 | **N5** | Only `cache` ships reusable test doubles (`src/cache/abstract/mocks/`). No other abstract module does, so consumers hand-roll mocks. |
@@ -486,7 +486,7 @@ it with Joi, register it in `src/app.module.ts`, inject it with
 
 **T3 — Every module owns its error type.** An adapter catches the provider SDK's
 error and rethrows the module's own error class, so no caller ever depends on
-`ioredis`, `@aws-sdk/*` or `resend` internals. The template currently has three
+`ioredis`, `@aws-sdk/*` or `resend` internals. The template currently has four
 competing error shapes — finding `N2`; the POJO-constant + `Error`-subclass form
 used by `src/cache/abstract/cache.error.ts` is the one to follow for new work.
 
@@ -933,8 +933,13 @@ instead. A helper used by exactly one module belongs in that module.
 
 ## Internal
 
-`src/common/exception/api.exception.ts` (`ApiException`) has no callers anywhere
-in the template (finding `N2`). Do not import it and do not build on it.
+`src/common/exception/api.exception.ts` (`ApiException`) is a plain `Error` and
+carries no HTTP status. Its only callers are three throws in the cloud-storage
+default controller (`src/cloud-storage/abstract/cloud-storage.controller.ts:43`,
+`:58`, `:73`), and since `RequestExceptionFilter` catches only `HttpException`,
+every one of them escapes the filter and becomes an unhandled `500` where a `400`
+was intended (findings `N2`, `C4`). Do not import it and do not add callers —
+throw `RequestException` instead.
 
 ## Rules
 
@@ -985,8 +990,9 @@ and leave the interceptor.
 
 See `docs/audit/2026-09-11-template-audit.md`.
 
-- **`N2`** — three competing error models across the template; `ApiException` is
-  dead code.
+- **`N2`** — four competing error models across the template, and `ApiException`'s
+  three callers in the cloud-storage default controller escape the global filter
+  as `500`s.
 - **`C4`** — the filter spreads `exception.getResponse()` into the body and
   catches only `HttpException`.
 - **`G1`** — no tests for the middleware, the utils or the decorators.
@@ -1655,6 +1661,11 @@ See `docs/audit/2026-09-11-template-audit.md`.
   enum, a tokens file, a config file and an IPFS adapter, all under a
   `!src/modules/infrastructure/` path. None of it exists. Trust this file and the
   source, not that README.
+- **`N2`**, **`C4`** — `src/cloud-storage/abstract/cloud-storage.controller.ts`
+  throws `ApiException` at lines 43, 58 and 73. `ApiException` is a plain `Error`,
+  and the global filter catches only `HttpException`, so these three validation
+  failures return an unhandled `500` instead of a `400`. If you mount this
+  controller, fix that first.
 - **`N5`** — no `abstract/mocks/`.
 - **`C1`** — `AWS_REGION` and `AWS_S3_EXPIRES_IN_SECONDS` are missing from
   `.env.example`.
@@ -2341,15 +2352,16 @@ git diff --name-only master...HEAD | grep -E '^src/.*\.ts$' || echo "no source f
 
 Expected: `no source files touched`.
 
-- [ ] **Step 4: Commit and open the PR**
+- [ ] **Step 4: Commit — local only**
 
 ```bash
 git add bitbucket-pipelines.yml README.md
 git commit -m "chore: run docs:check in CI and link template docs from README"
-git push -u origin chore/claude-md-hierarchy
 ```
 
-Open a PR against `master`. Never push to `master` directly.
+**Do not push. Do not open a pull request. Do not add a remote.** The work stays
+on the local `chore/claude-md-hierarchy` branch; publishing it is the repository
+owner's call, not this plan's. Never commit to `master` either.
 
 ---
 

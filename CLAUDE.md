@@ -77,7 +77,7 @@ it with Joi, register it in `src/app.module.ts`, inject it with
 
 **T3 — Every module owns its error type.** An adapter catches the provider SDK's
 error and rethrows the module's own error class, so no caller ever depends on
-`ioredis`, `@aws-sdk/*` or `resend` internals. The template currently has three
+`ioredis`, `@aws-sdk/*` or `resend` internals. The template currently has four
 competing error shapes — finding `N2`; the POJO-constant + `Error`-subclass form
 used by `src/cache/abstract/cache.error.ts` is the one to follow for new work.
 

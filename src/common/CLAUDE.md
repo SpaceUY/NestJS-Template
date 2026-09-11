@@ -27,8 +27,13 @@ instead. A helper used by exactly one module belongs in that module.
 
 ## Internal
 
-`src/common/exception/api.exception.ts` (`ApiException`) has no callers anywhere
-in the template (finding `N2`). Do not import it and do not build on it.
+`src/common/exception/api.exception.ts` (`ApiException`) is a plain `Error` and
+carries no HTTP status. Its only callers are three throws in the cloud-storage
+default controller (`src/cloud-storage/abstract/cloud-storage.controller.ts:43`,
+`:58`, `:73`), and since `RequestExceptionFilter` catches only `HttpException`,
+every one of them escapes the filter and becomes an unhandled `500` where a `400`
+was intended (findings `N2`, `C4`). Do not import it and do not add callers —
+throw `RequestException` instead.
 
 ## Rules
 
@@ -79,8 +84,9 @@ and leave the interceptor.
 
 See `docs/audit/2026-09-11-template-audit.md`.
 
-- **`N2`** — three competing error models across the template; `ApiException` is
-  dead code.
+- **`N2`** — four competing error models across the template, and `ApiException`'s
+  three callers in the cloud-storage default controller escape the global filter
+  as `500`s.
 - **`C4`** — the filter spreads `exception.getResponse()` into the body and
   catches only `HttpException`.
 - **`G1`** — no tests for the middleware, the utils or the decorators.
