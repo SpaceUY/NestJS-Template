@@ -150,7 +150,7 @@ still true there; both pass on `fix/build-and-lint`.
   rules block, which silently re-enables `@typescript-eslint/no-explicit-any`.~~ **Fixed on `fix/build-and-lint`.**
 - **`L3`** — ~~the `lint` script runs with `--fix`, so invoking it rewrites 20
   files with Prettier formatting. **Check `git status` after linting** and do not
-  commit that reformat alongside unrelated work.~~ **Fixed on `fix/build-and-lint`.**
+  commit that reformat alongside unrelated work.~~ **Partially fixed:** the tree is Prettier-clean now, so linting no longer hands you a 20-file diff. Still open: `lint` keeps `--fix` and CI runs it, so CI cannot detect future drift.
 - **`B2`** — `package.json` declares `dotenv` twice.
 - **`B3`** — `Dockerfile` uses `apk` on a Debian image and runs `prisma generate`
   in a TypeORM project.
