@@ -4,7 +4,7 @@ import { CreateSpaceshipDto } from './dto/create-spaceship.dto';
 import { UpdateSpaceshipDto } from './dto/update-spaceship.dto';
 import { SpaceshipRepository } from './spaceship.repository';
 import { SpaceshipNotificationProducer } from './notification/notification.producer';
-import { LoggerService } from '../common/logger/abstract/logger.service';
+import { LoggerService } from '../common/observability/logger/abstract/logger.service';
 import { CacheService } from '../cache/abstract/cache.service';
 import {
   spaceshipCacheScope,

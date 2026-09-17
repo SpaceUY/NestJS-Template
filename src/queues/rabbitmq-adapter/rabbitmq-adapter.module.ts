@@ -4,7 +4,7 @@ import { getQueueProducerToken } from '../abstract/queue.tokens';
 import { RabbitmqProducerService } from './rabbitmq-producer.service';
 import { RABBITMQ_CHANNEL, RABBITMQ_CONNECTION } from './rabbitmq.tokens';
 import { rabbitmqScope, RabbitmqScopeConfig } from './config/rabbitmq.scope';
-import { LoggerService } from '../../common/logger/abstract/logger.service';
+import { LoggerService } from '../../common/observability/logger/abstract/logger.service';
 
 @Module({})
 export class RabbitmqAdapterModule {

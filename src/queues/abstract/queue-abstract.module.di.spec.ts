@@ -6,7 +6,7 @@ import { BullmqProducerService } from '../bullmq-adapter/bullmq-producer.service
 import { RabbitmqProducerService } from '../rabbitmq-adapter/rabbitmq-producer.service';
 import { redisScope } from '../../redis.scope';
 import { rabbitmqScope } from '../rabbitmq-adapter/config/rabbitmq.scope';
-import { LoggerService } from '../../common/logger/abstract/logger.service';
+import { LoggerService } from '../../common/observability/logger/abstract/logger.service';
 
 // Compiles the real Nest module graph (unlike the .unit.spec shape-only test) to catch export/DI-wiring mistakes Nest only surfaces on actual resolution.
 jest.mock('bullmq', () => ({

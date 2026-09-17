@@ -3,7 +3,7 @@ import { Job } from 'bullmq';
 import { SpaceshipNotificationProcessor } from './notification.processor';
 import { EmailService } from '../../email/abstract/email.service';
 import { TemplateService } from '../../templating/abstract/template.service';
-import { LoggerService } from '../../common/logger/abstract/logger.service';
+import { LoggerService } from '../../common/observability/logger/abstract/logger.service';
 import { emailScope } from '../../email/config/email.scope';
 import { NotificationRecipientsProvider } from './notification-recipients.provider';
 import {

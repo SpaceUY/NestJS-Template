@@ -6,7 +6,7 @@ import {
   SPACESHIP_CREATED_JOB,
 } from './notification.constants';
 import { SpaceshipCreatedJobData } from './notification.types';
-import { LoggerService } from '../../common/logger/abstract/logger.service';
+import { LoggerService } from '../../common/observability/logger/abstract/logger.service';
 
 @Injectable()
 export class SpaceshipNotificationProducer {

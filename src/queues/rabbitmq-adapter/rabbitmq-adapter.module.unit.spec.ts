@@ -2,7 +2,7 @@ import { RabbitmqAdapterModule } from './rabbitmq-adapter.module';
 import { RabbitmqProducerService } from './rabbitmq-producer.service';
 import { getQueueProducerToken } from '../abstract/queue.tokens';
 import { RABBITMQ_CHANNEL } from './rabbitmq.tokens';
-import { LoggerService } from '../../common/logger/abstract/logger.service';
+import { LoggerService } from '../../common/observability/logger/abstract/logger.service';
 
 describe('RabbitmqAdapterModule', () => {
   it('should register the RabbitMQ connection/channel providers in forRoot', () => {

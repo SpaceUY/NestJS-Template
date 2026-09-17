@@ -7,8 +7,8 @@ import {
 } from '../abstract/email.interface';
 import { ResendAdapterConfig } from './resend-adapter-config.interface';
 import { CreateBatchResponse, CreateEmailResponse, Resend } from 'resend';
-import { LoggerService } from '../../common/logger/abstract/logger.service';
-import { NestLoggerAdapter } from '../../common/logger/nest-adapter/nest-logger.adapter';
+import { LoggerService } from '../../common/observability/logger/abstract/logger.service';
+import { NestLoggerAdapter } from '../../common/observability/logger/nest-adapter/nest-logger.adapter';
 import { executeHtmlEmailSend } from '../utils/execute-html-email-send';
 
 @Injectable()

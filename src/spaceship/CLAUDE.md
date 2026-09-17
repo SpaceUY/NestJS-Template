@@ -31,7 +31,7 @@ HTTP routes, and that is its whole interface.
 1. **Layering.** Controller validates and delegates; service holds the logic and
    the repository; the repository is injected with `@InjectRepository(Entity)`.
    A controller never touches a repository.
-2. **Controllers do not log** — `src/common/logger/PRACTICES.md`. Business logs
+2. **Controllers do not log** — `src/common/observability/logger/PRACTICES.md`. Business logs
    go in the service.
 3. **DTOs** live in `dto/`, one class per operation, with `class-validator`
    decorators and `@ApiProperty` on every field. The global `ValidationPipe` runs

@@ -5,7 +5,7 @@ import {
   SPACESHIP_NOTIFICATION_QUEUE,
   SPACESHIP_CREATED_JOB,
 } from './notification.constants';
-import { LoggerService } from '../../common/logger/abstract/logger.service';
+import { LoggerService } from '../../common/observability/logger/abstract/logger.service';
 
 describe('SpaceshipNotificationProducer', () => {
   let producer: SpaceshipNotificationProducer;

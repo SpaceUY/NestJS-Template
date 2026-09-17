@@ -21,7 +21,9 @@ Before changing anything under `src/<module>/`, read `src/<module>/CLAUDE.md`.
 |---|---|---|
 | `src/config-provider` | `src/config-provider/CLAUDE.md` | `src/config-provider/README.md` |
 | `src/common` | `src/common/CLAUDE.md` | `src/common/README.md` |
-| `src/common/logger` | `src/common/logger/CLAUDE.md` | `src/common/logger/README.md` |
+| `src/common/observability/logger` | `src/common/observability/logger/CLAUDE.md` | `src/common/observability/logger/README.md` |
+| `src/common/observability/analytics` | `src/common/observability/analytics/CLAUDE.md` | `src/common/observability/analytics/README.md` |
+| `src/common/observability/telemetry` | `src/common/observability/telemetry/CLAUDE.md` | `src/common/observability/telemetry/README.md` |
 | `src/database` | `src/database/CLAUDE.md` | — |
 | `src/auth` | `src/auth/CLAUDE.md` | — |
 | `src/cache` | `src/cache/CLAUDE.md` | `src/cache/README.md` |
@@ -38,7 +40,7 @@ empty `src/user/user.module.ts` that nothing imports (finding `R3`).
 
 Shared references: `docs/architecture/module-contract.md` (the adapter-module
 contract), `docs/audit/2026-09-11-template-audit.md` (known defects),
-`src/common/logger/PRACTICES.md` (logging rules).
+`src/common/observability/logger/PRACTICES.md` (logging rules).
 
 ## Commands
 
@@ -71,11 +73,14 @@ Importing `S3AdapterService` or `ResendAdapterService` from a feature module is
 always wrong.
 
 **T2 — All configuration flows through a config scope.** Never read
-`process.env` outside `src/config-provider/env-adapter/env-config.adapter.ts`
-and `src/database/data-source.ts` (the TypeORM CLI entry point, which runs
-outside the Nest container). Define a scope with `defineConfigScope`, validate
-it with Joi, register it in `src/app.module.ts`, inject it with
-`@Inject(xScope.KEY)`. See `src/config-provider/CLAUDE.md`.
+`process.env` outside `src/config-provider/env-adapter/env-config.adapter.ts`,
+`src/database/data-source.ts` (the TypeORM CLI entry point, which runs outside
+the Nest container) and
+`src/common/observability/telemetry/otel-env.ts` (runs before
+`NestFactory.create()`, so before the Nest DI container exists — see that
+file's guide). Define a scope with `defineConfigScope`, validate it with Joi,
+register it in `src/app.module.ts`, inject it with `@Inject(xScope.KEY)`. See
+`src/config-provider/CLAUDE.md`.
 
 **T3 — Every module owns its error type.** An adapter catches the provider SDK's
 error and rethrows the module's own error class, so no caller ever depends on
@@ -85,7 +90,7 @@ used by `src/cache/abstract/cache.error.ts` is the one to follow for new work.
 
 **T4 — No secrets in code, no secrets in logs.** Secrets come from a config
 scope backed by `env` or `sm`. Never log a token, key, password, or raw provider
-error. See `src/common/logger/PRACTICES.md`.
+error. See `src/common/observability/logger/PRACTICES.md`.
 
 **T5 — Imports inside a module are relative.** `../abstract/cache.service` —
 never `src/cache/abstract/cache.service`. A module that reaches for an absolute
@@ -117,7 +122,7 @@ migration file, never rely on `DB_SYNCHRONIZE` outside local development. See
   dynamic module, the error type and shared interfaces; `<provider>-adapter/`
   holds one implementation each; `config/` holds that module's scope.
 - **Layering:** Controller → Service → Repository. Controllers orchestrate and
-  never log (`src/common/logger/PRACTICES.md`); business logic lives in services.
+  never log (`src/common/observability/logger/PRACTICES.md`); business logic lives in services.
 - **DTOs:** `class-validator` decorators plus `@ApiProperty`. The global
   `ValidationPipe` in `src/main.ts` runs with `transform` and
   `forbidNonWhitelisted`.

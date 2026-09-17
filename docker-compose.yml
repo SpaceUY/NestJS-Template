@@ -14,6 +14,17 @@ services:
     volumes:
       - postgres_data:/var/lib/postgresql/data
 
+  jaeger:
+    image: jaegertracing/all-in-one:1.60
+    container_name: local-jaeger
+    restart: always
+    ports:
+      - '16686:16686' # UI
+      - '4318:4318'   # OTLP HTTP receiver — used by our exporter
+      - '4317:4317'   # OTLP gRPC receiver (unused by our exporter, exposed for free)
+    environment:
+      COLLECTOR_OTLP_ENABLED: 'true'
+
   redis:
     image: redis:7
     container_name: local-redis

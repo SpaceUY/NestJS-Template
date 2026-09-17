@@ -96,7 +96,7 @@ Copy `src/email/abstract/` plus the adapters you want.
   nothing.
 
 `src/email/config/email.scope.ts` depends on `src/config-provider/` and `joi`.
-Adapters reference `LoggerService` from `src/common/logger/` — port that too, or
+Adapters reference `LoggerService` from `src/common/observability/logger/` — port that too, or
 drop the optional logger parameter.
 
 ## Known gaps

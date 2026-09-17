@@ -35,9 +35,19 @@ import { ConsoleAdapterService } from './email/console-adapter/console-adapter.s
 import { AwsSesAdapterService } from './email/aws-ses-adapter/aws-ses-adapter.service';
 import { SendgridAdapterService } from './email/sendgrid-adapter/sendgrid-adapter.service';
 import { ResendAdapterService } from './email/resend-adapter/resend-adapter.service';
-import { LoggerAbstractModule } from './common/logger/abstract/logger-abstract.module';
-import { LoggerService } from './common/logger/abstract/logger.service';
-import { NestLoggerAdapter } from './common/logger/nest-adapter/nest-logger.adapter';
+import { LoggerAbstractModule } from './common/observability/logger/abstract/logger-abstract.module';
+import { LoggerService } from './common/observability/logger/abstract/logger.service';
+import { NestLoggerAdapter } from './common/observability/logger/nest-adapter/nest-logger.adapter';
+import { TraceContextLoggerDecorator } from './common/observability/logger/trace-context/trace-context-logger.decorator';
+import { trace } from '@opentelemetry/api';
+import {
+  analyticsScope,
+  AnalyticsScopeConfig,
+  ANALYTICS_ADAPTERS,
+} from './common/observability/analytics/config/analytics.scope';
+import { AnalyticsAbstractModule } from './common/observability/analytics/abstract/analytics-abstract.module';
+import { PosthogAdapterService } from './common/observability/analytics/posthog-adapter/posthog-adapter.service';
+import { ConsoleAdapterService as AnalyticsConsoleAdapterService } from './common/observability/analytics/console-adapter/console-adapter.service';
 import { QueuesModule } from './queues/queues.module';
 import { redisScope, RedisScopeConfig } from './redis.scope';
 import { rabbitmqScope } from './queues/rabbitmq-adapter/config/rabbitmq.scope';
@@ -62,6 +72,7 @@ import { RedisCacheAdapterService } from './cache/redis-adapter/redis-adapter.se
         emailScope,
         expoScope,
         databaseScope,
+        analyticsScope,
         redisScope,
         rabbitmqScope,
         notificationRecipientsScope,
@@ -84,9 +95,17 @@ import { RedisCacheAdapterService } from './cache/redis-adapter/redis-adapter.se
     }),
     SpaceshipModule,
     DatabaseModule,
-    LoggerAbstractModule.forRoot({
-      adapter: NestLoggerAdapter,
+    LoggerAbstractModule.forRootAsync({
       isGlobal: true,
+      useFactory: () =>
+        new TraceContextLoggerDecorator(new NestLoggerAdapter()),
+      telemetryHook: (level, input, context) => {
+        trace.getActiveSpan()?.addEvent(input.message, {
+          level,
+          context,
+          ...input.data,
+        });
+      },
     }),
     TemplateModule.forRoot({
       adapter: PugAdapterModule.register({}),
@@ -151,6 +170,20 @@ import { RedisCacheAdapterService } from './cache/redis-adapter/redis-adapter.se
         }),
       }),
       useDefaultController: true,
+      isGlobal: true,
+    }),
+    AnalyticsAbstractModule.forRootAsync({
+      inject: [analyticsScope.KEY, LoggerService],
+      useFactory: (analytics: AnalyticsScopeConfig, logger: LoggerService) =>
+        analytics.adapter === ANALYTICS_ADAPTERS.POSTHOG
+          ? new PosthogAdapterService(
+              {
+                apiKey: analytics.posthogApiKey,
+                host: analytics.posthogHost,
+              },
+              logger,
+            )
+          : new AnalyticsConsoleAdapterService(logger),
       isGlobal: true,
     }),
   ],

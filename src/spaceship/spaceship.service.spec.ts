@@ -2,7 +2,7 @@ import { Test, TestingModule } from '@nestjs/testing';
 import { SpaceshipService } from './spaceship.service';
 import { SpaceshipRepository } from './spaceship.repository';
 import { SpaceshipNotificationProducer } from './notification/notification.producer';
-import { LoggerService } from '../common/logger/abstract/logger.service';
+import { LoggerService } from '../common/observability/logger/abstract/logger.service';
 import { CacheService } from '../cache/abstract/cache.service';
 import { spaceshipCacheScope } from './config/spaceship-cache.scope';
 import { SPACESHIP_LIST_CACHE_KEY } from './spaceship.constants';

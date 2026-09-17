@@ -2,7 +2,7 @@
 
 Every infrastructure module in this template — `cache`, `cloud-storage`,
 `email`, `push-notification`, `templating`, `config-provider`,
-`common/logger` — implements the same shape. This document defines it once so
+`common/observability/logger` — implements the same shape. This document defines it once so
 module `CLAUDE.md` files do not restate it.
 
 ## The shape
@@ -51,7 +51,7 @@ src/<module>/
 
 The template contains both. New modules use style A.
 
-**Style A — adapter as class** (`email`, `cloud-storage`, `common/logger`,
+**Style A — adapter as class** (`email`, `cloud-storage`, `common/observability/logger`,
 `cache`). The abstract module binds the adapter class or a factory directly:
 
 ```ts
