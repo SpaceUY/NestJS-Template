@@ -37,7 +37,12 @@ describe('SpaceshipController', () => {
   describe('createSpaceship', () => {
     it('delegates to service with the current user id and maps the response', async () => {
       const dto = { name: 'Falcon', fleet: 'Alpha' };
-      const entity = { uuid: 'ship-1', ...dto, captainId: 1 };
+      const entity = {
+        uuid: 'ship-1',
+        ...dto,
+        captainId: 1,
+        captain: { uuid: 'captain-uuid-1' },
+      };
       mockService.createSpaceship.mockResolvedValue(entity);
 
       const result = await controller.createSpaceship(dto, mockUser);
@@ -47,7 +52,7 @@ describe('SpaceshipController', () => {
         uuid: 'ship-1',
         name: 'Falcon',
         fleet: 'Alpha',
-        captainId: 1,
+        captainUuid: 'captain-uuid-1',
       });
     });
   });

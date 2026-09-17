@@ -3,7 +3,7 @@ import { Spaceship } from '../database/entities/spaceship.entity';
 import { CreateSpaceshipDto } from './dto/create-spaceship.dto';
 import { UpdateSpaceshipDto } from './dto/update-spaceship.dto';
 import { SpaceshipRepository } from './spaceship.repository';
-import { SpaceshipNotificationProducer } from '../queues/notification/notification.producer';
+import { SpaceshipNotificationProducer } from './notification/notification.producer';
 import { LoggerService } from '../common/logger/abstract/logger.service';
 import { CacheService } from '../cache/abstract/cache.service';
 import {
@@ -34,23 +34,27 @@ export class SpaceshipService {
       captainId: userId,
     });
     const saved = await this.spaceshipRepository.save(spaceship);
+    // Re-fetch with the captain relation loaded — save() only returns what
+    // it was given (captainId, no captain), and the response DTO needs
+    // captain.uuid.
+    const created = await this.spaceshipRepository.findByUuidOrFail(saved.uuid);
     await this.invalidateSpaceshipListCache();
 
     try {
       await this.notificationProducer.enqueueSpaceshipCreated({
-        spaceshipUuid: saved.uuid,
-        name: saved.name,
-        fleet: saved.fleet,
+        spaceshipUuid: created.uuid,
+        name: created.name,
+        fleet: created.fleet,
       });
     } catch (error) {
       this.logger.error({
         message: 'Failed to enqueue spaceship-created notification',
-        data: { spaceshipUuid: saved.uuid },
+        data: { spaceshipUuid: created.uuid },
         error,
       });
     }
 
-    return saved;
+    return created;
   }
 
   async getAllSpaceships(): Promise<Spaceship[]> {

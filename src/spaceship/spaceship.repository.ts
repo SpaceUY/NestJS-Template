@@ -7,6 +7,21 @@ import { Spaceship } from '../database/entities/spaceship.entity';
 
 const POSTGRES_UNIQUE_VIOLATION_CODE = '23505';
 
+// Loads only the captain's uuid (the public identifier), never the full
+// User row — a Spaceship list is cached whole (spaceship.service.ts), and
+// caching the captain's email/other PII alongside it would be needless.
+const SELECT_WITH_CAPTAIN_UUID = {
+  id: true,
+  uuid: true,
+  name: true,
+  fleet: true,
+  captainId: true,
+  createdAt: true,
+  updatedAt: true,
+  deletedAt: true,
+  captain: { uuid: true },
+} as const;
+
 @Injectable()
 export class SpaceshipRepository {
   constructor(
@@ -40,11 +55,18 @@ export class SpaceshipRepository {
   }
 
   findAll(): Promise<Spaceship[]> {
-    return this.repository.find();
+    return this.repository.find({
+      relations: { captain: true },
+      select: SELECT_WITH_CAPTAIN_UUID,
+    });
   }
 
   findByUuid(uuid: string): Promise<Spaceship | null> {
-    return this.repository.findOne({ where: { uuid } });
+    return this.repository.findOne({
+      where: { uuid },
+      relations: { captain: true },
+      select: SELECT_WITH_CAPTAIN_UUID,
+    });
   }
 
   async findByUuidOrFail(uuid: string): Promise<Spaceship> {

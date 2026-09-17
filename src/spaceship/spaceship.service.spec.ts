@@ -1,7 +1,7 @@
 import { Test, TestingModule } from '@nestjs/testing';
 import { SpaceshipService } from './spaceship.service';
 import { SpaceshipRepository } from './spaceship.repository';
-import { SpaceshipNotificationProducer } from '../queues/notification/notification.producer';
+import { SpaceshipNotificationProducer } from './notification/notification.producer';
 import { LoggerService } from '../common/logger/abstract/logger.service';
 import { CacheService } from '../cache/abstract/cache.service';
 import { spaceshipCacheScope } from './config/spaceship-cache.scope';
@@ -73,6 +73,7 @@ describe('SpaceshipService', () => {
 
       mockRepository.create.mockReturnValue(entity);
       mockRepository.save.mockResolvedValue(saved);
+      mockRepository.findByUuidOrFail.mockResolvedValue(saved);
       mockNotificationProducer.enqueueSpaceshipCreated.mockResolvedValue(
         undefined,
       );
@@ -87,12 +88,33 @@ describe('SpaceshipService', () => {
       expect(result).toEqual(saved);
     });
 
+    it('re-fetches by uuid so the response includes the captain relation', async () => {
+      const dto = { name: 'Falcon', fleet: 'Alpha' };
+      const saved = { id: 1, uuid: 'ship-uuid-1', ...dto, captainId: 1 };
+      const created = { ...saved, captain: { uuid: 'captain-uuid-1' } };
+
+      mockRepository.create.mockReturnValue(saved);
+      mockRepository.save.mockResolvedValue(saved);
+      mockRepository.findByUuidOrFail.mockResolvedValue(created);
+      mockNotificationProducer.enqueueSpaceshipCreated.mockResolvedValue(
+        undefined,
+      );
+
+      const result = await service.createSpaceship(dto, 1);
+
+      expect(mockRepository.findByUuidOrFail).toHaveBeenCalledWith(
+        'ship-uuid-1',
+      );
+      expect(result).toEqual(created);
+    });
+
     it('invalidates the spaceship list cache after saving', async () => {
       const dto = { name: 'Falcon', fleet: 'Alpha' };
       const saved = { id: 1, uuid: 'ship-uuid-1', ...dto, captainId: 1 };
 
       mockRepository.create.mockReturnValue(saved);
       mockRepository.save.mockResolvedValue(saved);
+      mockRepository.findByUuidOrFail.mockResolvedValue(saved);
       mockNotificationProducer.enqueueSpaceshipCreated.mockResolvedValue(
         undefined,
       );
@@ -108,6 +130,7 @@ describe('SpaceshipService', () => {
 
       mockRepository.create.mockReturnValue(saved);
       mockRepository.save.mockResolvedValue(saved);
+      mockRepository.findByUuidOrFail.mockResolvedValue(saved);
       mockNotificationProducer.enqueueSpaceshipCreated.mockResolvedValue(
         undefined,
       );
@@ -128,6 +151,7 @@ describe('SpaceshipService', () => {
 
       mockRepository.create.mockReturnValue(saved);
       mockRepository.save.mockResolvedValue(saved);
+      mockRepository.findByUuidOrFail.mockResolvedValue(saved);
       mockNotificationProducer.enqueueSpaceshipCreated.mockResolvedValue(
         undefined,
       );
@@ -150,6 +174,7 @@ describe('SpaceshipService', () => {
 
       mockRepository.create.mockReturnValue(saved);
       mockRepository.save.mockResolvedValue(saved);
+      mockRepository.findByUuidOrFail.mockResolvedValue(saved);
       mockNotificationProducer.enqueueSpaceshipCreated.mockRejectedValue(
         enqueueError,
       );
