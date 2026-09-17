@@ -4,8 +4,9 @@ import { QueueAbstractModule } from './queue-abstract.module';
 import { getQueueProducerToken } from './queue.tokens';
 import { BullmqProducerService } from '../bullmq-adapter/bullmq-producer.service';
 import { RabbitmqProducerService } from '../rabbitmq-adapter/rabbitmq-producer.service';
-import { bullmqRedisScope } from '../bullmq-adapter/config/bullmq-redis.scope';
+import { redisScope } from '../../redis.scope';
 import { rabbitmqScope } from '../rabbitmq-adapter/config/rabbitmq.scope';
+import { LoggerService } from '../../common/logger/abstract/logger.service';
 
 // Compiles the real Nest module graph (unlike the .unit.spec shape-only test) to catch export/DI-wiring mistakes Nest only surfaces on actual resolution.
 jest.mock('bullmq', () => ({
@@ -29,15 +30,19 @@ jest.mock('amqplib', () => ({
 @Module({
   providers: [
     {
-      provide: bullmqRedisScope.KEY,
+      provide: redisScope.KEY,
       useValue: { host: 'localhost', port: 6379, password: '' },
     },
     {
       provide: rabbitmqScope.KEY,
       useValue: { url: 'amqp://localhost:5672' },
     },
+    {
+      provide: LoggerService,
+      useValue: { setContext: jest.fn(), warn: jest.fn() },
+    },
   ],
-  exports: [bullmqRedisScope.KEY, rabbitmqScope.KEY],
+  exports: [redisScope.KEY, rabbitmqScope.KEY, LoggerService],
 })
 class TestConfigModule {}
 

@@ -3,10 +3,7 @@ import { BullModule, getQueueToken } from '@nestjs/bullmq';
 import { Queue } from 'bullmq';
 import { getQueueProducerToken } from '../abstract/queue.tokens';
 import { BullmqProducerService } from './bullmq-producer.service';
-import {
-  bullmqRedisScope,
-  BullmqRedisScopeConfig,
-} from './config/bullmq-redis.scope';
+import { redisScope, RedisScopeConfig } from '../../redis.scope';
 
 @Module({})
 export class BullmqAdapterModule {
@@ -15,8 +12,8 @@ export class BullmqAdapterModule {
       module: BullmqAdapterModule,
       imports: [
         BullModule.forRootAsync({
-          inject: [bullmqRedisScope.KEY],
-          useFactory: (redis: BullmqRedisScopeConfig) => ({
+          inject: [redisScope.KEY],
+          useFactory: (redis: RedisScopeConfig) => ({
             connection: {
               host: redis.host,
               port: redis.port,
