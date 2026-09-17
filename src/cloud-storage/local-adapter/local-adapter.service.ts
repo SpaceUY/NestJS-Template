@@ -3,8 +3,14 @@ import { access, mkdir, unlink, writeFile } from 'node:fs/promises';
 import { basename, extname, join, resolve } from 'node:path';
 import { v4 as uuidv4 } from 'uuid';
 import { CloudStorageService } from '../abstract/cloud-storage.service';
-import { CloudStorageError, CLOUD_STORAGE_ERRORS } from '../abstract/cloud-storage.error';
-import { CloudStorageFile, CloudStorageUploadFile } from '../abstract/cloud-storage.interfaces';
+import {
+  CloudStorageError,
+  CLOUD_STORAGE_ERRORS,
+} from '../abstract/cloud-storage.error';
+import {
+  CloudStorageFile,
+  CloudStorageUploadFile,
+} from '../abstract/cloud-storage.interfaces';
 
 const LOCAL_FILES_DIRECTORY = resolve(process.cwd(), 'files');
 const LOCAL_FILES_PUBLIC_PREFIX = '/files';
@@ -21,10 +27,13 @@ function isFileNotFoundError(error: unknown): error is NodeJS.ErrnoException {
 @Injectable()
 export class LocalAdapterService extends CloudStorageService {
   async uploadFile(file: CloudStorageUploadFile): Promise<CloudStorageFile> {
-    if (!file?.buffer || file.buffer.length === 0) { 
-      throw new CloudStorageError(CLOUD_STORAGE_ERRORS.UPLOAD_FAILED, 'A non-empty file is required');
+    if (!file?.buffer || file.buffer.length === 0) {
+      throw new CloudStorageError(
+        CLOUD_STORAGE_ERRORS.UPLOAD_FAILED,
+        'A non-empty file is required',
+      );
     }
-    
+
     await mkdir(LOCAL_FILES_DIRECTORY, { recursive: true });
 
     const extension = extname(file.originalname ?? '');

@@ -1,13 +1,9 @@
 import { HttpStatus } from '@nestjs/common';
 import { ExceptionInfo } from './core/ExceptionBase';
 
-export type ExceptionInfoTemplate<T = Record<string, any>> = (
+export type ExceptionInfoTemplate<T = Record<string, unknown>> = (
   params: T,
 ) => ExceptionInfo;
-
-interface NestedExceptionRecord {
-  [key: string]: NestedExceptionRecord | ExceptionInfo | ExceptionInfoTemplate;
-}
 
 export const Exceptions = {
   auth: {

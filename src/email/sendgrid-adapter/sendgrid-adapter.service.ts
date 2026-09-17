@@ -31,7 +31,10 @@ export class SendgridAdapterService extends EmailService {
   ): Promise<ClientResponse> {
     options.from = options.from || this.emailFrom;
     options.subject = options.subject || '';
-    this.logger.debug({ message: 'SendGrid sending HTML', data: { to, from: options.from, subject: options.subject } });
+    this.logger.debug({
+      message: 'SendGrid sending HTML',
+      data: { to, from: options.from, subject: options.subject },
+    });
     return sgMail
       .send({
         to,
@@ -49,7 +52,14 @@ export class SendgridAdapterService extends EmailService {
   ): Promise<ClientResponse> {
     options.from = options.from || this.emailFrom;
     options.subject = options.subject || '';
-    this.logger.debug({ message: 'SendGrid sending multiple HTML', data: { toCount: to.length, from: options.from, subject: options.subject } });
+    this.logger.debug({
+      message: 'SendGrid sending multiple HTML',
+      data: {
+        toCount: to.length,
+        from: options.from,
+        subject: options.subject,
+      },
+    });
     return sgMail
       .sendMultiple({
         to,

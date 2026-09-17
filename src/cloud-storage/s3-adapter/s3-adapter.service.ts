@@ -13,7 +13,10 @@ import {
   CloudStorageFile,
   CloudStorageUploadFile,
 } from '../abstract/cloud-storage.interfaces';
-import { CloudStorageError, CLOUD_STORAGE_ERRORS } from '../abstract/cloud-storage.error';
+import {
+  CloudStorageError,
+  CLOUD_STORAGE_ERRORS,
+} from '../abstract/cloud-storage.error';
 
 type GetSignedUrlCompat = (
   client: S3Client,

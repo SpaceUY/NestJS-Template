@@ -37,7 +37,7 @@ const validate = (raw) => {
   const { error, value } = schema.validate(raw, { abortEarly: false });
   if (error) throw new Error(error.message);
   return value;
-}
+};
 
 export const emailScope = defineConfigScope<EmailScopeConfig>(
   'email',
