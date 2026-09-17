@@ -1,9 +1,10 @@
 import { BullmqProducerService } from './bullmq-producer.service';
+import { QueueError } from '../abstract/queue.error';
 
 describe('BullmqProducerService', () => {
   let service: BullmqProducerService;
 
-  const mockQueue = { add: jest.fn() };
+  const mockQueue = { add: jest.fn(), name: 'test-queue' };
 
   beforeEach(() => {
     // eslint-disable-next-line @typescript-eslint/no-explicit-any
@@ -52,5 +53,20 @@ describe('BullmqProducerService', () => {
       { attempts: undefined, delay: undefined, backoff: undefined },
     );
     expect(result).toEqual({ id: 'job-2' });
+  });
+
+  it('translates a rejected queue.add() into a QueueError instead of the raw BullMQ/ioredis error', async () => {
+    mockQueue.add.mockRejectedValue(new Error('connection lost'));
+
+    await expect(
+      service.enqueue('spaceship-created', { spaceshipUuid: 'ship-uuid-3' }),
+    ).rejects.toMatchObject({
+      name: 'QueueError',
+      code: 'QUEUE_ENQUEUE_FAILED',
+      data: { jobName: 'spaceship-created', cause: 'connection lost' },
+    });
+    await expect(
+      service.enqueue('spaceship-created', { spaceshipUuid: 'ship-uuid-3' }),
+    ).rejects.toBeInstanceOf(QueueError);
   });
 });

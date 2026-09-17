@@ -11,9 +11,17 @@ Only the **producer** (enqueue) side is abstracted. The **processor**
 any other broker) don't share real consumption semantics (in-process
 decorated worker with native retry/backoff vs. channel consumer with manual
 ack/nack and DLQs), so a shared consumer interface would either be too thin
-to matter or force both adapters into an artificial shape. `notification.processor.ts`
-is BullMQ-specific, and — see "RabbitMQ adapter notes" below — that has a
-real operational consequence today, not just an implementation detail.
+to matter or force both adapters into an artificial shape. The processor is
+therefore owned by the domain module that consumes the queue, not by this
+module — see `src/spaceship/notification/notification.processor.ts` for the
+one example in this template. It is BullMQ-specific, and — see "RabbitMQ
+adapter notes" below — that has a real operational consequence today, not
+just an implementation detail.
+
+This module never contains domain-specific queue consumers itself: a queue
+name, its job payload shape, and its processor belong to the domain that
+owns the business logic (e.g. `src/spaceship/notification/`), which depends
+on `queues/` — never the other way around.
 
 ## Per-queue DI tokens
 
@@ -44,12 +52,12 @@ needs, and neither one leaks the chosen vendor to its caller:
   Used by `queues.module.ts`, imported once in `AppModule`.
 - `QueueAbstractModule.forFeature(queueName)` — registers one named queue
   and provides `QueueProducer` under `getQueueProducerToken(queueName)`.
-  `notification.module.ts` imports this — it has no dependency on `bullmq`,
-  `amqplib`, or either adapter's module, only on `QueueAbstractModule` and
-  the abstract `QueueProducer` contract. Swapping `QUEUE_ADAPTER` from
-  `BULLMQ` to `RABBITMQ` changes which adapter `forRoot`/`forFeature`
-  delegate to internally — no feature module, `SpaceshipService`, or
-  `SpaceshipNotificationProducer` needs to change.
+  `src/spaceship/notification/notification.module.ts` imports this — it has
+  no dependency on `bullmq`, `amqplib`, or either adapter's module, only on
+  `QueueAbstractModule` and the abstract `QueueProducer` contract. Swapping
+  `QUEUE_ADAPTER` from `BULLMQ` to `RABBITMQ` changes which adapter
+  `forRoot`/`forFeature` delegate to internally — no domain module,
+  `SpaceshipService`, or `SpaceshipNotificationProducer` needs to change.
 
 Adding a third adapter means: build `<name>-adapter/` (contract-conformant
 producer + `forRoot`/`forFeature`), add its name to `QUEUE_ADAPTERS` and the
@@ -70,8 +78,8 @@ future RabbitMQ consumer can implement retry semantics against them (e.g.
 via a dead-letter exchange).
 
 **RabbitMQ is producer-only today — there is no RabbitMQ consumer/processor.**
-`notification.processor.ts` only runs as a BullMQ worker (`@Processor` from
-`@nestjs/bullmq`). Setting `QUEUE_ADAPTER=RABBITMQ` publishes the
+`src/spaceship/notification/notification.processor.ts` only runs as a BullMQ
+worker (`@Processor` from `@nestjs/bullmq`). Setting `QUEUE_ADAPTER=RABBITMQ` publishes the
 `spaceship-created` job to a real RabbitMQ queue (durably, confirmed by the
 broker), but nothing ever consumes it: the spaceship-created email is not
 sent, and no error is raised anywhere — the messages just accumulate on the

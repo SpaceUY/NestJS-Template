@@ -3,6 +3,7 @@ import { ConfirmChannel } from 'amqplib';
 import { randomUUID } from 'node:crypto';
 import { QueueProducer } from '../abstract/queue-producer.service';
 import { EnqueueOptions, EnqueueResult } from '../abstract/queue.interfaces';
+import { QUEUE_ERRORS, QueueError } from '../abstract/queue.error';
 
 @Injectable()
 export class RabbitmqProducerService extends QueueProducer {
@@ -33,23 +34,31 @@ export class RabbitmqProducerService extends QueueProducer {
       headers['x-backoff-delay-ms'] = options.backoff.delayMs;
     }
 
-    // sendToQueue() on a confirm channel invokes this callback only once
-    // the broker has acked (or nacked) the publish — enqueue() doesn't
-    // resolve on the strength of a local socket write alone.
-    await new Promise<void>((resolve, reject) => {
-      this.channel.sendToQueue(
-        this.queueName,
-        payload,
-        { persistent: true, messageId: id, headers },
-        (error) => {
-          if (error) {
-            reject(error);
-            return;
-          }
-          resolve();
-        },
+    try {
+      // sendToQueue() on a confirm channel invokes this callback only once
+      // the broker has acked (or nacked) the publish — enqueue() doesn't
+      // resolve on the strength of a local socket write alone.
+      await new Promise<void>((resolve, reject) => {
+        this.channel.sendToQueue(
+          this.queueName,
+          payload,
+          { persistent: true, messageId: id, headers },
+          (error) => {
+            if (error) {
+              reject(error);
+              return;
+            }
+            resolve();
+          },
+        );
+      });
+    } catch (error) {
+      throw new QueueError(
+        QUEUE_ERRORS.ENQUEUE_FAILED,
+        `Failed to enqueue job "${jobName}" on RabbitMQ queue "${this.queueName}"`,
+        { jobName, cause: error instanceof Error ? error.message : error },
       );
-    });
+    }
 
     return { id };
   }

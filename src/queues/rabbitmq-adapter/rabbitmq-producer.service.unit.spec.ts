@@ -1,4 +1,5 @@
 import { RabbitmqProducerService } from './rabbitmq-producer.service';
+import { QueueError } from '../abstract/queue.error';
 
 describe('RabbitmqProducerService', () => {
   let service: RabbitmqProducerService;
@@ -112,7 +113,7 @@ describe('RabbitmqProducerService', () => {
     expect(settled).toBe(true);
   });
 
-  it('rejects when the broker does not confirm the publish', async () => {
+  it('translates a broker nack into a QueueError instead of the raw amqplib error', async () => {
     const brokerError = new Error('channel closed');
     mockChannel.sendToQueue.mockImplementationOnce(
       (_queue, _payload, _options, callback) => {
@@ -121,8 +122,25 @@ describe('RabbitmqProducerService', () => {
       },
     );
 
-    await expect(service.enqueue('spaceship-created', {})).rejects.toThrow(
-      brokerError,
+    await expect(
+      service.enqueue('spaceship-created', {}),
+    ).rejects.toMatchObject({
+      name: 'QueueError',
+      code: 'QUEUE_ENQUEUE_FAILED',
+      data: { jobName: 'spaceship-created', cause: 'channel closed' },
+    });
+  });
+
+  it('translated error is an instance of QueueError', async () => {
+    mockChannel.sendToQueue.mockImplementationOnce(
+      (_queue, _payload, _options, callback) => {
+        callback(new Error('channel closed'));
+        return true;
+      },
     );
+
+    await expect(
+      service.enqueue('spaceship-created', {}),
+    ).rejects.toBeInstanceOf(QueueError);
   });
 });

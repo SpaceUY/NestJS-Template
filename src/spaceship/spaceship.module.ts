@@ -3,7 +3,7 @@ import { AuthModule } from 'src/auth/auth.module';
 import { SpaceshipController } from './spaceship.controller';
 import { SpaceshipRepository } from './spaceship.repository';
 import { SpaceshipService } from './spaceship.service';
-import { SpaceshipNotificationQueueModule } from '../queues/notification/notification.module';
+import { SpaceshipNotificationQueueModule } from './notification/notification.module';
 
 @Module({
   imports: [AuthModule, SpaceshipNotificationQueueModule],

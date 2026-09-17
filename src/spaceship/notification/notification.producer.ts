@@ -1,6 +1,6 @@
 import { Inject, Injectable } from '@nestjs/common';
-import { QueueProducer } from '../abstract/queue-producer.service';
-import { getQueueProducerToken } from '../abstract/queue.tokens';
+import { QueueProducer } from '../../queues/abstract/queue-producer.service';
+import { getQueueProducerToken } from '../../queues/abstract/queue.tokens';
 import {
   SPACESHIP_NOTIFICATION_QUEUE,
   SPACESHIP_CREATED_JOB,

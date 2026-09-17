@@ -2,6 +2,7 @@ import { RabbitmqAdapterModule } from './rabbitmq-adapter.module';
 import { RabbitmqProducerService } from './rabbitmq-producer.service';
 import { getQueueProducerToken } from '../abstract/queue.tokens';
 import { RABBITMQ_CHANNEL } from './rabbitmq.tokens';
+import { LoggerService } from '../../common/logger/abstract/logger.service';
 
 describe('RabbitmqAdapterModule', () => {
   it('should register the RabbitMQ connection/channel providers in forRoot', () => {
@@ -25,7 +26,10 @@ describe('RabbitmqAdapterModule', () => {
       moduleRef.providers as Array<{
         provide: unknown;
         inject: unknown[];
-        useFactory: (channel: unknown) => Promise<RabbitmqProducerService>;
+        useFactory: (
+          channel: unknown,
+          logger: unknown,
+        ) => Promise<RabbitmqProducerService>;
       }>
     ).find((p) => p.provide === token);
 
@@ -33,14 +37,21 @@ describe('RabbitmqAdapterModule', () => {
       assertQueue: jest.fn().mockResolvedValue(undefined),
       sendToQueue: jest.fn(),
     };
-    const resolved = await provider?.useFactory(mockChannel);
+    const mockLogger = { setContext: jest.fn(), warn: jest.fn() };
+    const resolved = await provider?.useFactory(mockChannel, mockLogger);
 
     expect(moduleRef.module).toBe(RabbitmqAdapterModule);
     expect(provider?.provide).toBe(token);
-    expect(provider?.inject).toEqual([RABBITMQ_CHANNEL]);
+    expect(provider?.inject).toEqual([RABBITMQ_CHANNEL, LoggerService]);
     expect(mockChannel.assertQueue).toHaveBeenCalledWith(queueName, {
       durable: true,
     });
+    expect(mockLogger.warn).toHaveBeenCalledWith(
+      expect.objectContaining({
+        message: 'RabbitMQ queue registered with no built-in consumer support',
+        data: expect.objectContaining({ queueName }),
+      }),
+    );
     expect(resolved).toBeInstanceOf(RabbitmqProducerService);
     expect(moduleRef.exports).toContain(token);
   });

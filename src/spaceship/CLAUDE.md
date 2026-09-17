@@ -45,10 +45,12 @@ HTTP routes, and that is its whole interface.
    Every handler should declare its return type and its `@ApiResponse` — the
    handlers here do neither (finding `R1`), which is exactly what not to copy.
 7. **Deletes are soft** — `softRemove`, never `delete`.
-8. **Not-found is a 404.** `getSpaceshipById` returns `null` and the controller
-   passes it through as a 200 with `data: null` (finding `R2`). Your service
-   should throw `RequestException` from `src/common/exception/exceptions.ts`
-   instead.
+8. **Not-found is a 404.** `spaceship.repository.ts`'s `findByUuidOrFail`
+   throws `RequestException` via `Exceptions.spaceship.notFound({ uuid })`
+   (`src/common/exception/exceptions.ts`) when no row matches; callers never
+   see a `null` spaceship. This was previously a `200` with `data: null`
+   (finding `R2`, now fixed) — new lookups should use `findByUuidOrFail`, not
+   reintroduce a nullable find.
 9. **Imports are relative** (invariant `T5`). `src/spaceship/spaceship.module.ts:2`
    uses an absolute `src/auth/auth.module` specifier (finding `N6`) — do not copy it.
 
@@ -79,30 +81,43 @@ a `Test.createTestingModule` with the repository replaced through
 method, `jest.clearAllMocks()` in `afterEach`. Every branch gets a case —
 including the `null` return.
 
-Both files here are named `*.spec.ts`, which is the legacy convention
-(finding `N4`). New tests are `*.unit.spec.ts`.
+`spaceship.service.spec.ts` is still named `*.spec.ts`, the legacy convention
+(finding `N4`); `spaceship.repository.unit.spec.ts` has been renamed to the
+current one. New tests are `*.unit.spec.ts`.
 
 ## Reuse
 
 Do not copy this module into a project. Delete it, and copy its *shape*:
-`src/spaceship/spaceship.service.ts` for repository access and soft deletes,
-`src/spaceship/spaceship.controller.ts` for guards and Swagger,
-`src/spaceship/dto/` for DTO conventions, and
-`src/spaceship/spaceship.service.spec.ts` for the test harness.
+`src/spaceship/spaceship.service.ts` for repository access, soft deletes and
+cache-aside reads/writes, `src/spaceship/spaceship.controller.ts` for guards
+and Swagger, `src/spaceship/dto/` for DTO conventions,
+`src/spaceship/spaceship.service.spec.ts` for the test harness, and
+`src/spaceship/notification/` for a worked example of a domain module owning
+its own queue producer/processor on top of `src/queues/` (see
+`src/queues/CLAUDE.md`).
 
 Deleting it means removing `src/spaceship/`, `src/database/entities/spaceship.entity.ts`,
 the `Spaceship` entry in `TypeOrmModule.forFeature` in
 `src/database/database.module.ts`, the `ship` relation on
 `src/database/entities/user.entity.ts`, the `SpaceshipModule` import in
-`src/app.module.ts`, and the `.addTag('spaceship')` call in `src/main.ts`.
+`src/app.module.ts`, the `.addTag('spaceship')` call in `src/main.ts`, and —
+since this branch wired them in for `src/spaceship/notification/` and its
+cache-aside reads — the `notificationRecipientsScope` and
+`spaceshipCacheScope` imports/registrations in `src/app.module.ts` (leave
+`CacheAbstractModule` and `QueuesModule` themselves; another module may still
+use them).
 
 ## Known gaps
 
 See `docs/audit/2026-09-11-template-audit.md`.
 
 - **`R1`** — no handler declares a return type or an `@ApiResponse`.
-- **`R2`** — a missing spaceship yields `200` with `data: null` instead of `404`.
-- **`N4`** — both test files use the legacy `*.spec.ts` name.
+- **`R2`** — ~~a missing spaceship yields `200` with `data: null` instead of
+  `404`~~. **Fixed:** `findByUuidOrFail` now throws `RequestException` via
+  `Exceptions.spaceship.notFound`.
+- **`N4`** — ~~both test files use the legacy `*.spec.ts` name~~. **Partially
+  fixed:** `spaceship.repository.unit.spec.ts` was renamed; `spaceship.service.spec.ts`
+  is still legacy-named.
 - **`N6`** — `spaceship.module.ts` imports `AuthModule` by absolute path.
 - **`R3`** — `src/user/user.module.ts` is an empty module nothing imports, yet it
   is where `current-user.decorator.ts` lives, so this module depends on that

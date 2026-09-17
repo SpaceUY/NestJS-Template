@@ -1,6 +1,6 @@
 import { Test, TestingModule } from '@nestjs/testing';
 import { SpaceshipNotificationProducer } from './notification.producer';
-import { getQueueProducerToken } from '../abstract/queue.tokens';
+import { getQueueProducerToken } from '../../queues/abstract/queue.tokens';
 import {
   SPACESHIP_NOTIFICATION_QUEUE,
   SPACESHIP_CREATED_JOB,

@@ -8,7 +8,7 @@ import {
   notificationRecipientsScope,
   NotificationRecipientsScopeConfig,
 } from './config/notification-recipients.scope';
-import { QueueAbstractModule } from '../abstract/queue-abstract.module';
+import { QueueAbstractModule } from '../../queues/abstract/queue-abstract.module';
 
 @Module({
   imports: [
