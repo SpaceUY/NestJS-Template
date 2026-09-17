@@ -33,12 +33,15 @@ const sdk = buildSdk(getOtelConfig());
 if (sdk) {
   sdk.start();
 
+  // Do not force `process.exit()` here: `main.ts` also calls
+  // `app.enableShutdownHooks()`, which registers its own SIGTERM listener
+  // that awaits Nest's `onModuleDestroy` chain (including flushing the
+  // analytics client). Both listeners run concurrently on SIGTERM, so
+  // exiting from this one could kill the process before that chain
+  // finishes. Let the process exit naturally once every handler drains.
   process.on('SIGTERM', () => {
-    sdk
-      .shutdown()
-      .catch((err: unknown) => {
-        console.error('Error shutting down OpenTelemetry SDK', err);
-      })
-      .finally(() => process.exit(0));
+    sdk.shutdown().catch((err: unknown) => {
+      console.error('Error shutting down OpenTelemetry SDK', err);
+    });
   });
 }

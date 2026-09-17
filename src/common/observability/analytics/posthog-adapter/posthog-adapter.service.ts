@@ -37,28 +37,46 @@ export class PosthogAdapterService
   }
 
   async isFeatureEnabled(key: string, distinctId: string): Promise<boolean> {
-    const result = await this.client.isFeatureEnabled(key, distinctId);
-    if (result === undefined) {
-      this.logger.debug({
-        message: 'PostHog isFeatureEnabled returned undefined',
+    try {
+      const result = await this.client.isFeatureEnabled(key, distinctId);
+      if (result === undefined) {
+        this.logger.debug({
+          message: 'PostHog isFeatureEnabled returned undefined',
+          data: { key, distinctId },
+        });
+      }
+      return result ?? false;
+    } catch (error) {
+      this.logger.error({
+        message: 'PostHog isFeatureEnabled failed',
         data: { key, distinctId },
+        error,
       });
+      return false;
     }
-    return result ?? false;
   }
 
   async getFeatureFlag(
     key: string,
     distinctId: string,
   ): Promise<string | boolean | undefined> {
-    const result = await this.client.getFeatureFlag(key, distinctId);
-    if (result === undefined) {
-      this.logger.debug({
-        message: 'PostHog getFeatureFlag returned undefined',
+    try {
+      const result = await this.client.getFeatureFlag(key, distinctId);
+      if (result === undefined) {
+        this.logger.debug({
+          message: 'PostHog getFeatureFlag returned undefined',
+          data: { key, distinctId },
+        });
+      }
+      return result;
+    } catch (error) {
+      this.logger.error({
+        message: 'PostHog getFeatureFlag failed',
         data: { key, distinctId },
+        error,
       });
+      return undefined;
     }
-    return result;
   }
 
   // `PostHog#shutdown()` (inherited from `PostHogCoreStateless` in
