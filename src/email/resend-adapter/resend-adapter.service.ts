@@ -7,17 +7,21 @@ import {
 } from '../abstract/email.interface';
 import { ResendAdapterConfig } from './resend-adapter-config.interface';
 import { CreateBatchResponse, CreateEmailResponse, Resend } from 'resend';
+import { LoggerService } from '../../common/observability/logger/abstract/logger.service';
+import { NestLoggerAdapter } from '../../common/observability/logger/nest-adapter/nest-logger.adapter';
 import { executeHtmlEmailSend } from '../utils/execute-html-email-send';
 
 @Injectable()
 export class ResendAdapterService extends EmailService {
   private emailFrom: string;
   private resend: Resend;
+  private logger: LoggerService;
 
-  constructor(config: ResendAdapterConfig) {
+  constructor(config: ResendAdapterConfig, logger?: LoggerService) {
     super();
     this.emailFrom = config.emailFrom;
     this.resend = new Resend(config.resendApiKey);
+    this.logger = logger ?? new NestLoggerAdapter(ResendAdapterService.name);
   }
 
   private async sendHTML(

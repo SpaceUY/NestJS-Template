@@ -1,0 +1,97 @@
+# Database — module guide
+
+> Inherits the repo-root `CLAUDE.md` (always loaded). Read it first — this file
+> adds only what is specific to `src/database/`.
+
+## Scope
+
+Owns the TypeORM connection, the entity definitions, the base entity, and the
+migration directory. Global (`@Global()`), so `TypeOrmModule` is available
+everywhere without re-importing.
+
+Does not own: repositories or queries. Those live in the service of the module
+that owns the data — `src/spaceship/spaceship.service.ts` is the reference.
+
+## Public surface
+
+| Import | From | Purpose |
+|---|---|---|
+| `DatabaseModule` | `src/database/database.module.ts` | Imported once by `src/app.module.ts` |
+| `BaseEntity` | `src/database/entities/base.entity.ts` | Every entity extends it |
+| `User` | `src/database/entities/user.entity.ts` | Auth identity |
+| `Spaceship` | `src/database/entities/spaceship.entity.ts` | Example domain entity |
+| `databaseScope`, `DatabaseScopeConfig` | `src/database/config/database.scope.ts` | Connection config |
+| `AppDataSource` | `src/database/data-source.ts` | TypeORM CLI entry point only — never import from application code |
+
+## Configuration
+
+`databaseScope` accepts either `DATABASE_URL` or the full set `DB_HOST`,
+`DB_PORT`, `DB_USER`, `DB_PASS`, `DB_NAME`, plus `DB_SYNCHRONIZE` and
+`DB_LOGGING`. The factory in `src/database/database.module.ts` prefers the URL
+and throws at startup if neither form is complete.
+
+`src/database/data-source.ts` is the one place outside
+`src/config-provider/env-adapter/env-config.adapter.ts` that reads `process.env`
+directly. That is deliberate and permitted: the TypeORM CLI runs outside the Nest
+container, so no scope exists to inject. Keep the two in sync by hand when you
+change a key.
+
+## Rules
+
+1. Entities live in `src/database/entities/`, one per file, extending
+   `BaseEntity`. `autoLoadEntities` is on, so registering the entity with
+   `TypeOrmModule.forFeature` in `src/database/database.module.ts` is what makes
+   its repository injectable.
+2. `BaseEntity` gives every row `id` (integer PK), `uuid`, `createdAt`,
+   `updatedAt`, `deletedAt`. **`id` is internal — for joins and FKs only. Only
+   `uuid` may appear in an API response or a route parameter.**
+   `src/spaceship/spaceship.service.ts` looks rows up by `uuid` for exactly this
+   reason.
+3. Deletes are soft. Use `softRemove` / `softDelete`; `deletedAt` is the marker
+   and TypeORM filters it out of ordinary finds. Never `delete()`.
+4. Schema changes are migrations, always generated, never hand-written
+   (invariant `T8`):
+   ```bash
+   pnpm run db:migration:generate -- src/database/migrations/AddThing
+   pnpm run db:migration:run
+   ```
+   Review the generated SQL before committing it.
+5. `DB_SYNCHRONIZE` is for local development only. It defaults to `false` and
+   must stay `false` in staging and production.
+6. Index every foreign key and every column that appears in a `WHERE`. Declare
+   it on the entity with `@Index()` so the generated migration carries it.
+7. A write that spans more than one table runs in a transaction
+   (`dataSource.transaction(...)` or a `QueryRunner`).
+8. Select the columns you need. No `SELECT *` through `find()` on wide entities
+   when a `select` clause will do.
+9. Declare an explicit FK column next to a relation when the ID is read without
+   loading the relation — `Spaceship.captainId` is the pattern.
+
+## Tests
+
+No test covers this module (finding `G1`). Service tests mock the repository
+with `getRepositoryToken(Entity)` and a plain jest object — see
+`src/spaceship/spaceship.service.spec.ts`. Do not spin up a real database in a
+unit test; integration coverage belongs in `test/`.
+
+## Reuse
+
+`src/database/entities/base.entity.ts` and the migration scripts in
+`package.json` transfer to any TypeORM project unchanged.
+
+`src/database/database.module.ts` and `src/database/config/database.scope.ts`
+carry this template's config-provider dependency — port them together with
+`src/config-provider/`, or rewrite the factory against whatever config mechanism
+the target project uses.
+
+`User` is coupled to `src/auth/core/auth-type.enum.ts`; take `auth` with it or
+drop the `authType` column.
+
+## Known gaps
+
+See `docs/audit/2026-09-11-template-audit.md`.
+
+- **`R4`** — `src/database/migrations/` holds only `.gitkeep`; the template ships
+  no baseline migration.
+- **`G1`** — the connection factory's URL/host branching is untested.
+- **`C1`** — no `DB_*` key appears in `.env.example`.

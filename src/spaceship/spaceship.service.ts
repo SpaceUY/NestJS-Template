@@ -1,16 +1,29 @@
-import { Injectable } from '@nestjs/common';
-import { InjectRepository } from '@nestjs/typeorm';
-import { Repository } from 'typeorm';
+import { Inject, Injectable } from '@nestjs/common';
 import { Spaceship } from '../database/entities/spaceship.entity';
 import { CreateSpaceshipDto } from './dto/create-spaceship.dto';
 import { UpdateSpaceshipDto } from './dto/update-spaceship.dto';
+import { SpaceshipRepository } from './spaceship.repository';
+import { SpaceshipNotificationProducer } from './notification/notification.producer';
+import { LoggerService } from '../common/observability/logger/abstract/logger.service';
+import { CacheService } from '../cache/abstract/cache.service';
+import {
+  spaceshipCacheScope,
+  SpaceshipCacheScopeConfig,
+} from './config/spaceship-cache.scope';
+import { SPACESHIP_LIST_CACHE_KEY } from './spaceship.constants';
 
 @Injectable()
 export class SpaceshipService {
   constructor(
-    @InjectRepository(Spaceship)
-    private readonly spaceshipRepository: Repository<Spaceship>,
-  ) {}
+    private readonly spaceshipRepository: SpaceshipRepository,
+    private readonly notificationProducer: SpaceshipNotificationProducer,
+    private readonly logger: LoggerService,
+    private readonly cache: CacheService,
+    @Inject(spaceshipCacheScope.KEY)
+    private readonly cacheConfig: SpaceshipCacheScopeConfig,
+  ) {
+    this.logger.setContext(SpaceshipService.name);
+  }
 
   async createSpaceship(
     data: CreateSpaceshipDto,
@@ -20,29 +33,99 @@ export class SpaceshipService {
       ...data,
       captainId: userId,
     });
-    return this.spaceshipRepository.save(spaceship);
+    const saved = await this.spaceshipRepository.save(spaceship);
+    // Re-fetch with the captain relation loaded — save() only returns what
+    // it was given (captainId, no captain), and the response DTO needs
+    // captain.uuid.
+    const created = await this.spaceshipRepository.findByUuidOrFail(saved.uuid);
+    await this.invalidateSpaceshipListCache();
+
+    try {
+      await this.notificationProducer.enqueueSpaceshipCreated({
+        spaceshipUuid: created.uuid,
+        name: created.name,
+        fleet: created.fleet,
+      });
+    } catch (error) {
+      this.logger.error({
+        message: 'Failed to enqueue spaceship-created notification',
+        data: { spaceshipUuid: created.uuid },
+        error,
+      });
+    }
+
+    return created;
   }
 
   async getAllSpaceships(): Promise<Spaceship[]> {
-    return this.spaceshipRepository.find();
+    const cached = await this.readSpaceshipListFromCache();
+    if (cached) return cached;
+
+    const spaceships = await this.spaceshipRepository.findAll();
+    await this.writeSpaceshipListToCache(spaceships);
+    return spaceships;
   }
 
-  async getSpaceshipById(uuid: string): Promise<Spaceship | null> {
-    return this.spaceshipRepository.findOne({ where: { uuid } });
+  async getSpaceshipById(uuid: string): Promise<Spaceship> {
+    return this.spaceshipRepository.findByUuidOrFail(uuid);
   }
 
   async updateSpaceship(
     uuid: string,
     data: UpdateSpaceshipDto,
   ): Promise<Spaceship> {
-    await this.spaceshipRepository.update({ uuid }, data);
-    return this.spaceshipRepository.findOneOrFail({ where: { uuid } });
+    await this.spaceshipRepository.update(uuid, data);
+    const updated = await this.spaceshipRepository.findByUuidOrFail(uuid);
+    await this.invalidateSpaceshipListCache();
+    return updated;
   }
 
   async deleteSpaceship(uuid: string): Promise<Spaceship> {
-    const spaceship = await this.spaceshipRepository.findOneOrFail({
-      where: { uuid },
-    });
-    return this.spaceshipRepository.softRemove(spaceship);
+    const spaceship = await this.spaceshipRepository.findByUuidOrFail(uuid);
+    const deleted = await this.spaceshipRepository.softRemove(spaceship);
+    await this.invalidateSpaceshipListCache();
+    return deleted;
+  }
+
+  private async readSpaceshipListFromCache(): Promise<Spaceship[] | null> {
+    try {
+      const raw = await this.cache.get(SPACESHIP_LIST_CACHE_KEY);
+      return raw ? (JSON.parse(raw) as Spaceship[]) : null;
+    } catch (error) {
+      this.logger.warn({
+        message:
+          'Failed to read spaceship list from cache, falling back to database',
+        error,
+      });
+      return null;
+    }
+  }
+
+  private async writeSpaceshipListToCache(
+    spaceships: Spaceship[],
+  ): Promise<void> {
+    try {
+      await this.cache.set(
+        SPACESHIP_LIST_CACHE_KEY,
+        JSON.stringify(spaceships),
+        this.cacheConfig.listTtlSeconds,
+      );
+    } catch (error) {
+      this.logger.warn({
+        message: 'Failed to write spaceship list to cache',
+        error,
+      });
+    }
+  }
+
+  private async invalidateSpaceshipListCache(): Promise<void> {
+    try {
+      await this.cache.del(SPACESHIP_LIST_CACHE_KEY);
+    } catch (error) {
+      this.logger.warn({
+        message: 'Failed to invalidate spaceship list cache',
+        error,
+      });
+    }
   }
 }

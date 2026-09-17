@@ -17,6 +17,7 @@ interface EmailModuleOptions {
 interface EmailModuleAsyncOptions {
   imports?: ModuleMetadata['imports'];
   inject?: InjectionToken[];
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
   useFactory: (...args: any[]) => Promise<EmailService> | EmailService;
   isGlobal?: boolean;
 }

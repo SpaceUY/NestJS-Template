@@ -4,7 +4,7 @@ import { PushNotificationController } from './push-notification.controller';
 import { PUSH_NOTIFICATION_PROVIDER } from './push-notification-provider.const';
 
 type AdapterModule =
-  | Type<any>
+  | Type<any> // eslint-disable-line @typescript-eslint/no-explicit-any
   | DynamicModule
   | Promise<DynamicModule>
   | ForwardReference;
@@ -13,6 +13,7 @@ interface PushNotificationModuleOptions {
   adapter: AdapterModule;
   useDefaultController?: boolean;
   isGlobal?: boolean;
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
   controllers?: Type<any>[];
 }
 

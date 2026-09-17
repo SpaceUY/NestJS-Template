@@ -17,8 +17,8 @@ import { EnvConfigAdapter } from './config-provider/env-adapter/env-config.adapt
 import { EmailAbstractModule } from './email/abstract/email-abstract.module';
 import {
   emailScope,
-  EmailScopeConfig,
   EMAIL_ADAPTERS,
+  EmailScopeConfig,
 } from './email/config/email.scope';
 import { DatabaseModule } from './database/database.module';
 import { databaseScope } from './database/config/database.scope';
@@ -35,15 +35,33 @@ import { ConsoleAdapterService } from './email/console-adapter/console-adapter.s
 import { AwsSesAdapterService } from './email/aws-ses-adapter/aws-ses-adapter.service';
 import { SendgridAdapterService } from './email/sendgrid-adapter/sendgrid-adapter.service';
 import { ResendAdapterService } from './email/resend-adapter/resend-adapter.service';
-import { LoggerAbstractModule } from './common/logger/abstract/logger-abstract.module';
-import { NestLoggerAdapter } from './common/logger/nest-adapter/nest-logger.adapter';
+import { LoggerAbstractModule } from './common/observability/logger/abstract/logger-abstract.module';
+import { LoggerService } from './common/observability/logger/abstract/logger.service';
+import { NestLoggerAdapter } from './common/observability/logger/nest-adapter/nest-logger.adapter';
+import { TraceContextLoggerDecorator } from './common/observability/logger/trace-context/trace-context-logger.decorator';
+import { trace } from '@opentelemetry/api';
+import {
+  analyticsScope,
+  AnalyticsScopeConfig,
+  ANALYTICS_ADAPTERS,
+} from './common/observability/analytics/config/analytics.scope';
+import { AnalyticsAbstractModule } from './common/observability/analytics/abstract/analytics-abstract.module';
+import { PosthogAdapterService } from './common/observability/analytics/posthog-adapter/posthog-adapter.service';
+import { ConsoleAdapterService as AnalyticsConsoleAdapterService } from './common/observability/analytics/console-adapter/console-adapter.service';
+import { QueuesModule } from './queues/queues.module';
+import { redisScope, RedisScopeConfig } from './redis.scope';
+import { rabbitmqScope } from './queues/rabbitmq-adapter/config/rabbitmq.scope';
+import { notificationRecipientsScope } from './spaceship/notification/config/notification-recipients.scope';
+import { spaceshipCacheScope } from './spaceship/config/spaceship-cache.scope';
+import { CacheAbstractModule } from './cache/abstract/cache-abstract.module';
+import { RedisCacheAdapterService } from './cache/redis-adapter/redis-adapter.service';
 @Module({
   imports: [
     ConfigProviderAbstractModule.forRootAsync({
       isGlobal: true,
       sources: {
         env: {
-          useFactory: () => new EnvConfigAdapter(),
+          useFactory: () => new EnvConfigAdapter({ envFilePath: '.env' }),
         },
       },
       scopes: [
@@ -54,37 +72,68 @@ import { NestLoggerAdapter } from './common/logger/nest-adapter/nest-logger.adap
         emailScope,
         expoScope,
         databaseScope,
+        analyticsScope,
+        redisScope,
+        rabbitmqScope,
+        notificationRecipientsScope,
+        spaceshipCacheScope,
       ],
     }),
     AuthModule,
     MiddlewareModule,
+    QueuesModule,
+    CacheAbstractModule.forRootAsync({
+      isGlobal: true,
+      inject: [redisScope.KEY],
+      useFactory: (redis: RedisScopeConfig) =>
+        new RedisCacheAdapterService({
+          protocol: 'redis',
+          host: redis.host,
+          port: redis.port,
+          password: redis.password || undefined,
+        }),
+    }),
     SpaceshipModule,
     DatabaseModule,
-    LoggerAbstractModule.forRoot({
-      adapter: NestLoggerAdapter,
+    LoggerAbstractModule.forRootAsync({
       isGlobal: true,
+      useFactory: () =>
+        new TraceContextLoggerDecorator(new NestLoggerAdapter()),
+      telemetryHook: (level, input, context) => {
+        trace.getActiveSpan()?.addEvent(input.message, {
+          level,
+          context,
+          ...input.data,
+        });
+      },
     }),
     TemplateModule.forRoot({
       adapter: PugAdapterModule.register({}),
       isGlobal: true,
     }),
     EmailAbstractModule.forRootAsync({
-      inject: [emailScope.KEY],
-      useFactory: (email: EmailScopeConfig) => {
+      inject: [emailScope.KEY, LoggerService],
+      useFactory: (email: EmailScopeConfig, logger: LoggerService) => {
         const configuredAdapter = email.adapter?.toUpperCase();
 
         if (configuredAdapter === EMAIL_ADAPTERS.SENDGRID) {
-          return new SendgridAdapterService({
-            sendgridApiKey: email.sendgridApiKey,
-            emailFrom: email.from,
-          });
+          return new SendgridAdapterService(
+            {
+              sendgridApiKey: email.sendgridApiKey,
+              emailFrom: email.from,
+            },
+            logger,
+          );
         }
 
         if (configuredAdapter === EMAIL_ADAPTERS.RESEND) {
-          return new ResendAdapterService({
-            resendApiKey: email.resendApiKey,
-            emailFrom: email.resendEmailFrom || email.from,
-          });
+          return new ResendAdapterService(
+            {
+              resendApiKey: email.resendApiKey,
+              emailFrom: email.resendEmailFrom || email.from,
+            },
+            logger,
+          );
         }
 
         if (configuredAdapter === EMAIL_ADAPTERS.AWS_SES) {
@@ -121,6 +170,20 @@ import { NestLoggerAdapter } from './common/logger/nest-adapter/nest-logger.adap
         }),
       }),
       useDefaultController: true,
+      isGlobal: true,
+    }),
+    AnalyticsAbstractModule.forRootAsync({
+      inject: [analyticsScope.KEY, LoggerService],
+      useFactory: (analytics: AnalyticsScopeConfig, logger: LoggerService) =>
+        analytics.adapter === ANALYTICS_ADAPTERS.POSTHOG
+          ? new PosthogAdapterService(
+              {
+                apiKey: analytics.posthogApiKey,
+                host: analytics.posthogHost,
+              },
+              logger,
+            )
+          : new AnalyticsConsoleAdapterService(logger),
       isGlobal: true,
     }),
   ],
