@@ -1,6 +1,6 @@
 import { Test, TestingModule } from '@nestjs/testing';
-import { Job } from 'bullmq';
 import { SpaceshipNotificationProcessor } from './notification.processor';
+import { MessageContext } from '../../queues/abstract/consumer/queue-consumer.interfaces';
 import { EmailService } from '../../email/abstract/email.service';
 import { TemplateService } from '../../templating/abstract/template.service';
 import { LoggerService } from '../../common/observability/logger/abstract/logger.service';
@@ -29,6 +29,20 @@ describe('SpaceshipNotificationProcessor', () => {
   const mockRecipientsProvider = { getRecipients: jest.fn() };
   const defaultRecipients = ['a@spacedev.io', 'b@spacedev.io'];
 
+  const buildContext = (deliveryCount: number): MessageContext => ({
+    messageId: 'message-1',
+    headers: {},
+    deliveryCount,
+    ack: jest.fn().mockResolvedValue(undefined),
+    nack: jest.fn().mockResolvedValue(undefined),
+  });
+
+  const payload: SpaceshipCreatedJobData = {
+    spaceshipUuid: 'ship-uuid-1',
+    name: 'Falcon',
+    fleet: 'Alpha',
+  };
+
   beforeEach(async () => {
     mockRecipientsProvider.getRecipients.mockResolvedValue(defaultRecipients);
 
@@ -55,17 +69,9 @@ describe('SpaceshipNotificationProcessor', () => {
     jest.clearAllMocks();
   });
 
-  describe('process', () => {
+  describe('handle', () => {
     it('renders the template and sends the batch email to the configured recipients', async () => {
-      const job = {
-        id: 'job-1',
-        attemptsMade: 0,
-        data: {
-          spaceshipUuid: 'ship-uuid-1',
-          name: 'Falcon',
-          fleet: 'Alpha',
-        } as SpaceshipCreatedJobData,
-      } as Job<SpaceshipCreatedJobData>;
+      const ctx = buildContext(1);
       mockTemplateService.compile.mockResolvedValue('<html>rendered</html>');
       mockEmailService.sendEmailBatch.mockResolvedValue({
         statusCode: 200,
@@ -73,7 +79,7 @@ describe('SpaceshipNotificationProcessor', () => {
         headers: {},
       });
 
-      await processor.process(job);
+      await processor.handle(payload, ctx);
 
       expect(mockTemplateService.compile).toHaveBeenCalledWith(
         TEMPLATE_PATHS[TEMPLATES.SPACESHIP_CREATED],
@@ -87,36 +93,19 @@ describe('SpaceshipNotificationProcessor', () => {
       });
       expect(mockLogger.log).toHaveBeenCalledWith({
         message: 'Processing spaceship-created notification',
-        data: { spaceshipUuid: 'ship-uuid-1', jobId: 'job-1', attemptsMade: 0 },
-      });
-    });
-
-    it('propagates the error when sending fails, so BullMQ retries the job', async () => {
-      const job = {
         data: {
           spaceshipUuid: 'ship-uuid-1',
-          name: 'Falcon',
-          fleet: 'Alpha',
-        } as SpaceshipCreatedJobData,
-      } as Job<SpaceshipCreatedJobData>;
-      const error = new Error('Resend down');
-      mockTemplateService.compile.mockResolvedValue('<html>rendered</html>');
-      mockEmailService.sendEmailBatch.mockRejectedValue(error);
-
-      await expect(processor.process(job)).rejects.toThrow(error);
+          messageId: 'message-1',
+          deliveryCount: 1,
+        },
+      });
     });
 
     it('skips sending and logs a warning when there are no configured recipients', async () => {
       mockRecipientsProvider.getRecipients.mockResolvedValue([]);
-      const job = {
-        data: {
-          spaceshipUuid: 'ship-uuid-1',
-          name: 'Falcon',
-          fleet: 'Alpha',
-        } as SpaceshipCreatedJobData,
-      } as Job<SpaceshipCreatedJobData>;
+      const ctx = buildContext(1);
 
-      await processor.process(job);
+      await processor.handle(payload, ctx);
 
       expect(mockTemplateService.compile).not.toHaveBeenCalled();
       expect(mockEmailService.sendEmailBatch).not.toHaveBeenCalled();
@@ -126,42 +115,32 @@ describe('SpaceshipNotificationProcessor', () => {
         data: { spaceshipUuid: 'ship-uuid-1' },
       });
     });
-  });
 
-  describe('onFailed', () => {
-    it('logs the definitive failure once retries are exhausted', () => {
-      const job = {
-        data: { spaceshipUuid: 'ship-uuid-1' },
-        attemptsMade: 3,
-        opts: { attempts: 3 },
-      } as Job<SpaceshipCreatedJobData>;
+    it('rethrows (letting the adapter nack with requeue) while retries remain', async () => {
+      const ctx = buildContext(1);
       const error = new Error('Resend down');
+      mockTemplateService.compile.mockResolvedValue('<html>rendered</html>');
+      mockEmailService.sendEmailBatch.mockRejectedValue(error);
 
-      processor.onFailed(job, error);
+      await expect(processor.handle(payload, ctx)).rejects.toThrow(error);
+      expect(ctx.nack).not.toHaveBeenCalled();
+      expect(mockLogger.error).not.toHaveBeenCalled();
+    });
+
+    it('logs the definitive failure and nacks without requeue once retries are exhausted', async () => {
+      const ctx = buildContext(3);
+      const error = new Error('Resend down');
+      mockTemplateService.compile.mockResolvedValue('<html>rendered</html>');
+      mockEmailService.sendEmailBatch.mockRejectedValue(error);
+
+      await processor.handle(payload, ctx);
 
       expect(mockLogger.error).toHaveBeenCalledWith({
         message: 'Spaceship-created notification failed after all retries',
-        data: { spaceshipUuid: 'ship-uuid-1', attemptsMade: 3 },
+        data: { spaceshipUuid: 'ship-uuid-1', deliveryCount: 3 },
         error,
       });
-    });
-
-    it('does not log when the job still has retries left', () => {
-      const job = {
-        data: { spaceshipUuid: 'ship-uuid-1' },
-        attemptsMade: 1,
-        opts: { attempts: 3 },
-      } as Job<SpaceshipCreatedJobData>;
-
-      processor.onFailed(job, new Error('Resend down'));
-
-      expect(mockLogger.error).not.toHaveBeenCalled();
-    });
-
-    it('does nothing when the job is undefined', () => {
-      processor.onFailed(undefined, new Error('boom'));
-
-      expect(mockLogger.error).not.toHaveBeenCalled();
+      expect(ctx.nack).toHaveBeenCalledWith({ requeue: false });
     });
   });
 });

@@ -1,6 +1,6 @@
 import { MessageContext } from './queue-consumer.interfaces';
-import { LoggerService } from '../../../common/logger/abstract/logger.service';
-import { NestLoggerAdapter } from '../../../common/logger/nest-adapter/nest-logger.adapter';
+import { LoggerService } from '../../../common/observability/logger/abstract/logger.service';
+import { NestLoggerAdapter } from '../../../common/observability/logger/nest-adapter/nest-logger.adapter';
 
 /**
  * Contract all queue consumer adapters must implement. Responsible for

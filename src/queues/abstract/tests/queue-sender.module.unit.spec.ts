@@ -1,8 +1,8 @@
 /* eslint-disable @typescript-eslint/no-explicit-any */
 import { QueueSenderModule } from '../sender/queue-sender.module';
 import { QueueSenderService } from '../sender/queue-sender.service';
-import { LoggerService } from '../../../common/logger/abstract/logger.service';
-import { NestLoggerAdapter } from '../../../common/logger/nest-adapter/nest-logger.adapter';
+import { LoggerService } from '../../../common/observability/logger/abstract/logger.service';
+import { NestLoggerAdapter } from '../../../common/observability/logger/nest-adapter/nest-logger.adapter';
 
 class MockSenderAdapter extends QueueSenderService {
   send = jest.fn(async () => {});

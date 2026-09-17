@@ -1,4 +1,4 @@
-import { Injectable } from '@nestjs/common';
+import { Injectable, Logger } from '@nestjs/common';
 import { EmailService } from '../abstract/email.service';
 import {
   MailingResponse,
@@ -14,6 +14,10 @@ import {
 
 @Injectable()
 export class AwsSesAdapterService extends EmailService {
+  private readonly logger = new Logger(this.constructor.name, {
+    timestamp: true,
+  });
+
   private readonly fromEmail: string;
 
   private readonly sesClient: SESClient;
@@ -71,15 +75,13 @@ export class AwsSesAdapterService extends EmailService {
         subject: params.subject,
       });
 
-      const statusCode = response.$metadata.httpStatusCode || 500;
-      this.logger.log({ message: 'AWS SES email sent', data: { statusCode } });
       return {
-        statusCode,
+        statusCode: response.$metadata.httpStatusCode || 500,
         body: response,
         headers: {},
       };
     } catch (error) {
-      this.logger.error({ message: failureLogMessage, error });
+      this.logger.error(failureLogMessage, error);
       throw error;
     }
   }

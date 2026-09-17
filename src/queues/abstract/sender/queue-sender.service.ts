@@ -1,6 +1,6 @@
 import { QueueEnvelope } from './queue-sender.interfaces';
-import { LoggerService } from '../../../common/logger/abstract/logger.service';
-import { NestLoggerAdapter } from '../../../common/logger/nest-adapter/nest-logger.adapter';
+import { LoggerService } from '../../../common/observability/logger/abstract/logger.service';
+import { NestLoggerAdapter } from '../../../common/observability/logger/nest-adapter/nest-logger.adapter';
 
 /**
  * Contract all queue sender adapters must implement to work alongside the

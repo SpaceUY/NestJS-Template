@@ -4,7 +4,7 @@ import {
   QueueSenderModuleAsyncOptions,
   QueueSenderModuleOptions,
 } from './queue-sender.interfaces';
-import { LoggerService } from '../../../common/logger/abstract/logger.service';
+import { LoggerService } from '../../../common/observability/logger/abstract/logger.service';
 
 @Module({})
 export class QueueSenderModule {

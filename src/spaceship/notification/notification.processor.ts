@@ -1,7 +1,6 @@
-import { Inject } from '@nestjs/common';
-import { OnWorkerEvent, Processor, WorkerHost } from '@nestjs/bullmq';
-import { Job } from 'bullmq';
-import { SPACESHIP_NOTIFICATION_QUEUE } from './notification.constants';
+import { Inject, Injectable } from '@nestjs/common';
+import { QueueConsumerHandler } from '../../queues/abstract/consumer/queue-consumer.handler';
+import { MessageContext } from '../../queues/abstract/consumer/queue-consumer.interfaces';
 import { SpaceshipCreatedJobData } from './notification.types';
 import { EmailService } from '../../email/abstract/email.service';
 import { TemplateService } from '../../templating/abstract/template.service';
@@ -14,8 +13,13 @@ import {
   TEMPLATE_SUBJECTS,
 } from '../../templates/template.const';
 
-@Processor(SPACESHIP_NOTIFICATION_QUEUE)
-export class SpaceshipNotificationProcessor extends WorkerHost {
+// Matches the `attempts: 3` the producer requests when enqueuing (see
+// notification.producer.ts) — kept as a local constant since the consumer
+// side has no way to read the sender's per-message options back.
+const MAX_DELIVERY_ATTEMPTS = 3;
+
+@Injectable()
+export class SpaceshipNotificationProcessor extends QueueConsumerHandler<SpaceshipCreatedJobData> {
   constructor(
     private readonly emailService: EmailService,
     private readonly templateService: TemplateService,
@@ -28,57 +32,62 @@ export class SpaceshipNotificationProcessor extends WorkerHost {
     this.logger.setContext(SpaceshipNotificationProcessor.name);
   }
 
-  async process(job: Job<SpaceshipCreatedJobData>): Promise<void> {
-    const { spaceshipUuid, name, fleet } = job.data;
+  async handle(
+    payload: SpaceshipCreatedJobData,
+    ctx: MessageContext,
+  ): Promise<void> {
+    const { spaceshipUuid, name, fleet } = payload;
 
     this.logger.log({
       message: 'Processing spaceship-created notification',
-      data: { spaceshipUuid, jobId: job.id, attemptsMade: job.attemptsMade },
-    });
-
-    const recipients = await this.recipientsProvider.getRecipients();
-
-    if (recipients.length === 0) {
-      this.logger.warn({
-        message:
-          'Skipped spaceship-created notification: no recipients configured',
-        data: { spaceshipUuid },
-      });
-      return;
-    }
-
-    const html = await this.templateService.compile(
-      TEMPLATE_PATHS[TEMPLATES.SPACESHIP_CREATED],
-      { name, fleet },
-    );
-
-    await this.emailService.sendEmailBatch({
-      to: recipients,
-      from: this.emailConfig.from,
-      subject: TEMPLATE_SUBJECTS[TEMPLATES.SPACESHIP_CREATED],
-      content: { html },
-    });
-
-    this.logger.log({
-      message: 'Spaceship-created notification sent',
-      data: { spaceshipUuid, recipients: recipients.length },
-    });
-  }
-
-  @OnWorkerEvent('failed')
-  onFailed(job: Job<SpaceshipCreatedJobData> | undefined, error: Error): void {
-    if (!job) return;
-
-    const attemptsExhausted = job.attemptsMade >= (job.opts.attempts ?? 1);
-    if (!attemptsExhausted) return;
-
-    this.logger.error({
-      message: 'Spaceship-created notification failed after all retries',
       data: {
-        spaceshipUuid: job.data.spaceshipUuid,
-        attemptsMade: job.attemptsMade,
+        spaceshipUuid,
+        messageId: ctx.messageId,
+        deliveryCount: ctx.deliveryCount,
       },
-      error,
     });
+
+    try {
+      const recipients = await this.recipientsProvider.getRecipients();
+
+      if (recipients.length === 0) {
+        this.logger.warn({
+          message:
+            'Skipped spaceship-created notification: no recipients configured',
+          data: { spaceshipUuid },
+        });
+        return;
+      }
+
+      const html = await this.templateService.compile(
+        TEMPLATE_PATHS[TEMPLATES.SPACESHIP_CREATED],
+        { name, fleet },
+      );
+
+      await this.emailService.sendEmailBatch({
+        to: recipients,
+        from: this.emailConfig.from,
+        subject: TEMPLATE_SUBJECTS[TEMPLATES.SPACESHIP_CREATED],
+        content: { html },
+      });
+
+      this.logger.log({
+        message: 'Spaceship-created notification sent',
+        data: { spaceshipUuid, recipients: recipients.length },
+      });
+    } catch (error) {
+      if ((ctx.deliveryCount ?? 1) < MAX_DELIVERY_ATTEMPTS) {
+        // Rethrow: the adapter nacks with requeue, BullMQ redelivers per its
+        // own backoff.
+        throw error;
+      }
+
+      this.logger.error({
+        message: 'Spaceship-created notification failed after all retries',
+        data: { spaceshipUuid, deliveryCount: ctx.deliveryCount },
+        error,
+      });
+      await ctx.nack({ requeue: false });
+    }
   }
 }

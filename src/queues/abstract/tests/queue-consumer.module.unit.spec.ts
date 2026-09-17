@@ -5,8 +5,8 @@ import { QueueConsumerModule } from '../consumer/queue-consumer.module';
 import { QueueConsumerAdapter } from '../consumer/queue-consumer.adapter';
 import { QueueConsumerHandler } from '../consumer/queue-consumer.handler';
 import { MessageContext } from '../consumer/queue-consumer.interfaces';
-import { LoggerService } from '../../../common/logger/abstract/logger.service';
-import { NestLoggerAdapter } from '../../../common/logger/nest-adapter/nest-logger.adapter';
+import { LoggerService } from '../../../common/observability/logger/abstract/logger.service';
+import { NestLoggerAdapter } from '../../../common/observability/logger/nest-adapter/nest-logger.adapter';
 
 class MockConsumerAdapter extends QueueConsumerAdapter {
   startConsuming = jest.fn(async () => {});

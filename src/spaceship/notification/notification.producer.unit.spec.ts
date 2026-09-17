@@ -1,6 +1,6 @@
 import { Test, TestingModule } from '@nestjs/testing';
 import { SpaceshipNotificationProducer } from './notification.producer';
-import { getQueueProducerToken } from '../../queues/abstract/queue.tokens';
+import { BullMqSenderAdapter } from '../../queues/bullmq-adapter/bullmq-sender.adapter';
 import {
   SPACESHIP_NOTIFICATION_QUEUE,
   SPACESHIP_CREATED_JOB,
@@ -10,7 +10,7 @@ import { LoggerService } from '../../common/observability/logger/abstract/logger
 describe('SpaceshipNotificationProducer', () => {
   let producer: SpaceshipNotificationProducer;
 
-  const mockQueueProducer = { enqueue: jest.fn() };
+  const mockSender = { addJob: jest.fn() };
   const mockLogger = {
     setContext: jest.fn(),
     log: jest.fn(),
@@ -23,10 +23,7 @@ describe('SpaceshipNotificationProducer', () => {
     const module: TestingModule = await Test.createTestingModule({
       providers: [
         SpaceshipNotificationProducer,
-        {
-          provide: getQueueProducerToken(SPACESHIP_NOTIFICATION_QUEUE),
-          useValue: mockQueueProducer,
-        },
+        { provide: BullMqSenderAdapter, useValue: mockSender },
         { provide: LoggerService, useValue: mockLogger },
       ],
     }).compile();
@@ -40,36 +37,37 @@ describe('SpaceshipNotificationProducer', () => {
     jest.clearAllMocks();
   });
 
-  it('enqueues the spaceship-created job with the minimal payload and retry/backoff options', async () => {
+  it('enqueues the spaceship-created job with the job type header and retry/backoff options', async () => {
     const data = {
       spaceshipUuid: 'ship-uuid-1',
       name: 'Falcon',
       fleet: 'Alpha',
     };
-    mockQueueProducer.enqueue.mockResolvedValue({ id: 'job-1' });
+    mockSender.addJob.mockResolvedValue(undefined);
 
     await producer.enqueueSpaceshipCreated(data);
 
-    expect(mockQueueProducer.enqueue).toHaveBeenCalledWith(
-      SPACESHIP_CREATED_JOB,
-      data,
-      { attempts: 3, backoff: { type: 'exponential', delayMs: 5000 } },
-    );
+    expect(mockSender.addJob).toHaveBeenCalledWith({
+      queue: SPACESHIP_NOTIFICATION_QUEUE,
+      payload: data,
+      headers: { jobType: SPACESHIP_CREATED_JOB },
+      options: { attempts: 3, backoff: { type: 'exponential', delay: 5000 } },
+    });
   });
 
-  it('logs the enqueue with the spaceship uuid and job id', async () => {
+  it('logs the enqueue with the spaceship uuid', async () => {
     const data = {
       spaceshipUuid: 'ship-uuid-1',
       name: 'Falcon',
       fleet: 'Alpha',
     };
-    mockQueueProducer.enqueue.mockResolvedValue({ id: 'job-1' });
+    mockSender.addJob.mockResolvedValue(undefined);
 
     await producer.enqueueSpaceshipCreated(data);
 
     expect(mockLogger.log).toHaveBeenCalledWith({
       message: 'Spaceship-created notification enqueued',
-      data: { spaceshipUuid: 'ship-uuid-1', jobId: 'job-1' },
+      data: { spaceshipUuid: 'ship-uuid-1' },
     });
   });
 });
