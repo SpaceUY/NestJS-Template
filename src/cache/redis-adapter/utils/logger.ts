@@ -22,7 +22,7 @@ function formatLogMessage(input: LoggerInput): string {
 
 export function adaptLogger(logger: Logger): StandardLogger {
   return {
-    // eslint-disable-next-line ts/no-explicit-any
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
     setContext: (logger as any).setContext ?? (() => {}),
     info: (input: LoggerInput) => logger.log(formatLogMessage(input)),
     error: (input: LoggerInput) => logger.error(formatLogMessage(input)),

@@ -1,6 +1,9 @@
 import { S3Client } from '@aws-sdk/client-s3';
 import { getSignedUrl } from '@aws-sdk/s3-request-presigner';
-import { CloudStorageError, CLOUD_STORAGE_ERRORS } from '../abstract/cloud-storage.error';
+import {
+  CloudStorageError,
+  CLOUD_STORAGE_ERRORS,
+} from '../abstract/cloud-storage.error';
 import { S3AdapterService } from './s3-adapter.service';
 
 jest.mock('@aws-sdk/client-s3');
@@ -46,13 +49,18 @@ describe('S3AdapterService', () => {
       const service = new S3AdapterService(config);
       let error: unknown;
       try {
-        await service.uploadFile({ buffer: Buffer.from('content'), mimetype: 'text/plain' });
+        await service.uploadFile({
+          buffer: Buffer.from('content'),
+          mimetype: 'text/plain',
+        });
       } catch (caughtError) {
         error = caughtError;
       }
 
       expect(error).toBeInstanceOf(CloudStorageError);
-      expect((error as CloudStorageError).code).toBe(CLOUD_STORAGE_ERRORS.UPLOAD_FAILED);
+      expect((error as CloudStorageError).code).toBe(
+        CLOUD_STORAGE_ERRORS.UPLOAD_FAILED,
+      );
     });
   });
 
@@ -78,7 +86,9 @@ describe('S3AdapterService', () => {
       }
 
       expect(error).toBeInstanceOf(CloudStorageError);
-      expect((error as CloudStorageError).code).toBe(CLOUD_STORAGE_ERRORS.DELETE_FAILED);
+      expect((error as CloudStorageError).code).toBe(
+        CLOUD_STORAGE_ERRORS.DELETE_FAILED,
+      );
     });
   });
 
@@ -89,7 +99,10 @@ describe('S3AdapterService', () => {
       const service = new S3AdapterService(config);
       const result = await service.getFile('some-key');
 
-      expect(result).toEqual({ id: 'some-key', url: 'https://signed-url.example.com' });
+      expect(result).toEqual({
+        id: 'some-key',
+        url: 'https://signed-url.example.com',
+      });
     });
 
     it('should throw CloudStorageError GET_FAILED when getSignedUrl rejects', async () => {
@@ -104,7 +117,9 @@ describe('S3AdapterService', () => {
       }
 
       expect(error).toBeInstanceOf(CloudStorageError);
-      expect((error as CloudStorageError).code).toBe(CLOUD_STORAGE_ERRORS.GET_FAILED);
+      expect((error as CloudStorageError).code).toBe(
+        CLOUD_STORAGE_ERRORS.GET_FAILED,
+      );
     });
   });
 });

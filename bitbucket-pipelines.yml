@@ -12,6 +12,7 @@ definitions:
           - corepack enable
           - corepack prepare pnpm@10.15.1 --activate
           - pnpm install --frozen-lockfile
+          - pnpm run docs:check
           - pnpm run lint
           - pnpm run build
         artifacts:

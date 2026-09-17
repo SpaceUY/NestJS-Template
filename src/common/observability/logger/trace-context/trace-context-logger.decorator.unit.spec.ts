@@ -48,7 +48,9 @@ describe('TraceContextLoggerDecorator', () => {
   it('passes the input through unchanged when there is no active span', () => {
     decorator.log({ message: 'hello' });
 
-    expect(inner.calls).toEqual([{ level: 'log', input: { message: 'hello' } }]);
+    expect(inner.calls).toEqual([
+      { level: 'log', input: { message: 'hello' } },
+    ]);
   });
 
   it('enriches data with traceId/spanId when a span is active', () => {

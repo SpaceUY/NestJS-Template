@@ -5,13 +5,7 @@ import {
   Param,
   Post,
 } from '@nestjs/common';
-import {
-  ApiBody,
-  ApiOperation,
-  ApiParam,
-  ApiResponse,
-  ApiTags,
-} from '@nestjs/swagger';
+import { ApiTags } from '@nestjs/swagger';
 import { PushNotificationService } from './push-notification.service';
 import { PushNotificationDto } from './dto/push-notification.dto';
 import { PushNotificationException } from './push-notification.exception';

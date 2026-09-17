@@ -1,13 +1,9 @@
 import { HttpStatus } from '@nestjs/common';
 import { ExceptionInfo } from './core/ExceptionBase';
 
-export type ExceptionInfoTemplate<T = Record<string, any>> = (
+export type ExceptionInfoTemplate<T = Record<string, unknown>> = (
   params: T,
 ) => ExceptionInfo;
-
-interface NestedExceptionRecord {
-  [key: string]: NestedExceptionRecord | ExceptionInfo | ExceptionInfoTemplate;
-}
 
 export const Exceptions = {
   auth: {
@@ -36,6 +32,13 @@ export const Exceptions = {
       httpStatus: HttpStatus.CONFLICT,
       errorCode: 'DB_EXISTING',
       errorMsg: `${args.entity} with ${args.field} ${args.value} already exists`,
+    }),
+  },
+  spaceship: {
+    notFound: (args: { uuid: string }): ExceptionInfo => ({
+      httpStatus: HttpStatus.NOT_FOUND,
+      errorCode: 'SPACESHIP_NOT_FOUND',
+      errorMsg: `Spaceship ${args.uuid} not found`,
     }),
   },
 };

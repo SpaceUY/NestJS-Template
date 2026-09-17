@@ -48,13 +48,20 @@ import {
 import { AnalyticsAbstractModule } from './common/observability/analytics/abstract/analytics-abstract.module';
 import { PosthogAdapterService } from './common/observability/analytics/posthog-adapter/posthog-adapter.service';
 import { ConsoleAdapterService as AnalyticsConsoleAdapterService } from './common/observability/analytics/console-adapter/console-adapter.service';
+import { QueuesModule } from './queues/queues.module';
+import { redisScope, RedisScopeConfig } from './redis.scope';
+import { rabbitmqScope } from './queues/rabbitmq-adapter/config/rabbitmq.scope';
+import { notificationRecipientsScope } from './spaceship/notification/config/notification-recipients.scope';
+import { spaceshipCacheScope } from './spaceship/config/spaceship-cache.scope';
+import { CacheAbstractModule } from './cache/abstract/cache-abstract.module';
+import { RedisCacheAdapterService } from './cache/redis-adapter/redis-adapter.service';
 @Module({
   imports: [
     ConfigProviderAbstractModule.forRootAsync({
       isGlobal: true,
       sources: {
         env: {
-          useFactory: () => new EnvConfigAdapter(),
+          useFactory: () => new EnvConfigAdapter({ envFilePath: '.env' }),
         },
       },
       scopes: [
@@ -66,10 +73,26 @@ import { ConsoleAdapterService as AnalyticsConsoleAdapterService } from './commo
         expoScope,
         databaseScope,
         analyticsScope,
+        redisScope,
+        rabbitmqScope,
+        notificationRecipientsScope,
+        spaceshipCacheScope,
       ],
     }),
     AuthModule,
     MiddlewareModule,
+    QueuesModule,
+    CacheAbstractModule.forRootAsync({
+      isGlobal: true,
+      inject: [redisScope.KEY],
+      useFactory: (redis: RedisScopeConfig) =>
+        new RedisCacheAdapterService({
+          protocol: 'redis',
+          host: redis.host,
+          port: redis.port,
+          password: redis.password || undefined,
+        }),
+    }),
     SpaceshipModule,
     DatabaseModule,
     LoggerAbstractModule.forRootAsync({
