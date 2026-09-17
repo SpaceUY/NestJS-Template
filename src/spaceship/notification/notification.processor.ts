@@ -12,11 +12,7 @@ import {
   TEMPLATE_PATHS,
   TEMPLATE_SUBJECTS,
 } from '../../templates/template.const';
-
-// Matches the `attempts: 3` the producer requests when enqueuing (see
-// notification.producer.ts) — kept as a local constant since the consumer
-// side has no way to read the sender's per-message options back.
-const MAX_DELIVERY_ATTEMPTS = 3;
+import { SPACESHIP_NOTIFICATION_MAX_ATTEMPTS } from './notification.constants';
 
 @Injectable()
 export class SpaceshipNotificationProcessor extends QueueConsumerHandler<SpaceshipCreatedJobData> {
@@ -76,7 +72,7 @@ export class SpaceshipNotificationProcessor extends QueueConsumerHandler<Spacesh
         data: { spaceshipUuid, recipients: recipients.length },
       });
     } catch (error) {
-      if ((ctx.deliveryCount ?? 1) < MAX_DELIVERY_ATTEMPTS) {
+      if ((ctx.deliveryCount ?? 1) < SPACESHIP_NOTIFICATION_MAX_ATTEMPTS) {
         // Rethrow: the adapter nacks with requeue, BullMQ redelivers per its
         // own backoff.
         throw error;

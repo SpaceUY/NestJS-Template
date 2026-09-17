@@ -3,6 +3,7 @@ import { BullMqSenderAdapter } from '../../queues/bullmq-adapter/bullmq-sender.a
 import {
   SPACESHIP_NOTIFICATION_QUEUE,
   SPACESHIP_CREATED_JOB,
+  SPACESHIP_NOTIFICATION_MAX_ATTEMPTS,
 } from './notification.constants';
 import { SpaceshipCreatedJobData } from './notification.types';
 import { LoggerService } from '../../common/observability/logger/abstract/logger.service';
@@ -25,7 +26,10 @@ export class SpaceshipNotificationProducer {
       queue: SPACESHIP_NOTIFICATION_QUEUE,
       payload: data,
       headers: { jobType: SPACESHIP_CREATED_JOB },
-      options: { attempts: 3, backoff: { type: 'exponential', delay: 5000 } },
+      options: {
+        attempts: SPACESHIP_NOTIFICATION_MAX_ATTEMPTS,
+        backoff: { type: 'exponential', delay: 5000 },
+      },
     });
 
     this.logger.log({

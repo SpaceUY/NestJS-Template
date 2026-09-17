@@ -12,6 +12,7 @@ import {
   TEMPLATE_SUBJECTS,
 } from '../../templates/template.const';
 import { SpaceshipCreatedJobData } from './notification.types';
+import { SPACESHIP_NOTIFICATION_MAX_ATTEMPTS } from './notification.constants';
 
 describe('SpaceshipNotificationProcessor', () => {
   let processor: SpaceshipNotificationProcessor;
@@ -128,7 +129,7 @@ describe('SpaceshipNotificationProcessor', () => {
     });
 
     it('logs the definitive failure and nacks without requeue once retries are exhausted', async () => {
-      const ctx = buildContext(3);
+      const ctx = buildContext(SPACESHIP_NOTIFICATION_MAX_ATTEMPTS);
       const error = new Error('Resend down');
       mockTemplateService.compile.mockResolvedValue('<html>rendered</html>');
       mockEmailService.sendEmailBatch.mockRejectedValue(error);
@@ -137,7 +138,10 @@ describe('SpaceshipNotificationProcessor', () => {
 
       expect(mockLogger.error).toHaveBeenCalledWith({
         message: 'Spaceship-created notification failed after all retries',
-        data: { spaceshipUuid: 'ship-uuid-1', deliveryCount: 3 },
+        data: {
+          spaceshipUuid: 'ship-uuid-1',
+          deliveryCount: SPACESHIP_NOTIFICATION_MAX_ATTEMPTS,
+        },
         error,
       });
       expect(ctx.nack).toHaveBeenCalledWith({ requeue: false });
