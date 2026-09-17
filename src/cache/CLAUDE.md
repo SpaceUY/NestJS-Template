@@ -15,7 +15,9 @@ exposes provider-specific operations without bloating the base contract.
 Does not own: HTTP response caching, memoization, or the choice of what to cache
 — the consuming service decides that.
 
-Not currently registered in `src/app.module.ts`; wire it when a project needs it.
+Registered in `src/app.module.ts` via `CacheAbstractModule.forRootAsync`, bound
+to `RedisCacheAdapterService`; `src/spaceship/spaceship.service.ts` is the
+first real consumer (cache-aside on the spaceship list endpoint).
 
 ## Public surface
 
@@ -29,6 +31,7 @@ Not currently registered in `src/app.module.ts`; wire it when a project needs it
 | `CACHE_ADAPTER_CLIENT`, `CACHE_LOGGER` | `src/cache/abstract/cache.tokens.ts` | Raw client / logger — advanced use only |
 | `MockCacheService` and siblings | `src/cache/abstract/mocks/` | Test doubles |
 | `RedisCacheAdapterService` | `src/cache/redis-adapter/redis-adapter.service.ts` | Named only in `src/app.module.ts` |
+| `redisScope`, `RedisScopeConfig` | `src/redis.scope.ts` | `REDIS_HOST`/`REDIS_PORT`/`REDIS_PASSWORD` config scope, shared with `src/queues/bullmq-adapter/`, injected into the `forRootAsync` factory |
 
 ## Rules
 
@@ -92,10 +95,10 @@ counts, `[]` for lists). Adapter tests construct the adapter with `new` and mock
 ## Reuse
 
 Copy `src/cache/abstract/` plus the adapter directories you want. `abstract/`
-depends only on `@nestjs/common`; `redis-adapter/` needs `ioredis`.
-
-Nothing here imports from another module of this template — with
-`src/config-provider/`, this is among the cleanest modules to lift.
+depends only on `@nestjs/common`; `redis-adapter/` needs `ioredis` plus
+`src/redis.scope.ts` (shared with `src/queues/bullmq-adapter/` — bring it
+along, or replace it with a cache-local scope if lifting `redis-adapter/`
+without `queues/`).
 
 ## Known gaps
 
@@ -109,5 +112,15 @@ See `docs/audit/2026-09-11-template-audit.md`.
   `ts/no-explicit-any`, which does not exist; ESLint errors on the bogus name and
   flags the `any` anyway. The prefix should be `@typescript-eslint/`.~~ **Fixed:
   the prefix was corrected to `@typescript-eslint/`.**
-- The module is not registered in `src/app.module.ts`, so no scope file exists
-  for it yet; a project enabling it adds `!src/cache/config/cache.scope.ts`.
+- ~~`!src/cache/redis-adapter/config/redis-cache.scope.ts` and
+  `!src/queues/bullmq-adapter/config/bullmq-redis.scope.ts` were near-duplicate
+  Joi schemas pointed at the same Redis instance, added independently for
+  cache and BullMQ.~~ **Fixed:** consolidated into the shared `redisScope`
+  (`src/redis.scope.ts`) both `CacheAbstractModule` and `BullmqAdapterModule`
+  now inject. This is a deliberate, narrow exception to "a scope lives next
+  to the module that consumes it" (`src/config-provider/CLAUDE.md`): Redis is
+  genuinely shared infrastructure here, not owned by either module, the same
+  way `src/app.scope.ts` is application-level rather than owned by one
+  module. The tradeoff: `src/cache/` is no longer fully self-contained for
+  reuse — copying it elsewhere now also means copying `src/redis.scope.ts` (or
+  reintroducing a cache-local scope).

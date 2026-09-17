@@ -45,6 +45,18 @@ Run `pnpm run docs:check` after editing any `CLAUDE.md`.
 $ npm install
 ```
 
+## Local development
+
+This project needs PostgreSQL and Redis running locally. Start both with:
+
+```bash
+docker-compose up -d
+```
+
+Redis backs the BullMQ background job queues (e.g. the spaceship-created
+email notification) — see `REDIS_HOST` / `REDIS_PORT` / `REDIS_PASSWORD` in
+`.env.example`. The app depends on Redis at runtime, not just in tests.
+
 ## Running the app
 
 ```bash

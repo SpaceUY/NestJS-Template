@@ -38,13 +38,20 @@ import { ResendAdapterService } from './email/resend-adapter/resend-adapter.serv
 import { LoggerAbstractModule } from './common/logger/abstract/logger-abstract.module';
 import { LoggerService } from './common/logger/abstract/logger.service';
 import { NestLoggerAdapter } from './common/logger/nest-adapter/nest-logger.adapter';
+import { QueuesModule } from './queues/queues.module';
+import { redisScope, RedisScopeConfig } from './redis.scope';
+import { rabbitmqScope } from './queues/rabbitmq-adapter/config/rabbitmq.scope';
+import { notificationRecipientsScope } from './spaceship/notification/config/notification-recipients.scope';
+import { spaceshipCacheScope } from './spaceship/config/spaceship-cache.scope';
+import { CacheAbstractModule } from './cache/abstract/cache-abstract.module';
+import { RedisCacheAdapterService } from './cache/redis-adapter/redis-adapter.service';
 @Module({
   imports: [
     ConfigProviderAbstractModule.forRootAsync({
       isGlobal: true,
       sources: {
         env: {
-          useFactory: () => new EnvConfigAdapter(),
+          useFactory: () => new EnvConfigAdapter({ envFilePath: '.env' }),
         },
       },
       scopes: [
@@ -55,10 +62,26 @@ import { NestLoggerAdapter } from './common/logger/nest-adapter/nest-logger.adap
         emailScope,
         expoScope,
         databaseScope,
+        redisScope,
+        rabbitmqScope,
+        notificationRecipientsScope,
+        spaceshipCacheScope,
       ],
     }),
     AuthModule,
     MiddlewareModule,
+    QueuesModule,
+    CacheAbstractModule.forRootAsync({
+      isGlobal: true,
+      inject: [redisScope.KEY],
+      useFactory: (redis: RedisScopeConfig) =>
+        new RedisCacheAdapterService({
+          protocol: 'redis',
+          host: redis.host,
+          port: redis.port,
+          password: redis.password || undefined,
+        }),
+    }),
     SpaceshipModule,
     DatabaseModule,
     LoggerAbstractModule.forRoot({
