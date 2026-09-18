@@ -32,6 +32,13 @@ export class Auth0Service {
   async login(accessToken: string): Promise<string> {
     try {
       const userInfo = await this.fetchUserInfo(accessToken);
+      // /userinfo only proves the token is a genuine, unexpired Auth0 token —
+      // not that it was minted for this API. A token issued for a different
+      // application under the same tenant would still pass. The token's
+      // signature is already Auth0-verified at this point (the /userinfo call
+      // above failed otherwise), so reading its claims here without a local
+      // JWKS check is safe and only guards against token substitution.
+      this.assertIntendedForThisApi(accessToken);
       if (!userInfo.email_verified) {
         throw new RequestException(Exceptions.auth.invalidCredentials);
       }
@@ -85,5 +92,26 @@ export class Auth0Service {
       throw new RequestException(Exceptions.auth.invalidCredentials);
     }
     return (await response.json()) as Auth0UserInfo;
+  }
+
+  private assertIntendedForThisApi(accessToken: string): void {
+    const payload = this.decodeJwtPayload(accessToken);
+    const audience = Array.isArray(payload.aud) ? payload.aud : [payload.aud];
+
+    if (
+      payload.iss !== this.auth0Conf.issuer ||
+      !audience.includes(this.auth0Conf.audience)
+    ) {
+      throw new RequestException(Exceptions.auth.invalidCredentials);
+    }
+  }
+
+  private decodeJwtPayload(token: string): Record<string, unknown> {
+    try {
+      const [, payload] = token.split('.');
+      return JSON.parse(Buffer.from(payload, 'base64url').toString('utf8'));
+    } catch {
+      throw new RequestException(Exceptions.auth.invalidCredentials);
+    }
   }
 }

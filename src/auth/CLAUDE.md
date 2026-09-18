@@ -84,22 +84,29 @@ All three are registered in the `scopes` array in `src/app.module.ts`.
    Postgres enum, which needs a migration.
 9. `src/auth/auth0/` is a resource-server flow, not a Passport strategy: the
    client obtains its access token from Auth0 directly (Universal Login, an SPA
-   SDK, etc.) and calls `POST /auth/auth0/login` with it in the body.
-   `Auth0Service.login` verifies the token by calling Auth0's `/userinfo` with
-   it — a request that fails for anything invalid, expired or revoked — then
-   finds-or-creates the `User` by `auth0Id` and returns the app's own JWT via
-   `AuthTokenService`, the same as `GoogleController`'s callback does. No local
-   JWKS verification: `jwks-rsa`'s `jose` dependency is ESM-only and breaks this
-   template's Jest setup, and re-validating locally would be redundant work for
-   an endpoint that only runs once per login, not on every request.
+   SDK, etc.) and calls `POST /auth/auth0/login` with it in the body (validated
+   by `Auth0LoginDto`). `Auth0Service.login` verifies the token by calling
+   Auth0's `/userinfo` with it — a request that fails for anything invalid,
+   expired or revoked — then checks the token's own `iss`/`aud` claims against
+   `auth0Conf.issuer`/`auth0Conf.audience` to reject a token minted for a
+   different application on the same tenant (confused-deputy/token
+   substitution). Reading those claims without a local signature check is safe
+   here specifically because `/userinfo` already proved the token is
+   genuinely Auth0-signed; only after both checks pass does it find-or-create
+   the `User` by `auth0Id` and return the app's own JWT via `AuthTokenService`,
+   the same as `GoogleController`'s callback does. No local JWKS verification:
+   `jwks-rsa`'s `jose` dependency is ESM-only and breaks this template's Jest
+   setup, and it would be redundant work for an endpoint that only runs once
+   per login, not on every request.
 
 ## Tests
 
 `src/auth/auth0/auth0.service.unit.spec.ts` covers `Auth0Service.login`: new
 user provisioning, an existing user matched by `auth0Id`, syncing a drifted
-name/email, an unverified email, and a failed `/userinfo` call. Mock the `User`
-repository with `getRepositoryToken(User)`, `AuthTokenService` with a plain jest
-object, and stub `global.fetch`.
+name/email, an unverified email, a failed `/userinfo` call, a wrong-audience
+token, a wrong-issuer token, and a malformed token. Mock the `User` repository
+with `getRepositoryToken(User)`, `AuthTokenService` with a plain jest object,
+and stub `global.fetch`.
 
 The rest of the module is still untested (finding `G1`). What new tests must
 cover:

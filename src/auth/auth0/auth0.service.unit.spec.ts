@@ -28,6 +28,19 @@ describe('Auth0Service', () => {
     jwksUri: 'https://tenant.auth0.com/.well-known/jwks.json',
   };
 
+  const makeAccessToken = (
+    claims: Record<string, unknown> = {
+      iss: auth0Conf.issuer,
+      aud: auth0Conf.audience,
+    },
+  ): string => {
+    const header = Buffer.from(JSON.stringify({ alg: 'RS256' })).toString(
+      'base64url',
+    );
+    const payload = Buffer.from(JSON.stringify(claims)).toString('base64url');
+    return `${header}.${payload}.signature`;
+  };
+
   beforeEach(async () => {
     const module: TestingModule = await Test.createTestingModule({
       providers: [
@@ -66,7 +79,7 @@ describe('Auth0Service', () => {
     mockUserRepository.save.mockResolvedValue(created);
     mockAuthTokenService.generateAuthToken.mockResolvedValue('app-jwt');
 
-    const result = await service.login('access-token');
+    const result = await service.login(makeAccessToken());
 
     expect(mockUserRepository.create).toHaveBeenCalledWith({
       auth0Id: 'auth0|123',
@@ -93,7 +106,7 @@ describe('Auth0Service', () => {
     mockUserRepository.findOne.mockResolvedValue(existingUser);
     mockAuthTokenService.generateAuthToken.mockResolvedValue('app-jwt');
 
-    const result = await service.login('access-token');
+    const result = await service.login(makeAccessToken());
 
     expect(mockUserRepository.save).not.toHaveBeenCalled();
     expect(mockAuthTokenService.generateAuthToken).toHaveBeenCalledWith(
@@ -115,7 +128,7 @@ describe('Auth0Service', () => {
     mockUserRepository.save.mockResolvedValue(existingUser);
     mockAuthTokenService.generateAuthToken.mockResolvedValue('app-jwt');
 
-    await service.login('access-token');
+    await service.login(makeAccessToken());
 
     expect(mockUserRepository.save).toHaveBeenCalledWith(
       expect.objectContaining({ email: 'new@example.com', name: 'New Name' }),
@@ -129,7 +142,7 @@ describe('Auth0Service', () => {
       email_verified: false,
     });
 
-    await expect(service.login('access-token')).rejects.toBeInstanceOf(
+    await expect(service.login(makeAccessToken())).rejects.toBeInstanceOf(
       RequestException,
     );
     expect(mockUserRepository.findOne).not.toHaveBeenCalled();
@@ -138,7 +151,54 @@ describe('Auth0Service', () => {
   it('rejects when the Auth0 /userinfo call fails', async () => {
     mockUserInfo({}, false);
 
-    await expect(service.login('access-token')).rejects.toBeInstanceOf(
+    await expect(service.login(makeAccessToken())).rejects.toBeInstanceOf(
+      RequestException,
+    );
+  });
+
+  it('rejects a token minted for a different Auth0 application (wrong audience)', async () => {
+    mockUserInfo({
+      sub: 'auth0|123',
+      email: 'astro@example.com',
+      email_verified: true,
+    });
+
+    const otherAppToken = makeAccessToken({
+      iss: auth0Conf.issuer,
+      aud: 'https://some-other-app.example.com',
+    });
+
+    await expect(service.login(otherAppToken)).rejects.toBeInstanceOf(
+      RequestException,
+    );
+    expect(mockUserRepository.findOne).not.toHaveBeenCalled();
+  });
+
+  it('rejects a token from a different Auth0 tenant (wrong issuer)', async () => {
+    mockUserInfo({
+      sub: 'auth0|123',
+      email: 'astro@example.com',
+      email_verified: true,
+    });
+
+    const otherTenantToken = makeAccessToken({
+      iss: 'https://other-tenant.auth0.com/',
+      aud: auth0Conf.audience,
+    });
+
+    await expect(service.login(otherTenantToken)).rejects.toBeInstanceOf(
+      RequestException,
+    );
+  });
+
+  it('rejects a malformed access token', async () => {
+    mockUserInfo({
+      sub: 'auth0|123',
+      email: 'astro@example.com',
+      email_verified: true,
+    });
+
+    await expect(service.login('not-a-jwt')).rejects.toBeInstanceOf(
       RequestException,
     );
   });
