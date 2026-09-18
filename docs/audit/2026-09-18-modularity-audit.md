@@ -150,6 +150,62 @@ contract's reference implementation.
 
 ### Agent guides (CLAUDE.md)
 
+Evidence: `pnpm run docs:check` (the mechanical half — section presence,
+backticked-path existence, module-map completeness only);
+`docs/architecture/module-contract.md`'s "Writing a module CLAUDE.md" skeleton
+and its three habits; every finding ID a module guide cites, checked against
+`docs/audit/2026-09-11-template-audit.md`; every symbol in `## Public surface`
+of the four newest guides (`src/queues/CLAUDE.md`,
+`src/common/observability/{analytics,logger,telemetry}/CLAUDE.md`, and the
+`auth0` additions to `src/auth/CLAUDE.md`) checked against its source file;
+the root `CLAUDE.md`'s module map, Commands block and "Known template-wide
+gaps" checked command-by-command. Findings continue the documentation series
+at **DOC1**.
+
+`pnpm run docs:check` passes: all 15 module guides carry all six required
+sections, every backticked path resolves (or is correctly `!`-negated), and
+the module map is complete. That is the mechanical half only — everything
+below is what it cannot check.
+
+**Clean checks, recorded because a findings section that only ever records
+defects reads as untrustworthy.** All 15 module guides carry a `Does not own:`
+line inside `## Scope` — no module lacks the contract's mandatory boundary
+statement. No guide restates root-invariant text in place of citing `T1`-`T8`
+(the brief's grep for the invariants' own phrasing returns zero hits);
+`src/database/CLAUDE.md:34` and
+`src/common/observability/telemetry/CLAUDE.md:39` both mention `process.env`,
+but only to name themselves as the two files `T2` itself lists as exceptions,
+not to restate the rule. Every finding ID cited by a module guide resolves in
+`docs/audit/2026-09-11-template-audit.md`, and the two guides that cite a
+since-fixed ID present it correctly: `src/cache/CLAUDE.md:111` strikes `L2`
+through with "**Fixed:** the prefix was corrected..." and
+`src/email/CLAUDE.md:112` strikes `B1` through the same way — neither tells an
+agent a dead defect is live. `src/cache/CLAUDE.md`'s `## Reuse` (`:95-101`)
+says `cache` lifts by copying `abstract/` plus the adapter directories
+wanted, with `src/redis.scope.ts` an optional bring-along rather than a hard
+dependency; that matches `EXT1`/`EXT6` exactly (`cache` alone: `tsc --noEmit`
+exit 0) — `redis-adapter/` itself never imports `redis.scope.ts` or
+`redisScope` (confirmed by grep) — so the guide is not merely optimistic, it
+is accurate, and the one guide in this audit that gets to say so.
+
+| ID | Finding |
+|----|---------|
+| **DOC1** | **`src/push-notification/CLAUDE.md` asserts behaviour the code does not have.** Rule 6 (`:57`) reads "Failures throw `PushNotificationException`, which is an `HttpException`..." and the `## Tests` section (`:74-76`) repeats it: "assert chunking behaviour and the thrown `PushNotificationException`." `M15` established `grep -rn "new PushNotificationException" src` returns nothing — the class is defined and type-checked against but never constructed; `ExpoAdapterService`'s two `catch` blocks (`src/push-notification/expo-adapter/expo-adapter.service.ts:76-82,111-116`) re-throw the raw SDK error or the adapter's own `InternalServerErrorException` instead. The guide's own `## Known gaps` never lists this (it cites `N1`, `N2`, `N3`, `D4`, `G1`, `N5` — not `M15`), so an agent reading only the module guide has no way to learn the rule it just read is fiction. |
+| **DOC2** | **`src/queues/CLAUDE.md`'s `## Reuse` section (`:93-100`) understates the module's extraction cost on two independent axes — the most damaging kind of documentation defect, because an agent will act on it.** (a) Line 95 claims "`abstract/` depends only on `@nestjs/common`" — false: `abstract/producer/queue-producer.service.ts:2-3`, `abstract/producer/queue-producer.module.ts:7`, `abstract/consumer/queue-consumer.adapter.ts:2-3` and `abstract/consumer/queue-consumer.module.ts:18` all import `LoggerService`/`NestLoggerAdapter` from `src/common/observability/logger/` — a real intra-repo module dependency the section never names. (b) The section never mentions `queues.module.ts` at all, even though the module's own `## Scope` calls it "the wired default." That file imports `redisScope`/`RedisScopeConfig` from the app-root `../redis.scope` (`:7`) and five symbols from `spaceship` (`:8-15` — `SPACESHIP_NOTIFICATION_QUEUE`, `SpaceshipNotificationProcessor`, `NotificationRecipientsAbstractModule`, `ConfigNotificationRecipientsProvider`, `notificationRecipientsScope`). `M2`/`M3` and `EXT3`/`EXT4` already established this is not a trimmable detail: the module's real closure is 11 of the template's 13 top-level `src/` directories plus `src/redis.scope.ts`, and `EXT4` calls it "does not lift." An agent following the Reuse section's literal instructions — "Copy `abstract/` plus the adapter directories you want" — comes away believing queues costs at most a Redis scope file, never learning that the wired module `## Scope` just described cannot be extracted at all without carrying the app root and a demo feature module along with it. (`## Known gaps` does disclose the `spaceship` coupling in general terms — "imports a domain-specific recipients module" — but `## Reuse` is the section a lifting agent actually reads, and it is silent.) |
+| **DOC3** | **`src/common/CLAUDE.md`'s `## Reuse` section (`:77-79`) omits `common`'s only real extraction dependency.** It says the interceptor needs "`rxjs` and `express` types," which reads as, and is satisfied by, the ordinary `@types/express` npm package. `EXT7` found the actual dependency is a global ambient-type augmentation the template ships at the repo root, `@types/express/index.d.ts` (`declare namespace Express { interface User { id: string } }`), loaded only because `tsconfig.json:21` sets `"typeRoots": ["@types", "./node_modules/@types"]`; without copying that file and that `tsconfig.json` setting, `src/common/middleware/response.interceptor.ts:40` (`user.id`) does not type-check in a fresh project. Confirmed by grep: neither `src/common/CLAUDE.md` nor `src/common/README.md` contains the strings `@types/express`, `typeRoots` or "augmentation." |
+| **DOC4** | **`src/common/observability/logger/CLAUDE.md:86` undercounts what `abstract/` needs to lift.** It claims "`abstract/` and `nest-adapter/` need only `@nestjs/common`," but `abstract/logger-abstract.module.ts:8` imports `ClassConstructor` from the npm package `class-transformer` (a real dependency, `package.json:59`). Smaller and same-shape as `DOC3`: the Reuse section undercounts what a lift actually needs. |
+| **DOC5** | **The root `CLAUDE.md`'s "Known template-wide gaps" section (`:145-167`) contains defects that are themselves stale.** (a) `:150-151` — "`pnpm run build` and `pnpm run lint` both fail on `master` right now" is false: this audit's own gate table (measured at `ea4d7e1`, the branch point, on `master`) shows `pnpm run build` PASSES exit 0 and `pnpm exec eslint` returns 0 errors — every agent that starts a session in this repo is told the build is red when it is green. (b) `:161` — "**`B2`** — `package.json` declares `dotenv` twice" is false: `package.json` declares `dotenv` exactly once, both here (`:61`) and on `master` (`:60`); the 2026-09-11 audit's `B2` (a duplicate at lines 38/49 there) has been fixed without anyone striking it through anywhere it is cited. (c) `:164-165` — "even though all 120 tests pass" is stale: this audit's own gate table records 36 suites / 295 tests passing at the branch point, and 120 appears nowhere in the source `G2` finding either. (d) `B3` (`:162-163`, `apk`/`prisma` in the `Dockerfile`) and `TS1` (`:166-167`, no `"strict": true`) were re-verified and remain accurate and current — not every line in this section is wrong, only three of the eight. The Commands block (`:47-58`) was checked key-for-key against `package.json`'s `scripts` and matches exactly, `modularity:check` included. The module map lists every `CLAUDE.md` that exists and no guide that does not (`diff` against `find src -name CLAUDE.md`: clean). `T5`'s "four files still violate this" matches `M1`'s count exactly. |
+| **DOC6** | **`src/spaceship/CLAUDE.md`'s `N4` note is incomplete.** `:135-136` (and `## Tests`, `:83-84`) say `spaceship.repository.unit.spec.ts` "has been renamed" and that `spaceship.service.spec.ts` "is still legacy-named," but never mention `src/spaceship/spaceship.controller.spec.ts`, which the source `N4` finding also names and which still carries the legacy `*.spec.ts` name unchanged (`ls src/spaceship/*.spec.ts` shows both `.controller.spec.ts` and `.service.spec.ts` still present). The guide presents its own test suite as one file away from clean when a second legacy-named file sits in the same directory. |
+
+12 of the 16 `CLAUDE.md` files were read in full for this section (all four
+Step-5 targets, the root file, `cache` and `email` as reference points,
+`spaceship`, `push-notification`, `database`); the remaining module guides
+were checked structurally (Steps 2-4) but not walked symbol-by-symbol against
+their source, since Step 5 scopes that deeper pass to the four newest guides.
+6 of the 16 guides carry at least one finding above: `push-notification`,
+`queues`, `common`, `common/observability/logger`, the root `CLAUDE.md`, and
+`spaceship`.
+
 ### Human guides (README.md)
 
 ### Prior-audit reconciliation
