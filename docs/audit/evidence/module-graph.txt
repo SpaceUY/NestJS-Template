@@ -1,0 +1,241 @@
+
+> nestjs-template@0.0.1 modularity:check /run/media/leonel/4f37aba0-a422-4ae0-b330-35fcb650f362/trabajo/proyectos/nest/NestJS-Template
+> node scripts/check-module-independence.mjs -- --report
+
+# module edges
+(app) -> auth  (4)
+    src/app.module.ts|./auth/auth.module
+    src/app.module.ts|./auth/config/jwt.scope
+    src/app.module.ts|./auth/google/config/google.scope
+    src/app.module.ts|./auth/auth0/config/auth0.scope
+(app) -> cache  (2)
+    src/app.module.ts|./cache/abstract/cache-abstract.module
+    src/app.module.ts|./cache/redis-adapter/redis-adapter.service
+(app) -> cloud-storage  (3)
+    src/app.module.ts|./cloud-storage/abstract/cloud-storage-abstract.module
+    src/app.module.ts|./cloud-storage/s3-adapter/s3-adapter.service
+    src/app.module.ts|./cloud-storage/s3-adapter/config/s3.scope
+(app) -> common  (10)
+    src/app.module.ts|./common/middleware/middleware.module
+    src/app.module.ts|./common/observability/logger/abstract/logger-abstract.module
+    src/app.module.ts|./common/observability/logger/abstract/logger.service
+    src/app.module.ts|./common/observability/logger/nest-adapter/nest-logger.adapter
+    src/app.module.ts|./common/observability/logger/trace-context/trace-context-logger.decorator
+    src/app.module.ts|./common/observability/analytics/config/analytics.scope
+    src/app.module.ts|./common/observability/analytics/abstract/analytics-abstract.module
+    src/app.module.ts|./common/observability/analytics/posthog-adapter/posthog-adapter.service
+    src/app.module.ts|./common/observability/analytics/console-adapter/console-adapter.service
+    src/main.ts|./common/observability/telemetry/tracing.bootstrap
+(app) -> config-provider  (6)
+    src/app.module.ts|./config-provider/abstract/config-provider-abstract.module
+    src/app.module.ts|./config-provider/env-adapter/env-config.adapter
+    src/app.scope.ts|./config-provider/abstract/config-source.util
+    src/app.scope.ts|./config-provider/abstract/define-config-scope.util
+    src/redis.scope.ts|./config-provider/abstract/config-source.util
+    src/redis.scope.ts|./config-provider/abstract/define-config-scope.util
+(app) -> database  (2)
+    src/app.module.ts|./database/database.module
+    src/app.module.ts|./database/config/database.scope
+(app) -> email  (10)
+    src/app.controller.spec.ts|./email/config/email.scope
+    src/app.controller.spec.ts|./email/abstract/email.service
+    src/app.controller.ts|./email/config/email.scope
+    src/app.controller.ts|./email/abstract/email.service
+    src/app.module.ts|./email/abstract/email-abstract.module
+    src/app.module.ts|./email/config/email.scope
+    src/app.module.ts|./email/console-adapter/console-adapter.service
+    src/app.module.ts|./email/aws-ses-adapter/aws-ses-adapter.service
+    src/app.module.ts|./email/sendgrid-adapter/sendgrid-adapter.service
+    src/app.module.ts|./email/resend-adapter/resend-adapter.service
+(app) -> push-notification  (3)
+    src/app.module.ts|./push-notification/abstract/push-notification-abstract.module.ts
+    src/app.module.ts|./push-notification/expo-adapter/expo-adapter.module
+    src/app.module.ts|./push-notification/expo-adapter/config/expo.scope
+(app) -> queues  (2)
+    src/app.module.ts|./queues/queues.module
+    src/app.module.ts|./queues/rabbitmq-adapter/config/rabbitmq.scope
+(app) -> spaceship  (3)
+    src/app.module.ts|./spaceship/spaceship.module
+    src/app.module.ts|./spaceship/notification/config/notification-recipients.scope
+    src/app.module.ts|./spaceship/config/spaceship-cache.scope
+(app) -> templates  (1)
+    src/app.controller.ts|./templates/template.const
+(app) -> templating  (4)
+    src/app.controller.spec.ts|./templating/abstract/template.service
+    src/app.controller.ts|./templating/abstract/template.service
+    src/app.module.ts|./templating/template.module
+    src/app.module.ts|./templating/pug-adapter/pug-adapter.module
+auth -> common  (3)
+    src/auth/auth0/auth0.service.ts|../../common/exception/core/ExceptionBase
+    src/auth/auth0/auth0.service.ts|../../common/exception/exceptions
+    src/auth/auth0/auth0.service.unit.spec.ts|../../common/exception/core/ExceptionBase
+auth -> config-provider  (6)
+    src/auth/auth0/config/auth0.scope.ts|../../../config-provider/abstract/config-source.util
+    src/auth/auth0/config/auth0.scope.ts|../../../config-provider/abstract/define-config-scope.util
+    src/auth/config/jwt.scope.ts|../../config-provider/abstract/config-source.util
+    src/auth/config/jwt.scope.ts|../../config-provider/abstract/define-config-scope.util
+    src/auth/google/config/google.scope.ts|../../../config-provider/abstract/config-source.util
+    src/auth/google/config/google.scope.ts|../../../config-provider/abstract/define-config-scope.util
+auth -> database  (7)
+    src/auth/auth0/auth0.service.ts|../../database/entities/user.entity
+    src/auth/auth0/auth0.service.unit.spec.ts|../../database/entities/user.entity
+    src/auth/core/auth-token/auth-token.service.ts|../../../database/entities/user.entity
+    src/auth/google/google.controller.ts|../../database/entities/user.entity
+    src/auth/google/google.service.ts|../../database/entities/user.entity
+    src/auth/google/google.strategy.ts|../../database/entities/user.entity
+    src/auth/jwt.strategy.ts|../database/entities/user.entity
+cloud-storage -> common  (7)
+    src/cloud-storage/abstract/cloud-storage-abstract.module.ts|../../common/observability/logger/abstract/logger.service
+    src/cloud-storage/abstract/cloud-storage-abstract.module.unit.spec.ts|../../common/observability/logger/abstract/logger.service
+    src/cloud-storage/abstract/cloud-storage-abstract.module.unit.spec.ts|../../common/observability/logger/nest-adapter/nest-logger.adapter
+    src/cloud-storage/abstract/cloud-storage.controller.ts|../../common/enums
+    src/cloud-storage/abstract/cloud-storage.controller.ts|../../common/exception/api.exception
+    src/cloud-storage/abstract/cloud-storage.service.ts|../../common/observability/logger/abstract/logger.service
+    src/cloud-storage/abstract/cloud-storage.service.ts|../../common/observability/logger/nest-adapter/nest-logger.adapter
+cloud-storage -> config-provider  (2)
+    src/cloud-storage/s3-adapter/config/s3.scope.ts|../../../config-provider/abstract/config-source.util
+    src/cloud-storage/s3-adapter/config/s3.scope.ts|../../../config-provider/abstract/define-config-scope.util
+common -> config-provider  (2)
+    src/common/observability/analytics/config/analytics.scope.ts|../../../../config-provider/abstract/config-source.util
+    src/common/observability/analytics/config/analytics.scope.ts|../../../../config-provider/abstract/define-config-scope.util
+config-provider -> common  (5)
+    src/config-provider/abstract/config-provider-abstract.module.ts|../../common/observability/logger/abstract/logger.service
+    src/config-provider/abstract/config-provider-abstract.module.unit.spec.ts|../../common/observability/logger/abstract/logger.service
+    src/config-provider/abstract/config-provider-abstract.module.unit.spec.ts|../../common/observability/logger/nest-adapter/nest-logger.adapter
+    src/config-provider/abstract/config-provider.service.ts|../../common/observability/logger/abstract/logger.service
+    src/config-provider/abstract/config-provider.service.ts|../../common/observability/logger/nest-adapter/nest-logger.adapter
+database -> auth  (1)
+    src/database/entities/user.entity.ts|../../auth/core/auth-type.enum
+database -> config-provider  (2)
+    src/database/config/database.scope.ts|../../config-provider/abstract/config-source.util
+    src/database/config/database.scope.ts|../../config-provider/abstract/define-config-scope.util
+email -> common  (7)
+    src/email/abstract/email-abstract.module.ts|../../common/observability/logger/abstract/logger.service
+    src/email/abstract/email-abstract.module.unit.spec.ts|../../common/observability/logger/abstract/logger.service
+    src/email/abstract/email-abstract.module.unit.spec.ts|../../common/observability/logger/nest-adapter/nest-logger.adapter
+    src/email/abstract/email-abstract.module.unit.spec.ts|../../common/observability/logger/abstract/logger-abstract.module
+    src/email/abstract/email.service.ts|../../common/observability/logger/abstract/logger.service
+    src/email/abstract/email.service.ts|../../common/observability/logger/nest-adapter/nest-logger.adapter
+    src/email/utils/execute-html-email-send.ts|../../common/observability/logger/abstract/logger.service
+email -> config-provider  (2)
+    src/email/config/email.scope.ts|../../config-provider/abstract/config-source.util
+    src/email/config/email.scope.ts|../../config-provider/abstract/define-config-scope.util
+push-notification -> config-provider  (2)
+    src/push-notification/expo-adapter/config/expo.scope.ts|../../../config-provider/abstract/config-source.util
+    src/push-notification/expo-adapter/config/expo.scope.ts|../../../config-provider/abstract/define-config-scope.util
+queues -> (app)  (2)
+    src/queues/abstract/tests/queues.module.di.spec.ts|../../../redis.scope
+    src/queues/queues.module.ts|../redis.scope
+queues -> common  (13)
+    src/queues/abstract/consumer/queue-consumer.adapter.ts|../../../common/observability/logger/abstract/logger.service
+    src/queues/abstract/consumer/queue-consumer.adapter.ts|../../../common/observability/logger/nest-adapter/nest-logger.adapter
+    src/queues/abstract/consumer/queue-consumer.module.ts|../../../common/observability/logger/abstract/logger.service
+    src/queues/abstract/producer/queue-producer.module.ts|../../../common/observability/logger/abstract/logger.service
+    src/queues/abstract/producer/queue-producer.service.ts|../../../common/observability/logger/abstract/logger.service
+    src/queues/abstract/producer/queue-producer.service.ts|../../../common/observability/logger/nest-adapter/nest-logger.adapter
+    src/queues/abstract/tests/queue-consumer.module.unit.spec.ts|../../../common/observability/logger/abstract/logger.service
+    src/queues/abstract/tests/queue-consumer.module.unit.spec.ts|../../../common/observability/logger/nest-adapter/nest-logger.adapter
+    src/queues/abstract/tests/queue-producer.module.unit.spec.ts|../../../common/observability/logger/abstract/logger.service
+    src/queues/abstract/tests/queue-producer.module.unit.spec.ts|../../../common/observability/logger/nest-adapter/nest-logger.adapter
+    src/queues/abstract/tests/queues.module.di.spec.ts|../../../common/observability/logger/abstract/logger.service
+    src/queues/abstract/tests/queues.module.di.spec.ts|../../../common/observability/logger/abstract/logger-abstract.module
+    src/queues/abstract/tests/queues.module.di.spec.ts|../../../common/observability/logger/nest-adapter/nest-logger.adapter
+queues -> config-provider  (4)
+    src/queues/abstract/tests/queues.module.di.spec.ts|../../../config-provider/abstract/config-provider-abstract.module
+    src/queues/abstract/tests/queues.module.di.spec.ts|../../../config-provider/abstract/config-provider.service
+    src/queues/rabbitmq-adapter/config/rabbitmq.scope.ts|../../../config-provider/abstract/config-source.util
+    src/queues/rabbitmq-adapter/config/rabbitmq.scope.ts|../../../config-provider/abstract/define-config-scope.util
+queues -> email  (2)
+    src/queues/abstract/tests/queues.module.di.spec.ts|../../../email/abstract/email.service
+    src/queues/abstract/tests/queues.module.di.spec.ts|../../../email/config/email.scope
+queues -> spaceship  (7)
+    src/queues/abstract/tests/queues.module.di.spec.ts|../../../spaceship/notification/notification.processor
+    src/queues/abstract/tests/queues.module.di.spec.ts|../../../spaceship/notification/config/notification-recipients.scope
+    src/queues/queues.module.ts|../spaceship/notification/notification.constants
+    src/queues/queues.module.ts|../spaceship/notification/notification.processor
+    src/queues/queues.module.ts|../spaceship/notification/notification-recipients-abstract.module
+    src/queues/queues.module.ts|../spaceship/notification/config-notification-recipients.provider
+    src/queues/queues.module.ts|../spaceship/notification/config/notification-recipients.scope
+queues -> templating  (1)
+    src/queues/abstract/tests/queues.module.di.spec.ts|../../../templating/abstract/template.service
+spaceship -> cache  (2)
+    src/spaceship/spaceship.service.spec.ts|../cache/abstract/cache.service
+    src/spaceship/spaceship.service.ts|../cache/abstract/cache.service
+spaceship -> common  (9)
+    src/spaceship/notification/notification.processor.ts|../../common/observability/logger/abstract/logger.service
+    src/spaceship/notification/notification.processor.unit.spec.ts|../../common/observability/logger/abstract/logger.service
+    src/spaceship/notification/notification.producer.ts|../../common/observability/logger/abstract/logger.service
+    src/spaceship/notification/notification.producer.unit.spec.ts|../../common/observability/logger/abstract/logger.service
+    src/spaceship/spaceship.repository.ts|../common/exception/core/ExceptionBase
+    src/spaceship/spaceship.repository.ts|../common/exception/exceptions
+    src/spaceship/spaceship.repository.unit.spec.ts|../common/exception/core/ExceptionBase
+    src/spaceship/spaceship.service.spec.ts|../common/observability/logger/abstract/logger.service
+    src/spaceship/spaceship.service.ts|../common/observability/logger/abstract/logger.service
+spaceship -> config-provider  (4)
+    src/spaceship/config/spaceship-cache.scope.ts|../../config-provider/abstract/config-source.util
+    src/spaceship/config/spaceship-cache.scope.ts|../../config-provider/abstract/define-config-scope.util
+    src/spaceship/notification/config/notification-recipients.scope.ts|../../../config-provider/abstract/config-source.util
+    src/spaceship/notification/config/notification-recipients.scope.ts|../../../config-provider/abstract/define-config-scope.util
+spaceship -> database  (6)
+    src/spaceship/mappers/spaceship.mapper.ts|../../database/entities/spaceship.entity
+    src/spaceship/spaceship.controller.spec.ts|../database/entities/user.entity
+    src/spaceship/spaceship.controller.ts|../database/entities/user.entity
+    src/spaceship/spaceship.repository.ts|../database/entities/spaceship.entity
+    src/spaceship/spaceship.repository.unit.spec.ts|../database/entities/spaceship.entity
+    src/spaceship/spaceship.service.ts|../database/entities/spaceship.entity
+spaceship -> email  (4)
+    src/spaceship/notification/notification.processor.ts|../../email/abstract/email.service
+    src/spaceship/notification/notification.processor.ts|../../email/config/email.scope
+    src/spaceship/notification/notification.processor.unit.spec.ts|../../email/abstract/email.service
+    src/spaceship/notification/notification.processor.unit.spec.ts|../../email/config/email.scope
+spaceship -> queues  (6)
+    src/spaceship/notification/notification.module.ts|../../queues/queues.module
+    src/spaceship/notification/notification.processor.ts|../../queues/abstract/consumer/queue-consumer.handler
+    src/spaceship/notification/notification.processor.ts|../../queues/abstract/consumer/queue-consumer.interfaces
+    src/spaceship/notification/notification.processor.unit.spec.ts|../../queues/abstract/consumer/queue-consumer.interfaces
+    src/spaceship/notification/notification.producer.ts|../../queues/bullmq-adapter/bullmq-producer.adapter
+    src/spaceship/notification/notification.producer.unit.spec.ts|../../queues/bullmq-adapter/bullmq-producer.adapter
+spaceship -> templates  (2)
+    src/spaceship/notification/notification.processor.ts|../../templates/template.const
+    src/spaceship/notification/notification.processor.unit.spec.ts|../../templates/template.const
+spaceship -> templating  (2)
+    src/spaceship/notification/notification.processor.ts|../../templating/abstract/template.service
+    src/spaceship/notification/notification.processor.unit.spec.ts|../../templating/abstract/template.service
+spaceship -> user  (1)
+    src/spaceship/spaceship.controller.ts|../user/current-user.decorator
+templating -> common  (1)
+    src/templating/template.module.ts|../common/utils/nest-module-validation
+
+# violations
+abs-import|src/auth/google/google.controller.ts|src/user/current-user.decorator
+abs-import|src/auth/google/google.service.ts|src/common/exception/core/ExceptionBase
+abs-import|src/auth/google/google.service.ts|src/common/exception/exceptions
+abs-import|src/auth/jwt.strategy.ts|src/common/exception/core/ExceptionBase
+abs-import|src/auth/jwt.strategy.ts|src/common/exception/exceptions
+abs-import|src/spaceship/spaceship.module.ts|src/auth/auth.module
+app-root|src/queues/abstract/tests/queues.module.di.spec.ts|../../../redis.scope
+app-root|src/queues/queues.module.ts|../redis.scope
+cycle|(app),queues,spaceship
+cycle|auth,database
+cycle|common,config-provider
+tier|src/database/entities/user.entity.ts|database(infrastructure) -> auth(feature)
+tier|src/queues/abstract/tests/queues.module.di.spec.ts|queues(infrastructure) -> spaceship(feature)
+tier|src/queues/queues.module.ts|queues(infrastructure) -> spaceship(feature)
+module independence: 14 NEW violation(s):
+  abs-import|src/auth/google/google.controller.ts|src/user/current-user.decorator
+  abs-import|src/auth/google/google.service.ts|src/common/exception/core/ExceptionBase
+  abs-import|src/auth/google/google.service.ts|src/common/exception/exceptions
+  abs-import|src/auth/jwt.strategy.ts|src/common/exception/core/ExceptionBase
+  abs-import|src/auth/jwt.strategy.ts|src/common/exception/exceptions
+  abs-import|src/spaceship/spaceship.module.ts|src/auth/auth.module
+  app-root|src/queues/abstract/tests/queues.module.di.spec.ts|../../../redis.scope
+  app-root|src/queues/queues.module.ts|../redis.scope
+  cycle|(app),queues,spaceship
+  cycle|auth,database
+  cycle|common,config-provider
+  tier|src/database/entities/user.entity.ts|database(infrastructure) -> auth(feature)
+  tier|src/queues/abstract/tests/queues.module.di.spec.ts|queues(infrastructure) -> spaceship(feature)
+  tier|src/queues/queues.module.ts|queues(infrastructure) -> spaceship(feature)
+
+Fix it, or run with --update-baseline and justify it in review.
+ ELIFECYCLE  Command failed with exit code 1.

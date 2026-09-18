@@ -20,6 +20,7 @@
     "start:prod": "node dist/main",
     "lint": "eslint \"{src,apps,libs,test}/**/*.ts\" --fix",
     "docs:check": "node scripts/check-claude-docs.mjs",
+    "modularity:check": "node scripts/check-module-independence.mjs",
     "test": "jest",
     "test:watch": "jest --watch",
     "test:cov": "jest --coverage",

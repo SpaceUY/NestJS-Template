@@ -1,0 +1,9 @@
+src/email/abstract/email-abstract.module.ts(8,31): error TS2307: Cannot find module '../../common/observability/logger/abstract/logger.service' or its corresponding type declarations.
+src/email/abstract/email-abstract.module.unit.spec.ts(5,31): error TS2307: Cannot find module '../../common/observability/logger/abstract/logger.service' or its corresponding type declarations.
+src/email/abstract/email-abstract.module.unit.spec.ts(6,35): error TS2307: Cannot find module '../../common/observability/logger/nest-adapter/nest-logger.adapter' or its corresponding type declarations.
+src/email/abstract/email-abstract.module.unit.spec.ts(7,38): error TS2307: Cannot find module '../../common/observability/logger/abstract/logger-abstract.module' or its corresponding type declarations.
+src/email/abstract/email.service.ts(6,31): error TS2307: Cannot find module '../../common/observability/logger/abstract/logger.service' or its corresponding type declarations.
+src/email/abstract/email.service.ts(7,35): error TS2307: Cannot find module '../../common/observability/logger/nest-adapter/nest-logger.adapter' or its corresponding type declarations.
+src/email/config/email.scope.ts(2,39): error TS2307: Cannot find module '../../config-provider/abstract/config-source.util' or its corresponding type declarations.
+src/email/config/email.scope.ts(3,35): error TS2307: Cannot find module '../../config-provider/abstract/define-config-scope.util' or its corresponding type declarations.
+src/email/utils/execute-html-email-send.ts(5,31): error TS2307: Cannot find module '../../common/observability/logger/abstract/logger.service' or its corresponding type declarations.
