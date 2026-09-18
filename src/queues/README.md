@@ -518,3 +518,40 @@ the processor throws. The adapter maps the context contract onto that:
 | `QueueConsumerError` | `QUEUE_CONSUMER_CONSUME_FAILED` | consuming a message failed |
 | `QueueConsumerError` | `QUEUE_CONSUMER_ACK_FAILED` | acknowledging failed |
 | `QueueConsumerError` | `QUEUE_CONSUMER_NACK_FAILED` | negative-acknowledging failed |
+
+## Reuse
+
+**What lifts.** `abstract/` — the producer and consumer contracts, both
+dynamic modules, and their tests — is a self-contained unit you can copy into
+another project. It needs `src/common/observability/logger/` alongside it:
+`LoggerService`/`NestLoggerAdapter` are imported by the producer and consumer
+services and modules. Copy the one adapter directory you actually need next
+to it — each adapter has its own extra dependency: `bullmq-adapter/` needs the
+`bullmq` package plus a Redis config scope (`src/redis.scope.ts`, or your own),
+`rabbitmq-adapter/` needs `amqplib` plus its own RabbitMQ scope, `sqs-adapter/`
+needs `@aws-sdk/client-sqs`. You do not need all three — pick the broker you
+use.
+
+**What does not lift.** `queues.module.ts`, the wired BullMQ default
+documented above, is not part of that liftable unit. It imports the app-root
+`src/redis.scope.ts` directly and pulls in five symbols from
+`src/spaceship/notification/` — this template's demo notification feature —
+to register a concrete consumer for it. Neither exists outside this template,
+so this file does not come with you.
+
+**The measured cost of taking it anyway.** Copying `src/queues/` alone into a
+fresh project and compiling it produces 29 unresolved-import errors. Closing
+all of them — making `queues.module.ts` itself compile — means also copying
+11 of this template's 13 top-level `src/` directories, plus the app-root
+`src/redis.scope.ts` file. That is not a short companion list; it is most of
+the template (measured in `docs/audit/2026-09-18-modularity-audit.md`,
+findings `EXT3`/`EXT4`).
+
+**What to do instead.** Copy `abstract/` and `src/common/observability/logger/`,
+plus the adapter directory (or directories) you need, into your project. Then
+write your own thin wiring module — a small `@Module` that calls
+`QueueProducerModule.forRootAsync(...)`/`QueueConsumerModule.forRootAsync(...)`
+with your own adapter and your own config, the same shape `queues.module.ts`
+uses for BullMQ here. Do not copy `queues.module.ts` itself, and do not copy a
+domain module's `QueueConsumerHandler` alongside it — write your own for
+whatever you're actually consuming.
