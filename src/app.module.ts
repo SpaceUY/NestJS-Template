@@ -5,6 +5,7 @@ import { appScope } from './app.scope';
 import { AuthModule } from './auth/auth.module';
 import { jwtScope } from './auth/config/jwt.scope';
 import { googleScope } from './auth/google/config/google.scope';
+import { auth0Scope } from './auth/auth0/config/auth0.scope';
 import { MiddlewareModule } from './common/middleware/middleware.module';
 import { CloudStorageAbstractModule } from './cloud-storage/abstract/cloud-storage-abstract.module';
 import { S3AdapterService } from './cloud-storage/s3-adapter/s3-adapter.service';
@@ -68,6 +69,7 @@ import { RedisCacheAdapterService } from './cache/redis-adapter/redis-adapter.se
         appScope,
         jwtScope,
         googleScope,
+        auth0Scope,
         s3Scope,
         emailScope,
         expoScope,
