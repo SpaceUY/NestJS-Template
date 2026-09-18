@@ -1,25 +1,15 @@
 import { Module } from '@nestjs/common';
-import { SPACESHIP_NOTIFICATION_QUEUE } from './notification.constants';
 import { SpaceshipNotificationProducer } from './notification.producer';
-import { SpaceshipNotificationProcessor } from './notification.processor';
-import { ConfigNotificationRecipientsProvider } from './config-notification-recipients.provider';
-import { NotificationRecipientsAbstractModule } from './notification-recipients-abstract.module';
-import {
-  notificationRecipientsScope,
-  NotificationRecipientsScopeConfig,
-} from './config/notification-recipients.scope';
-import { QueueAbstractModule } from '../../queues/abstract/queue-abstract.module';
+import { QueuesModule } from '../../queues/queues.module';
 
+// `SpaceshipNotificationProcessor` is not declared here: it is registered as
+// a consumer handler inside `QueuesModule` (its `QueueConsumerModule.forRootAsync`
+// call), which is also where it is actually instantiated. See
+// src/queues/CLAUDE.md's "Rules" for why consumer registration is centralized
+// there instead of per-feature.
 @Module({
-  imports: [
-    QueueAbstractModule.forFeature(SPACESHIP_NOTIFICATION_QUEUE),
-    NotificationRecipientsAbstractModule.forRootAsync({
-      inject: [notificationRecipientsScope.KEY],
-      useFactory: (config: NotificationRecipientsScopeConfig) =>
-        new ConfigNotificationRecipientsProvider(config),
-    }),
-  ],
-  providers: [SpaceshipNotificationProducer, SpaceshipNotificationProcessor],
+  imports: [QueuesModule],
+  providers: [SpaceshipNotificationProducer],
   exports: [SpaceshipNotificationProducer],
 })
 export class SpaceshipNotificationQueueModule {}

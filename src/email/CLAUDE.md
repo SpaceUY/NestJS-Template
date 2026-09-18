@@ -18,8 +18,8 @@ deliberate: it is what lets either side be swapped alone.
 
 | Import | From | Purpose |
 |---|---|---|
-| `EmailService` | `src/email/abstract/email.service.ts` | `sendEmail`, `sendEmailBatch` — inject this |
-| `EmailAbstractModule` | `src/email/abstract/email-abstract.module.ts` | `forRoot` / `forRootAsync` |
+| `EmailService` | `src/email/abstract/email.service.ts` | `sendEmail`, `sendEmailBatch` — inject this. Also owns `protected logger` and `setLogger()` |
+| `EmailAbstractModule` | `src/email/abstract/email-abstract.module.ts` | `forRoot` / `forRootAsync` — both optionally inject `LoggerService` |
 | `SendRenderedEmailParams`, `MailingResponse` and siblings | `src/email/abstract/email.interface.ts` | Call and response shapes |
 | `RenderedEmailContent` | `src/email/abstract/email.types.ts` | The `{ html }` payload |
 | `EmailError`, `EMAIL_ERRORS` | `src/email/abstract/email.error.ts` | Error type and codes |
@@ -54,10 +54,16 @@ working app that prints emails instead of a boot failure.
 3. Adapter selection is the `useFactory` in `src/app.module.ts`, switching on
    `emailScope`'s `adapter` value against the `EMAIL_ADAPTERS` constants, with
    `ConsoleAdapterService` as the fallback branch.
-4. Adapters accept an optional `logger?: LoggerService` last parameter and fall
-   back to `new NestLoggerAdapter(...)` — so the module works with no logger
-   registered. `ResendAdapterService` is the reference. Pass the injected logger
-   through `inject: [LoggerService]` in the factory when one exists.
+4. Adapters do **not** take or declare a logger. `EmailService` owns a
+   `protected logger` that defaults to `new NestLoggerAdapter(<adapter class
+   name>)`, and `EmailAbstractModule` optionally injects the container's
+   `LoggerService` and calls `setLogger()` on the instance it builds — so the
+   module still works with no logger registered. Declaring a `logger` field in
+   an adapter shadows the inherited one and silently defeats that injection;
+   that is why `ResendAdapterService`, `SendgridAdapterService`,
+   `AwsSesAdapterService` and `ConsoleAdapterService` each carry a comment
+   saying so. Do not pass `LoggerService` through the `app.module.ts` factory.
+   `cloud-storage`, `config-provider` and `queues` use the same pattern.
 5. Adapters throw `EmailError` with an `EMAIL_ERRORS` code. A `@sendgrid/mail`,
    `resend` or `@aws-sdk/client-ses` error must never escape.
 6. Never log a recipient address, an API key or message content. Log the outcome

@@ -1,88 +1,520 @@
-# Queues
+# Queues Module
 
-Follows the same `abstract/` contract + `<name>-adapter/` pattern used by
-`email/` and `cache/`: feature code depends on the abstract `QueueProducer`
-class (`abstract/queue-producer.service.ts`), never on a vendor SDK.
+Provider-agnostic message queues for NestJS using the same adapter pattern as
+`cache`, `email`, `cloud-storage`, and `config-provider`. No
+`@nestjs/microservices`, no decorators — adapters are built directly against raw
+broker libraries (e.g. `amqplib`, AWS SDK v3).
 
-## Producer vs. processor
+The module is split into two **independent** dynamic modules, each with its own
+connection to the broker:
 
-Only the **producer** (enqueue) side is abstracted. The **processor**
-(worker/consumer) stays adapter-specific on purpose: BullMQ and RabbitMQ (or
-any other broker) don't share real consumption semantics (in-process
-decorated worker with native retry/backoff vs. channel consumer with manual
-ack/nack and DLQs), so a shared consumer interface would either be too thin
-to matter or force both adapters into an artificial shape. The processor is
-therefore owned by the domain module that consumes the queue, not by this
-module — see `src/spaceship/notification/notification.processor.ts` for the
-one example in this template. It is BullMQ-specific, and — see "RabbitMQ
-adapter notes" below — that has a real operational consequence today, not
-just an implementation detail.
+- **`QueueProducerModule`** — publishing messages.
+- **`QueueConsumerModule`** — consuming messages.
 
-This module never contains domain-specific queue consumers itself: a queue
-name, its job payload shape, and its processor belong to the domain that
-owns the business logic (e.g. `src/spaceship/notification/`), which depends
-on `queues/` — never the other way around.
+Three concrete adapters ship alongside the abstract contracts: BullMQ, RabbitMQ
+and SQS. Only BullMQ is wired by default, in `queues.module.ts`; selecting
+either of the others means writing that wiring yourself.
 
-## Per-queue DI tokens
+## Directory Structure
 
-Unlike `EmailService`/`CacheService` (one global instance for the whole
-app), a template can have multiple independent queues. `QueueProducer` is
-therefore bound per queue name via `getQueueProducerToken(queueName)`
-(`abstract/queue.tokens.ts`), not to the `QueueProducer` class itself —
-binding every queue to one shared class-token would make a second queue's
-registration silently overwrite the first's.
+```text
+src/queues/
+├── abstract/
+│   ├── producer/
+│   │   ├── queue-producer.service.ts        # abstract QueueProducerService (DI token)
+│   │   ├── queue-producer.module.ts         # QueueProducerModule
+│   │   ├── queue-producer.interfaces.ts     # QueueEnvelope, module options
+│   │   ├── queue-delivery-options.util.ts # assertSupportedDeliveryOptions
+│   │   └── queue-producer.error.ts          # QueueProducerError
+│   ├── consumer/
+│   │   ├── queue-consumer.adapter.ts      # abstract QueueConsumerAdapter (DI token)
+│   │   ├── queue-consumer.handler.ts      # abstract QueueConsumerHandler<T>
+│   │   ├── queue-consumer.module.ts       # QueueConsumerModule
+│   │   ├── queue-consumer.interfaces.ts   # MessageContext, ConsumerRegistration, options
+│   │   └── queue-consumer.error.ts        # QueueConsumerError
+│   └── tests/
+├── bullmq-adapter/                        # the wired default (bullmq + redisScope)
+├── rabbitmq-adapter/                      # complete, unwired (amqplib + rabbitmqScope)
+├── sqs-adapter/                           # complete, unwired (@aws-sdk/client-sqs)
+├── queues.module.ts                       # the one place an adapter is named
+├── CLAUDE.md
+└── README.md
+```
 
-## Adapter selection
+## Core Contracts
 
-`QueueAbstractModule` (`abstract/queue-abstract.module.ts`) is the single
-place that knows which vendor adapter is active. It reads the `QUEUE_ADAPTER`
-env var — `BULLMQ` (default) or `RABBITMQ` — and resolves to the matching
-adapter module (`BullmqAdapterModule` or `RabbitmqAdapterModule`); anything
-else throws a clear startup error. `QUEUE_ADAPTER` is read directly via
-`process.env` (after an explicit `dotenv.config()` call in this file), not
-through the codebase's usual Joi-scope-plus-DI pattern, because NestJS
-module `imports` arrays are resolved synchronously at module-decoration
-time and can't consume the async config-provider chain the way a factory
-provider's return value can.
+### Producer — `QueueProducerService`
 
-`QueueAbstractModule` exposes the same two entry points every consumer
-needs, and neither one leaks the chosen vendor to its caller:
+The abstract class doubles as the NestJS injection token. Inject it to publish.
 
-- `QueueAbstractModule.forRoot()` — establishes the vendor connection once.
-  Used by `queues.module.ts`, imported once in `AppModule`.
-- `QueueAbstractModule.forFeature(queueName)` — registers one named queue
-  and provides `QueueProducer` under `getQueueProducerToken(queueName)`.
-  `src/spaceship/notification/notification.module.ts` imports this — it has
-  no dependency on `bullmq`, `amqplib`, or either adapter's module, only on
-  `QueueAbstractModule` and the abstract `QueueProducer` contract. Swapping
-  `QUEUE_ADAPTER` from `BULLMQ` to `RABBITMQ` changes which adapter
-  `forRoot`/`forFeature` delegate to internally — no domain module,
-  `SpaceshipService`, or `SpaceshipNotificationProducer` needs to change.
+- `send(queue, payload)` — fire-and-forget shorthand.
+- `dispatch(envelope)` — advanced path when headers/envelope metadata are needed.
 
-Adding a third adapter means: build `<name>-adapter/` (contract-conformant
-producer + `forRoot`/`forFeature`), add its name to `QUEUE_ADAPTERS` and the
-`resolveAdapterModule()` switch in `queue-abstract.module.ts`, and give it
-its own config scope. Nothing outside `queues/` changes.
+```ts
+export interface QueueEnvelope {
+  queue: string;
+  payload: unknown;
+  headers?: Record<string, string>;
+  options?: QueueDeliveryOptions; // delay / priority — see Delivery Options
+}
+```
 
-## RabbitMQ adapter notes
+`QueueEnvelope` carries only fields universal across brokers. Broker-specific
+concerns (routing keys, exchanges, partition keys, delays) are handled by
+adapter-level extensions.
 
-`rabbitmq-adapter/` uses `amqplib` directly. `forRoot()` opens a **confirm
-channel** (`connection.createConfirmChannel()`), and `enqueue()` waits for
-the broker to ack the publish before resolving — the same durability
-guarantee BullMQ's `queue.add()` gives (it only resolves once Redis has the
-job), not just a local socket write. Unlike BullMQ, plain RabbitMQ has no
-built-in per-message retry/backoff — `EnqueueOptions.attempts`/`delayMs`/
-`backoff` are captured as message headers (`x-attempts`, `x-delay-ms`,
-`x-backoff-type`, `x-backoff-delay-ms`) rather than silently dropped, so a
-future RabbitMQ consumer can implement retry semantics against them (e.g.
-via a dead-letter exchange).
+### Consumer — `QueueConsumerAdapter` + `QueueConsumerHandler`
 
-**RabbitMQ is producer-only today — there is no RabbitMQ consumer/processor.**
-`src/spaceship/notification/notification.processor.ts` only runs as a BullMQ
-worker (`@Processor` from `@nestjs/bullmq`). Setting `QUEUE_ADAPTER=RABBITMQ` publishes the
-`spaceship-created` job to a real RabbitMQ queue (durably, confirmed by the
-broker), but nothing ever consumes it: the spaceship-created email is not
-sent, and no error is raised anywhere — the messages just accumulate on the
-queue. Do not select `RABBITMQ` in an environment that needs the
-spaceship-created email to actually go out until a RabbitMQ processor is
-built alongside it.
+The consumer side has two abstracts: the **adapter** (broker-specific wiring,
+implemented by infrastructure code) and the **handler** (business logic,
+implemented by application code, one class per queue).
+
+```ts
+abstract class QueueConsumerHandler<TPayload = unknown> {
+  abstract handle(payload: TPayload, ctx: MessageContext): Promise<void>;
+}
+```
+
+Handlers are registered as NestJS providers, so they can inject services through
+their constructor. Because they resolve within `QueueConsumerModule`'s own
+injector scope, their dependencies must be either globally-provided or reachable
+through a module passed to `forRootAsync`'s `imports` — a non-global provider
+from an un-imported module won't resolve.
+
+### `MessageContext`
+
+Passed to every `handle()` call. Ignored for simple cases; used directly for
+explicit acknowledgment control.
+
+```ts
+export interface MessageContext {
+  readonly messageId?: string;
+  readonly headers: Record<string, string>;
+  readonly deliveryCount?: number; // 1-based; undefined when the broker can't report it
+  ack(): Promise<void>;
+  nack(opts?: { requeue?: boolean }): Promise<void>;
+}
+```
+
+`deliveryCount` is the cross-broker read-side companion to retries — useful for
+poison-message handling (`if (ctx.deliveryCount > 5) ctx.nack({ requeue: false })`).
+It maps to SQS `ApproximateReceiveCount`, BullMQ `attemptsMade + 1`, and RabbitMQ
+the `x-death` header (so on RabbitMQ it's only populated with a dead-letter retry
+setup; otherwise `undefined`).
+
+## Registration
+
+### Producer
+
+```ts
+// Synchronous — adapter has a no-arg constructor
+QueueProducerModule.forRoot({
+  adapter: MyBrokerProducerAdapter,
+  isGlobal: true,
+});
+
+// Async — adapter config injected from DI
+QueueProducerModule.forRootAsync({
+  inject: [someConfig.KEY],
+  useFactory: (config) => new MyBrokerProducerAdapter({ url: config.brokerUrl }),
+  isGlobal: true,
+});
+```
+
+### Consumer
+
+All consumers are declared in one place via the `consumers` array. The adapter
+config can come from DI (`forRootAsync`), but the consumer class references stay
+synchronous.
+
+```ts
+// Synchronous
+QueueConsumerModule.forRoot({
+  adapter: MyBrokerConsumerAdapter,
+  consumers: [
+    { queue: 'orders', handler: OrdersHandler },
+    { queue: 'notifications', handler: NotificationsHandler },
+  ],
+  isGlobal: true,
+});
+
+// Async — adapter config injected from DI
+QueueConsumerModule.forRootAsync({
+  inject: [someConfig.KEY],
+  useFactory: (config) => new MyBrokerConsumerAdapter({ url: config.brokerUrl }),
+  consumers: [{ queue: 'orders', handler: OrdersHandler }],
+  isGlobal: true,
+});
+```
+
+On `OnModuleInit`, the module resolves each handler from the NestJS container
+(via `ModuleRef`) and calls `adapter.startConsuming(queue, handler.handle)` per
+registration. On `OnModuleDestroy`, it calls `adapter.stopConsuming(queue)` for
+each.
+
+Both modules optionally inject `LoggerService` from the container and call
+`setLogger()` on the adapter instance — the same pattern `email`,
+`cloud-storage` and `config-provider` use. `setLogger()` re-tags the logger's
+context with the adapter's class name, which is safe because `LoggerService` is
+registered as `Scope.TRANSIENT`. With no `LoggerService` registered, the adapter
+keeps its own `NestLoggerAdapter` default.
+
+## Acknowledgment Contract
+
+Implicit acknowledgment is the **adapter's responsibility**. Adapters track
+whether `ack`/`nack` was already called on a message (a `wasAcknowledged` flag on
+their concrete `MessageContext` implementation) and apply these rules:
+
+| Situation | Adapter behavior |
+|---|---|
+| `handle()` resolves, no explicit ack/nack | calls `ack()` automatically |
+| `handle()` throws, no explicit ack/nack | calls `nack()` automatically |
+| `ack()` or `nack()` called explicitly | skips the implicit call |
+
+This keeps simple handlers ceremony-free while leaving full control available
+when needed:
+
+```ts
+@Injectable()
+export class OrdersHandler extends QueueConsumerHandler<OrderPayload> {
+  constructor(private readonly orders: OrdersService) {
+    super();
+  }
+
+  async handle(payload: OrderPayload, ctx: MessageContext): Promise<void> {
+    // throw → implicit nack, return → implicit ack
+    await this.orders.process(payload);
+
+    // ...or take explicit control:
+    // await ctx.nack({ requeue: false });
+  }
+}
+```
+
+## Delivery Options
+
+`dispatch` accepts optional, broker-agnostic per-message delivery options:
+
+```ts
+await producer.dispatch({
+  queue: 'orders',
+  payload: { id: 1 },
+  options: { delay: 5000, priority: 3 }, // ms, and relative priority
+});
+```
+
+Only fields with a genuine per-message meaning across brokers live here. Richer,
+broker-specific knobs (retries/backoff, cron, exchanges) stay in adapter-level
+extensions (e.g. BullMQ's `addJob`, RabbitMQ's `publishToExchange`).
+
+**Honor-or-throw**: an adapter applies an option natively or throws
+`QUEUE_PRODUCER_UNSUPPORTED_OPTION` — it never silently drops one (a delay that
+fires immediately is a correctness bug, not a degradation). Support matrix:
+
+| Option | SQS | RabbitMQ | BullMQ |
+|---|---|---|---|
+| `delay` | ✅ `DelaySeconds` (≤15 min, standard queues only) | ❌ throws (needs a delayed-exchange plugin) | ✅ |
+| `priority` | ❌ throws | ✅ (needs a priority queue) | ✅ |
+
+Adapters validate via `assertSupportedDeliveryOptions(options, supported, name)`
+([util](./abstract/producer/queue-delivery-options.util.ts)).
+
+## What Adapters Must Implement
+
+### Producer adapter
+
+- Extend `QueueProducerService`.
+- Implement `send(queue, payload)` and `dispatch(envelope)`.
+- Accept config via constructor; use `forRootAsync` for DI-sourced config.
+- Throw `QueueProducerError` on failures.
+
+### Consumer adapter
+
+- Extend `QueueConsumerAdapter`.
+- Implement `startConsuming(queue, callback)` — connect to the broker, receive
+  messages, build a concrete `MessageContext` per message, invoke the callback,
+  and handle implicit ack per the contract above.
+- Implement `stopConsuming(queue)` — cleanly unsubscribe / close the channel.
+- Throw `QueueConsumerError` on infrastructure failures.
+
+### Handler (application code)
+
+- Extend `QueueConsumerHandler<TPayload>`.
+- Implement `handle(payload, ctx)`.
+- Throw to trigger implicit nack; call `ctx.nack()` for explicit control.
+- Inject any NestJS provider via the constructor.
+
+## Built-in Adapter: AWS SQS
+
+A ready-to-use adapter for Amazon SQS lives in `src/queues/sqs-adapter/`
+(`SqsProducerAdapter` + `SqsConsumerAdapter`). Each builds its own `SQSClient`, so
+the two modules keep independent connections. Credentials are optional — prefer
+IAM roles in remote environments and only pass explicit keys for local
+development (same convention as the secrets-manager adapter).
+
+```ts
+// Producer
+QueueProducerModule.forRoot({
+  adapter: class extends SqsProducerAdapter {
+    constructor() {
+      super({ region: 'us-east-1' });
+    }
+  },
+});
+
+// ...or, with DI-sourced config:
+QueueProducerModule.forRootAsync({
+  inject: [awsConfig.KEY],
+  useFactory: (aws) => new SqsProducerAdapter({ region: aws.region }),
+});
+
+// Consumer
+QueueConsumerModule.forRootAsync({
+  inject: [awsConfig.KEY],
+  useFactory: (aws) =>
+    new SqsConsumerAdapter({ region: aws.region, waitTimeSeconds: 20 }),
+  consumers: [{ queue: 'orders', handler: OrdersHandler }],
+});
+```
+
+**Queue identifier.** The `queue` string is an SQS **queue name**; the adapter
+resolves it to a queue URL via `GetQueueUrl` (cached per name).
+
+**FIFO queues.** For a `.fifo` queue, pass `MessageGroupId` (required) and
+optionally `MessageDeduplicationId` through `dispatch`'s `headers` — the adapter
+lifts these reserved keys into native SQS parameters and maps any remaining
+headers to message attributes. A FIFO send without a `MessageGroupId` throws
+`QueueProducerError(DISPATCH_FAILED)`. FIFO queues also reject the shared `delay`
+option (SQS supports delay per-queue only, not per-message), so a FIFO `dispatch`
+with `options.delay` throws `QUEUE_PRODUCER_UNSUPPORTED_OPTION`.
+
+```ts
+await producer.dispatch({
+  queue: 'orders.fifo',
+  payload: { id: 1 },
+  headers: { MessageGroupId: 'tenant-42', traceId: 'abc' },
+});
+```
+
+**Consuming.** SQS has no push delivery, so `SqsConsumerAdapter` runs a
+long-polling worker loop per queue (configurable `waitTimeSeconds`,
+`maxNumberOfMessages`, `visibilityTimeout`). `stopConsuming` aborts the loop via
+an `AbortController`. Implicit ack maps to `DeleteMessage`; implicit/explicit
+nack maps to `ChangeMessageVisibility`. On module shutdown both SQS adapters
+destroy their `SQSClient` (`OnModuleDestroy`), releasing its pooled HTTP sockets;
+the consumer stops every active poll loop first.
+
+**Serial batch processing (by design).** Messages within a received batch are
+processed one at a time, and the next poll waits for the whole batch to settle.
+This keeps FIFO message-group ordering intact (a batch can carry several ordered
+messages from one group) and bounds in-flight work to a single handler — so,
+unlike RabbitMQ's `prefetch` or BullMQ's `concurrency`, the SQS consumer has no
+intra-batch parallelism and one slow handler blocks the rest of its batch. For
+higher throughput, lower `maxNumberOfMessages` and run more consumer instances.
+The pause after a failed `ReceiveMessage` (so transient errors don't hot-loop)
+defaults to 1000 ms and is configurable via `receiveErrorBackoffMs`.
+
+**SQS nack limitation.** SQS has no "discard" primitive. `ctx.nack()` (requeue,
+the default) sets the message's visibility timeout to `0` for immediate
+redelivery; `ctx.nack({ requeue: false })` is a no-op — the message simply
+reappears after its visibility timeout lapses, going to a dead-letter queue if
+the queue has a redrive policy. This is an SQS constraint, not an adapter
+shortcut.
+
+## Built-in Adapter: RabbitMQ
+
+A RabbitMQ adapter built directly on `amqplib` lives in
+`src/queues/rabbitmq-adapter/` (`RabbitMqProducerAdapter` +
+`RabbitMqConsumerAdapter`). Unlike SQS, RabbitMQ is a true push broker, so the
+consumer uses `channel.consume` callbacks (no polling). Each adapter owns its
+connection and connects **lazily** on first use (memoized); on connection
+`close` it drops the cached connection so the next call reconnects — fail-fast,
+no active retry loop. The same applies one level down: each adapter attaches
+`error`/`close` listeners to its channel(s), so a channel that fails on its own
+(a channel-level protocol error, while the connection stays up) is dropped rather
+than reused dead or surfaced as an uncaught exception. On module shutdown both
+adapters close their connection (`OnModuleDestroy`).
+
+Note the reconnect is driven by the *next call*: the **producer** reconnects on its
+next publish (channel and connection both rebuild lazily), so it self-heals with
+no operator action. A **push consumer** has no such trigger — if its channel or
+connection drops, in-flight consumers are not auto-restored and consumption stays
+halted. Each registered queue's handler is retained, so recovery is a manual
+lever rather than a restart: inject the concrete `RabbitMqConsumerAdapter` and
+call `resume(queue)` (or `resume()` for every halted queue).
+
+**Why this is deferred, not missing.** Reconnection *policy* — how long to back
+off, when to alert, when to give up and let the process restart — is a genuine
+operational concern, and the right decision depends on context the adapter
+doesn't have. So the adapter deliberately stays mechanism-only (fail loudly,
+expose `resume`) and leaves policy to whatever already owns supervision in your
+deployment:
+
+- **Process/orchestrator supervision** (Kubernetes liveness probe, systemd) —
+  let the pod fail and restart with the platform's existing backoff. Often the
+  simplest correct answer; you may not need `resume` at all.
+- **An ops endpoint or admin command** that calls `resume()` — manual or scripted
+  recovery without a full restart.
+- **A thin in-process watcher** (health check / interval) that calls `resume()` —
+  auto-recovery on your own backoff terms, in ~10 lines of app code reusing the
+  lever rather than complexity baked into the shared adapter. This is the
+  building block a future built-in auto-resubscribe would reuse.
+
+What makes this safe rather than a silent outage: a channel/connection `close`
+logs a **warning naming the halted queue**. Wire that warning to alerting (e.g.
+Grafana, per the stack) so "consumption halted" is observable and something —
+operator, supervisor, or watcher — pulls the lever.
+
+```ts
+// Producer
+QueueProducerModule.forRootAsync({
+  inject: [rabbitConfig.KEY],
+  useFactory: (cfg) => new RabbitMqProducerAdapter({ url: cfg.url }),
+});
+
+// Consumer
+QueueConsumerModule.forRootAsync({
+  inject: [rabbitConfig.KEY],
+  useFactory: (cfg) =>
+    new RabbitMqConsumerAdapter({ url: cfg.url, prefetch: 10 }),
+  consumers: [{ queue: 'orders', handler: OrdersHandler }],
+});
+```
+
+**Topology (`assertTopology`, default `true`).** When on, the adapter
+idempotently asserts the **durable** queues and exchanges it directly uses. When
+off, it asserts nothing — infra/migrations own all topology. Either way the
+adapter never creates **bindings**; queue↔exchange bindings are always managed
+externally.
+
+**Default-exchange send.** `send(queue, payload)` / `dispatch` publish to the
+default exchange with routing-key = queue name, and forward non-reserved headers
+as AMQP message headers.
+
+**Message persistence.** Published messages are marked persistent by default so
+they survive a broker restart (on durable queues). Set `persistent: false` on
+the producer options to trade durability for throughput. (Queue/exchange
+durability stays on — use `assertTopology: false` and declare your own topology
+if you need non-durable infrastructure.)
+
+**Publisher confirms.** The producer uses a [confirm
+channel](https://www.rabbitmq.com/docs/confirms#publisher-confirms): `send` /
+`dispatch` / `publishToExchange` resolve only once the broker has acknowledged
+the message, and a broker nack rejects with `QUEUE_PRODUCER_SEND_FAILED`. So a
+resolved publish means the broker accepted the message, not merely that it was
+written to the local socket buffer — matching the awaited delivery guarantee of
+the SQS and BullMQ producers. (This adds one broker round-trip per publish.)
+
+**Exchanges — two ways** (per design, both are supported):
+
+1. Dedicated, type-safe method on the concrete producer:
+
+   ```ts
+   await producer.publishToExchange({
+     exchange: 'orders',
+     routingKey: 'order.created',
+     payload: { id: 1 },
+     type: 'topic', // used only when asserting; default 'topic'
+   });
+   ```
+
+2. Reserved headers on the abstract `dispatch`, for callers that only hold a
+   `QueueProducerService`. `x-exchange` / `x-routing-key` are lifted out and route
+   the message through that exchange (never forwarded as message headers):
+
+   ```ts
+   await producer.dispatch({
+     queue: 'unused',
+     payload: { id: 1 },
+     headers: { 'x-exchange': 'orders', 'x-routing-key': 'order.created' },
+   });
+   ```
+
+**Consuming.** One channel per queue (so `prefetch`/QoS and channel failures are
+isolated). `startConsuming` optionally asserts the queue, sets `prefetch`, and
+`channel.consume`s; null deliveries (broker-cancelled) are ignored. Implicit ack
+→ `channel.ack`; implicit/explicit nack → `channel.nack(msg, false, requeue)` —
+so `nack({ requeue: false })` is a real discard (dead-lettered if a DLX is
+configured), unlike SQS. `stopConsuming` cancels the consumer and closes its
+channel.
+
+> Consuming **from an exchange** (topic/fanout) requires the queue to be bound to
+> that exchange. Per the design, the adapter does not create bindings — declare
+> them in infra/migrations (or assert+bind them at startup outside the adapter).
+
+## Built-in Adapter: BullMQ
+
+A Redis-backed adapter using [BullMQ](https://docs.bullmq.io/) lives in
+`src/queues/bullmq-adapter/` (`BullMqProducerAdapter` + `BullMqConsumerAdapter`).
+BullMQ is a job queue rather than a raw broker, built on `ioredis` (already a
+project dependency).
+
+```ts
+const connection = { host: 'localhost', port: 6379 };
+
+// Producer
+QueueProducerModule.forRootAsync({
+  useFactory: () => new BullMqProducerAdapter({ connection }),
+});
+
+// Consumer — BullMQ workers need a connection with maxRetriesPerRequest: null
+QueueConsumerModule.forRootAsync({
+  useFactory: () =>
+    new BullMqConsumerAdapter({
+      connection: { ...connection, maxRetriesPerRequest: null },
+      concurrency: 10,
+    }),
+  consumers: [{ queue: 'orders', handler: OrdersHandler }],
+});
+```
+
+**Job ↔ message mapping.** `send`/`dispatch` enqueue a job via `queue.add`. BullMQ
+jobs have no header slot, so the adapter wraps the message as
+`{ payload, headers }` job data and unwraps it on consume; `ctx.messageId` is the
+BullMQ job id and `ctx.deliveryCount` is `attemptsMade + 1`. The producer closes its
+queues on `OnModuleDestroy`. The shared `delay`/`priority` delivery options map
+straight onto BullMQ job options. Every job is enqueued under a single job name
+(`'message'` by default, overridable via the `jobName` option) — the worker
+processes all names, so this only affects the BullMQ dashboard label.
+
+**Richer job options — `addJob`.** For BullMQ-specific options beyond the shared
+tier (`attempts`, `backoff`, `jobId`, `lifo`, `removeOnComplete`, …), inject the
+concrete `BullMqProducerAdapter` and use the dedicated extension:
+
+```ts
+await producer.addJob({
+  queue: 'orders',
+  payload: { id: 1 },
+  options: { attempts: 5, backoff: { type: 'exponential', delay: 1000 } },
+});
+```
+
+**Acknowledgment is emulated.** BullMQ has no ack/nack — a job *completes* when
+its processor resolves and *fails* (and retries per the job's `attempts`) when
+the processor throws. The adapter maps the context contract onto that:
+
+| Handler action | BullMQ outcome |
+|---|---|
+| resolves (or `ctx.ack()`) | job completes |
+| throws | processor rethrows → job fails (retries if attempts remain) |
+| `ctx.nack()` (requeue, default) | processor throws → job fails (retries if attempts remain) |
+| `ctx.nack({ requeue: false })` | processor throws `UnrecoverableError` → no further retries |
+
+> **Retry caveat.** Whether a failed/nacked job is *retried* is governed by the
+> job's `attempts` option, set at enqueue time. A job enqueued without `attempts`
+> (plain `send`/`dispatch`) defaults to a single attempt — so `nack({ requeue:
+> true })` and a plain throw both fail it without retrying. Enqueue with
+> `addJob({ options: { attempts } })` to make retries (and thus `requeue: true`)
+> meaningful. `requeue: false` always prevents retries via `UnrecoverableError`.
+
+## Error Codes
+
+| Class | Code | Meaning |
+|---|---|---|
+| `QueueProducerError` | `QUEUE_PRODUCER_SEND_FAILED` | `send()` failed |
+| `QueueProducerError` | `QUEUE_PRODUCER_DISPATCH_FAILED` | `dispatch()` failed |
+| `QueueProducerError` | `QUEUE_PRODUCER_CONNECTION_FAILED` | broker connection failed |
+| `QueueProducerError` | `QUEUE_PRODUCER_UNSUPPORTED_OPTION` | a delivery option the adapter can't honor |
+| `QueueConsumerError` | `QUEUE_CONSUMER_CONSUME_FAILED` | consuming a message failed |
+| `QueueConsumerError` | `QUEUE_CONSUMER_ACK_FAILED` | acknowledging failed |
+| `QueueConsumerError` | `QUEUE_CONSUMER_NACK_FAILED` | negative-acknowledging failed |

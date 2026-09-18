@@ -41,22 +41,29 @@ adapter here that suits `forRoot`.
 
 1. Inject `CloudStorageService`. Never inject `S3AdapterService` or
    `LocalAdapterService` (invariant `T1`).
-2. Adapter selection belongs in the `useFactory` in `src/app.module.ts` — local
+2. Adapters do not declare a logger. `CloudStorageService` owns a `protected
+   logger` defaulting to `new NestLoggerAdapter(<adapter class name>)`, and
+   `CloudStorageAbstractModule` optionally injects the container's
+   `LoggerService` and calls `setLogger()` on the instance it builds. Declaring
+   a `logger` field in an adapter shadows the inherited one and silently
+   defeats that injection. `email`, `config-provider` and `queues` use the same
+   pattern.
+3. Adapter selection belongs in the `useFactory` in `src/app.module.ts` — local
    for development, S3 for deployed environments. Do not branch on the
    environment inside a service.
-3. `useDefaultController` defaults to `false`. Mounting it exposes
+4. `useDefaultController` defaults to `false`. Mounting it exposes
    `POST /cloud-storage`, `GET /cloud-storage/:fileKey` and
    `DELETE /cloud-storage/:fileKey` **with no authentication**. For anything
    beyond a demo, leave it off and write a controller that applies
    `AuthGuard('jwt')` and your own authorization.
-4. Adapters throw `CloudStorageError` with a `CLOUD_STORAGE_ERRORS` code. An
+5. Adapters throw `CloudStorageError` with a `CLOUD_STORAGE_ERRORS` code. An
    `@aws-sdk` error must never escape the adapter.
-5. A file key is opaque. Never build one from user-supplied input without
+6. A file key is opaque. Never build one from user-supplied input without
    validating it; `CLOUD_STORAGE_ERRORS.INVALID_KEY` exists for that rejection.
-6. AWS credentials are optional in `S3AdapterConfig` precisely so deployed
+7. AWS credentials are optional in `S3AdapterConfig` precisely so deployed
    environments can use the task IAM role. Prefer the role; set explicit keys
    only for local work.
-7. Presigned URLs are time-bounded by `expiresInSeconds`. Keep it short; do not
+8. Presigned URLs are time-bounded by `expiresInSeconds`. Keep it short; do not
    raise it to paper over a slow client.
 
 ## Adding an adapter
