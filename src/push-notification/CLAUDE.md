@@ -99,7 +99,13 @@ See `docs/audit/2026-09-11-template-audit.md` and `docs/audit/2026-09-18-modular
   `CLOUD_STORAGE_*` copy-paste leftovers, and they describe file upload, not push.
 - **`N3`** — no `forRootAsync`; the file ends with `// TODO: Add forRootAsync`.
   Also, `forRoot` mutates the caller's `controllers` array with `push`.
-- **`D4`** — `src/push-notification/README.md` teaches `@nestjs/config` and `npm`.
+- **`D4`** — ~~`src/push-notification/README.md` teaches `@nestjs/config` and
+  `npm`.~~ **Fixed (`@nestjs/config`):** every registration example now injects
+  `expoScope` via `@Inject(expoScope.KEY)` and types the factory parameter as
+  `ExpoScopeConfig`, matching `src/app.module.ts`. The `npm` half of this bullet
+  is `DOC9`'s installation-line defect
+  (`docs/audit/2026-09-18-modularity-audit.md`), not `D4`'s — fixed separately
+  in this same branch.
 - **`G1`**, **`N5`** — no tests, no mocks.
 - **`M15`** — `PushNotificationException` is defined but never constructed;
   adapter failures escape as the raw SDK error or `InternalServerErrorException`

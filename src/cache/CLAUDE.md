@@ -104,9 +104,11 @@ without `queues/`).
 
 See `docs/audit/2026-09-11-template-audit.md`.
 
-- **`D4`** — `src/cache/README.md` still shows `@nestjs/config` `ConfigType`
+- **`D4`** — ~~`src/cache/README.md` still shows `@nestjs/config` `ConfigType`
   registration; the project uses config-provider scopes and `@nestjs/config` is
-  not a dependency.
+  not a dependency.~~ **Fixed:** the README's `forRootAsync` example now injects
+  `redisScope` via `@Inject(redisScope.KEY)` and types the factory parameter as
+  `RedisScopeConfig`, matching `src/app.module.ts`.
 - **`G1`** — no adapter or extension tests.
 - **`L2`** — ~~`src/cache/redis-adapter/utils/logger.ts:25` disables a rule named
   `ts/no-explicit-any`, which does not exist; ESLint errors on the bogus name and

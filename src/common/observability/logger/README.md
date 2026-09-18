@@ -61,8 +61,8 @@ src/common/observability/logger/
 ### 1) `forRoot` — no runtime config needed
 
 ```ts
-import { LoggerAbstractModule } from '@/common/observability/logger/abstract/logger-abstract.module';
-import { NestLoggerAdapter } from '@/common/observability/logger/nest-adapter/nest-logger.adapter';
+import { LoggerAbstractModule } from './common/observability/logger/abstract/logger-abstract.module';
+import { NestLoggerAdapter } from './common/observability/logger/nest-adapter/nest-logger.adapter';
 
 LoggerAbstractModule.forRoot({
   adapter: NestLoggerAdapter,
@@ -73,14 +73,15 @@ LoggerAbstractModule.forRoot({
 ### 2) `forRootAsync` — config-driven instantiation
 
 ```ts
-import { LoggerAbstractModule } from '@/common/observability/logger/abstract/logger-abstract.module';
-import { PinoLoggerAdapter } from '@/common/observability/logger/pino-adapter/pino-logger.adapter';
+import { LoggerAbstractModule } from './common/observability/logger/abstract/logger-abstract.module';
+import { PinoLoggerAdapter } from './common/observability/logger/pino-adapter/pino-logger.adapter';
+import { appScope, AppScopeConfig } from './app.scope';
 
 LoggerAbstractModule.forRootAsync({
   isGlobal: true,
-  inject: [appConfig.KEY],
-  useFactory: (config: ConfigType<typeof appConfig>) =>
-    new PinoLoggerAdapter(config.appName),
+  inject: [appScope.KEY],
+  useFactory: (config: AppScopeConfig) =>
+    new PinoLoggerAdapter(config.nodeEnv),
 })
 ```
 
