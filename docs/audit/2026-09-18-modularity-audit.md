@@ -74,7 +74,81 @@ predicted was most entangled).
 
 ### Contract conformance
 
-### Agent guides (CLAUDE.md)
+Evidence: `docs/architecture/module-contract.md` in full (not the task brief's
+summary of it), `find src -type d -name '*-adapter' | sort` (the brief's own
+`src/*/[a-z]*-adapter/` glob misses `src/common/observability/logger/nest-adapter/`,
+three levels deep — every listed adapter directory below was found with the
+corrected command), and by opening every abstract module, every module's error
+file (or lack of one), and one adapter service per module rather than trusting
+grep hits alone. Findings continue the `M` series from Task 3 at **M10**.
+Findings `N1`, `N2`, `N3`, `N5` are `docs/audit/2026-09-11-template-audit.md`'s
+and keep their original IDs; they are re-verified, not restated, below.
+
+**Scope note — where the brief and the contract disagree.** The contract's own
+opening sentence names seven modules as implementing the shape: `cache`,
+`cloud-storage`, `email`, `push-notification`, `templating`, `config-provider`,
+`common/observability/logger`. It does not claim `queues`, `analytics` or
+`telemetry` follow it. The brief's context (item 4) directs auditing all four
+post-2026-09-11 modules "against the contract" as if the same claim applied
+uniformly. Per this task's instructions, the contract wins: `telemetry` is
+graded `n/a` throughout, because its own `src/common/observability/telemetry/CLAUDE.md`
+states plainly, "This module does not follow the adapter-module contract... There
+is no abstract class to inject" — a documented exemption, not a defect, and one
+the contract's silence about `telemetry` corroborates. `queues` and `analytics`
+are graded normally despite the same textual silence, because neither module's
+own `CLAUDE.md` disclaims the contract the way `telemetry`'s does — both inherit
+`docs/architecture/module-contract.md` in their own header and describe their
+divergences as adaptations of the shape (`queues`: "the contract is split in
+two"), not exemptions from it. `logger`, unlike `queues`/`analytics`, **is**
+named in the contract's own text as implementing the shape, which makes its
+missing error class (`M13`) a sharper finding than analytics's or queues'.
+
+#### Conformance matrix
+
+✅ conforms · ❌ does not, cell cites the finding · n/a rule does not apply to
+this module's design (cited where the exemption is itself documented).
+
+| Module | Directory shape | Rule 1 — abstract class is the token | Rule 2 — adapter is a plain class | Rule 3 — `forRoot` + `forRootAsync` | Rule 4 — adapters translate errors | Rule 5 — ships mocks |
+|---|---|---|---|---|---|---|
+| `cache` | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ |
+| `cloud-storage` | ❌ `N5` | ✅ | ✅ | ✅ | ❌ `M17` | ❌ `N5` |
+| `config-provider` | ❌ `N5` | ✅ | ✅ | ✅ | ✅ | ❌ `N5` |
+| `email` | ❌ `N5` | ✅ | ✅ | ✅ | ❌ `M18` | ❌ `N5` |
+| `push-notification` | ❌ `N1`, `N5` | ✅ | ❌ `M14` | ❌ `N3` | ❌ `M15` | ❌ `N5` |
+| `queues` | ❌ `M10`, `N5` | ✅ | ✅ | ✅ | ✅ | ❌ `N5` |
+| `templating` | ❌ `M11`, `N5` | ✅ | ✅ | ❌ `N3` | ❌ `M12` | ❌ `N5` |
+| `common/observability/logger` | ❌ `M13`, `N5` | ✅ | ✅ | ✅ | ❌ `M13` | ❌ `N5` |
+| `common/observability/analytics` | ❌ `M16`, `N5` | ✅ | ✅ | ✅ | ❌ `M16` | ❌ `N5` |
+| `common/observability/telemetry` | n/a | n/a | n/a | n/a | n/a | n/a |
+
+25 of 54 graded cells (`telemetry`'s row is 6 `n/a` cells, ungraded) are ❌.
+`cache` is the only module with a clean row, confirming its status as the
+contract's reference implementation.
+
+#### Findings
+
+| ID | Finding |
+|----|---------|
+| **M10** | **Directory-shape deviation, `queues` — the split abstract layer and the root `queues.module.ts`.** `find src/queues -type f` shows no `src/queues/abstract/queues.service.ts`, `.interfaces.ts`, `.error.ts` or `-abstract.module.ts` at that level. Instead the contract is duplicated across two independent trees: `src/queues/abstract/producer/` (`queue-producer.service.ts`, `queue-producer.interfaces.ts`, `queue-producer.error.ts`, `queue-producer.module.ts`) and `src/queues/abstract/consumer/` (`queue-consumer.adapter.ts`, `.handler.ts`, `.interfaces.ts`, `.error.ts`, `.module.ts`) — a legitimate consequence of the module being bidirectional (`src/queues/CLAUDE.md`'s own "Scope" section says so), but still a shape the contract's diagram has no room for. On top of that split, `src/queues/queues.module.ts` sits at the module root as a concrete, non-dynamic `@Module` — not a `forRoot`/`forRootAsync` dynamic module at all — that hardcodes the BullMQ adapter (`:28-46`) and imports the domain module `spaceship`'s notification classes (`:8-15`, already the subject of `M2`/`M3`). Confirms the brief's item 5 exactly: this file is not "the contract's abstract module" — the two real abstract modules are `QueueProducerModule`/`QueueConsumerModule`, both of which do conform to rule 3 (see the matrix) — it is a bespoke composition root the contract's shape block does not describe, and it is the same file `M2`/`M3` already flag for the `redis.scope`/`spaceship` coupling. That confirms the brief's suspicion: this file is the seam where the contract broke down for `queues`. |
+| **M11** | **Directory-shape deviation, `templating`.** `find src/templating -type f`: `abstract/` holds only `template-provider.const.ts` and `template.service.ts` — no `template.interfaces.ts`, no `template.error.ts`, and no `template-abstract.module.ts`. The dynamic module lives instead at `src/templating/template.module.ts` (module root, `export class TemplateModule`), the same root-level-module shape deviation `M10` records for `queues`. No `abstract/mocks/` either (`N5`). |
+| **M12** | **Rule 4 violation, `templating`.** `src/templating/pug-adapter/pug-adapter.service.ts:14-21` (`compile`) has no `try`/`catch` at all: `pug.compileFile(fullPath)` and the call to the compiled template function can both throw (missing file, pug syntax error) and the raw `pug`/Node error propagates unchanged. There is no error class to translate into in the first place — `templating` ships no `.error.ts` (`M11`) — so this is not a missed `catch`, it is the absence of the module's own error type that rule 4 requires. |
+| **M13** | **`common/observability/logger` ships no error class, despite being one of the seven modules the contract's own text names as implementing the shape.** `ls src/common/observability/logger/abstract/` returns `logger-abstract.module.ts`, `logger.interfaces.ts`, `logger.service.ts`, `serialize-error.ts` and their specs — no `logger.error.ts`. `serialize-error.ts` formats an `unknown` value for a log line (used by all three adapters, e.g. `src/common/observability/logger/pino-adapter/pino-logger.adapter.ts:4`); it is not an `Error` subclass with a code map, so it is not a rule-4 error type. No `abstract/mocks/` either (`N5`). Rule 1 and rule 3 are otherwise fully met (`LoggerService` is the token; `forRoot`/`forRootAsync` both exist, `src/common/observability/logger/abstract/logger-abstract.module.ts:29,50`) — this is a narrower gap than `push-notification`'s or `templating`'s, but it lands on the module the contract itself holds up as compliant. |
+| **M14** | **Rule 2 violation, `push-notification`'s `ExpoAdapterService`.** `src/push-notification/expo-adapter/expo-adapter.service.ts:23-26` — the constructor is `constructor(@Inject(EXPO_ADAPTER_PROVIDER_CONFIG) config: ExpoAdapterConfig)`. Every other adapter checked across the template takes its config as a plain, undecorated constructor parameter (`src/cache/redis-adapter/redis-adapter.service.ts:18`, `src/cloud-storage/s3-adapter/s3-adapter.service.ts:36`, `src/email/resend-adapter/resend-adapter.service.ts:21`, `src/config-provider/secrets-manager-adapter/secrets-manager-config.adapter.ts:17`, `src/queues/bullmq-adapter/bullmq-producer.adapter.ts:31`, `src/common/observability/analytics/posthog-adapter/posthog-adapter.service.ts:17`). `ExpoAdapterService` is the one adapter in the template reaching for a NestJS DI decorator inside a class the contract calls "plain." `new ExpoAdapterService(cfg)` still works — the decorator is inert outside a DI container — so this does not break unit-testability the way `@Module` would, but it is a real, singular deviation from the pattern every other adapter follows. |
+| **M15** | **Rule 4 violation, `push-notification` — the module's own error class is never thrown.** `grep -rn "new PushNotificationException" src` returns nothing: `PushNotificationException` (`src/push-notification/abstract/push-notification.exception.ts`) is defined and referenced in a type check but never constructed anywhere in the codebase. `ExpoAdapterService`'s two `catch` blocks (`src/push-notification/expo-adapter/expo-adapter.service.ts:76-82`, `111-116`) log via `console.error` and `throw error;` — re-raising the raw `expo-server-sdk` failure, or the adapter's own manually-thrown `InternalServerErrorException` (`:44`, `:67`), unchanged. Consequence: `src/push-notification/abstract/push-notification.controller.ts:34-36` (`if (error instanceof PushNotificationException) { throw error; }`) is dead code — nothing ever satisfies that branch — and every failure falls through to `throw new InternalServerErrorException(error)` at `:37`, which also hands the raw upstream error object to an HTTP exception constructor. `src/push-notification/CLAUDE.md` rule 6 says "Failures throw `PushNotificationException`"; the code does not. |
+| **M16** | **`common/observability/analytics` ships no error class; its adapter swallows errors by documented design rather than translating them.** `ls src/common/observability/analytics/abstract/` has no `analytics.error.ts` (nor `abstract/mocks/`, `N5`). `PosthogAdapterService`'s three methods (`src/common/observability/analytics/posthog-adapter/posthog-adapter.service.ts:23-37`, `39-57`, `59-80`) each `catch` the PostHog client's error, log it, and return a safe default (`void`/`false`/`undefined`) instead of throwing anything — confirmed as deliberate by the module's own guide, `src/common/observability/analytics/CLAUDE.md` rule 2: "`capture()` is synchronous and fire-and-forget by design — `PosthogAdapterService` catches and logs its own client errors rather than propagating them." This is a defensible product choice (an analytics outage should not break the request), but it means rule 4 cannot be satisfied even in principle: there is no module error type to translate into, and the adapter is designed never to raise one. |
+| **M17** | **Rule 4 partial gap, `cloud-storage`'s `LocalAdapterService`.** `src/cloud-storage/local-adapter/local-adapter.service.ts:29-49` (`uploadFile`) has no `try`/`catch` around `mkdir`/`writeFile` at all — a filesystem error (permissions, disk full) escapes as a raw Node `fs` error, not a `CloudStorageError`. `deleteFile` (`:51-65`) and `getFile` (`:67-87`) do translate the one case they check for (`ENOENT` → `CloudStorageError(FILE_NOT_FOUND)`) but re-throw every other error unchanged (`:63`, `:80`). This is confirmed as intentional — `local-adapter.service.unit.spec.ts:90,128` are titled "should rethrow non-ENOENT errors ... unchanged" — but intentional or not, an unmapped filesystem error still escapes the adapter raw, which is what rule 4 forbids. `S3AdapterService` (`src/cloud-storage/s3-adapter/s3-adapter.service.ts:64-110`) wraps every provider call in `try`/`catch` → `CloudStorageError` with no gaps and is the module's conforming half. |
+| **M18** | **Rule 4 violation, `email`'s `AwsSesAdapterService`.** `src/email/aws-ses-adapter/aws-ses-adapter.service.ts` never imports `EmailError`. Its one `catch` block (`:81-84`, inside `sendWithHtmlContent`, the shared path for both `sendEmail` and `sendEmailBatch`) logs the failure and `throw error;` — re-raising the raw `@aws-sdk/client-ses` rejection, or the adapter's own manually-thrown plain `Error` (`:68`), unchanged. `EmailError`/`EMAIL_ERRORS` exist (`src/email/abstract/email.error.ts`) and are used correctly by the other three adapters, but not directly — `ResendAdapterService` and `SendgridAdapterService` both route through the shared `executeHtmlEmailSend` helper (`src/email/utils/execute-html-email-send.ts:39-49`), which is where the `EmailError` translation actually lives; `AwsSesAdapterService` is the one adapter that does not call that helper and has no translation of its own. This contradicts `src/email/CLAUDE.md` rule 5: "Adapters throw `EmailError`... A `@sendgrid/mail`, `resend` or `@aws-sdk/client-ses` error must never escape." |
+
+#### Prior findings re-verified against `05fcd60`
+
+| ID | Status |
+|----|--------|
+| **N1** | **Still open, unchanged.** `src/push-notification/abstract/push-notification-abstract.module.ts.ts` still carries the doubled `.ts.ts` extension, and `src/app.module.ts:26` still imports it by that literal name (`from './push-notification/abstract/push-notification-abstract.module.ts'`). |
+| **N2** | **Still open; queues does not make it five.** The template still has exactly four competing error shapes: (a) POJO-constant + plain-`Error`-subclass (`cache`, `cloud-storage`, `email`, `config-provider`); (b) `RequestException`/`Exceptions` registry (`auth`, `common`); (c) `HttpException`-based (`push-notification`); (d) `ApiException`, a plain `Error` with no HTTP status (`cloud-storage`'s default controller). `queues`'s two new error classes, `QueueProducerError` and `QueueConsumerError` (`src/queues/abstract/producer/queue-producer.error.ts`, `src/queues/abstract/consumer/queue-consumer.error.ts`), are both POJO-constant + plain-`Error`-subclass — they join shape (a) rather than adding a fifth. Separately (not a new shape, a new gap): `logger` (`M13`) and `analytics` (`M16`) now ship *no* error class at all, which N2's four-shape count does not capture because you cannot compete with an absence — worth a reader's attention regardless. |
+| **N3** | **Still open for both named modules; queues and the new observability modules do not have it.** `TemplateModule` (`src/templating/template.module.ts:18-36`) has only `static forRoot`, no `forRootAsync` — unchanged. `PushNotificationAbstractModule` (`src/push-notification/abstract/push-notification-abstract.module.ts.ts:20-48`) still has only `static forRoot` and still closes with the literal `} // TODO: Add forRootAsync`. The modules that postdate the prior audit do not repeat this gap: `QueueProducerModule` and `QueueConsumerModule` both have `forRoot` and `forRootAsync` (`src/queues/abstract/producer/queue-producer.module.ts:18,46`, `src/queues/abstract/consumer/queue-consumer.module.ts:38,68`), and so do `LoggerAbstractModule` and `AnalyticsAbstractModule` (`src/common/observability/logger/abstract/logger-abstract.module.ts:29,50`, `src/common/observability/analytics/abstract/analytics-abstract.module.ts:25,41`). |
+| **N5** | **Still open, unchanged. `cache` remains the only module with `abstract/mocks/`.** `find src -type d -name mocks` returns exactly one directory: `src/cache/abstract/mocks`. Every other module graded in the matrix above — `cloud-storage`, `config-provider`, `email`, `push-notification`, `queues`, `templating`, `logger`, `analytics` — has none. |
+
+
 
 ### Human guides (README.md)
 
