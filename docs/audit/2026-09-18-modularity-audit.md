@@ -148,7 +148,7 @@ contract's reference implementation.
 | **N3** | **Still open for both named modules; queues and the new observability modules do not have it.** `TemplateModule` (`src/templating/template.module.ts:18-36`) has only `static forRoot`, no `forRootAsync` — unchanged. `PushNotificationAbstractModule` (`src/push-notification/abstract/push-notification-abstract.module.ts.ts:20-48`) still has only `static forRoot` and still closes with the literal `} // TODO: Add forRootAsync`. The modules that postdate the prior audit do not repeat this gap: `QueueProducerModule` and `QueueConsumerModule` both have `forRoot` and `forRootAsync` (`src/queues/abstract/producer/queue-producer.module.ts:18,46`, `src/queues/abstract/consumer/queue-consumer.module.ts:38,68`), and so do `LoggerAbstractModule` and `AnalyticsAbstractModule` (`src/common/observability/logger/abstract/logger-abstract.module.ts:29,50`, `src/common/observability/analytics/abstract/analytics-abstract.module.ts:25,41`). |
 | **N5** | **Still open, unchanged. `cache` remains the only module with `abstract/mocks/`.** `find src -type d -name mocks` returns exactly one directory: `src/cache/abstract/mocks`. Every other module graded in the matrix above — `cloud-storage`, `config-provider`, `email`, `push-notification`, `queues`, `templating`, `logger`, `analytics` — has none. |
 
-
+### Agent guides (CLAUDE.md)
 
 ### Human guides (README.md)
 
