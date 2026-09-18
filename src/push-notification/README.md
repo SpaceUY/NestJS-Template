@@ -209,7 +209,7 @@ import { expoScope, ExpoScopeConfig } from './push-notification/expo-adapter/con
         }),
       }),
       useDefaultController: false, // Disable the default controller
-      controllers: [YourController], // Registers the custom controller
+      controllers: [CustomNotificationController], // Registers the custom controller
       isGlobal: true, // If you need, enables the module as global
     }),
   ], 
