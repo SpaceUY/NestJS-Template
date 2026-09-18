@@ -25,7 +25,7 @@ Before changing anything under `src/<module>/`, read `src/<module>/CLAUDE.md`.
 | `src/common/observability/analytics` | `src/common/observability/analytics/CLAUDE.md` | `src/common/observability/analytics/README.md` |
 | `src/common/observability/telemetry` | `src/common/observability/telemetry/CLAUDE.md` | `src/common/observability/telemetry/README.md` |
 | `src/database` | `src/database/CLAUDE.md` | — |
-| `src/auth` | `src/auth/CLAUDE.md` | — |
+| `src/auth` | `src/auth/CLAUDE.md` | `src/auth/README.md` |
 | `src/cache` | `src/cache/CLAUDE.md` | `src/cache/README.md` |
 | `src/cloud-storage` | `src/cloud-storage/CLAUDE.md` | `src/cloud-storage/README.md` |
 | `src/email` | `src/email/CLAUDE.md` | `src/email/README.md` |
