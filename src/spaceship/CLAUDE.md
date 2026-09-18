@@ -99,8 +99,8 @@ its own queue producer/processor on top of `src/queues/` (see
 Two couplings in that worked example are deliberate, and copying it means
 copying them knowingly (both are `src/queues/CLAUDE.md` Rule 1 and Rule 2):
 
-- `notification.producer.ts` injects the **concrete** `BullMqSenderAdapter`,
-  not the abstract `QueueSenderService` — a documented `T1` exception, because
+- `notification.producer.ts` injects the **concrete** `BullMqProducerAdapter`,
+  not the abstract `QueueProducerService` — a documented `T1` exception, because
   the abstract `dispatch()` exposes only broker-agnostic `delay`/`priority`,
   while this notification needs BullMQ's `attempts`/`backoff`. Swapping the
   wired adapter to RabbitMQ/SQS therefore fails at startup, by design; the

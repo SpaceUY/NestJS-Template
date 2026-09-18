@@ -1,15 +1,15 @@
 import { Injectable, OnModuleDestroy } from '@nestjs/common';
 import { JobsOptions, Queue } from 'bullmq';
-import { QueueSenderService } from '../abstract/sender/queue-sender.service';
-import { QueueEnvelope } from '../abstract/sender/queue-sender.interfaces';
+import { QueueProducerService } from '../abstract/producer/queue-producer.service';
+import { QueueEnvelope } from '../abstract/producer/queue-producer.interfaces';
 import {
-  QueueSenderError,
-  QUEUE_SENDER_ERRORS,
-} from '../abstract/sender/queue-sender.error';
-import { assertSupportedDeliveryOptions } from '../abstract/sender/queue-delivery-options.util';
+  QueueProducerError,
+  QUEUE_PRODUCER_ERRORS,
+} from '../abstract/producer/queue-producer.error';
+import { assertSupportedDeliveryOptions } from '../abstract/producer/queue-delivery-options.util';
 import {
   BullMqAddJobParams,
-  BullMqSenderAdapterOptions,
+  BullMqProducerAdapterOptions,
 } from './bullmq-adapter.interfaces';
 
 // BullMQ requires a job name; the worker processes all names regardless. This
@@ -17,8 +17,8 @@ import {
 const DEFAULT_JOB_NAME = 'message';
 
 @Injectable()
-export class BullMqSenderAdapter
-  extends QueueSenderService
+export class BullMqProducerAdapter
+  extends QueueProducerService
   implements OnModuleDestroy
 {
   private readonly queues = new Map<string, Queue>();
@@ -26,9 +26,9 @@ export class BullMqSenderAdapter
   /**
    * Creates the adapter with the BullMQ queue configuration.
    *
-   * @param {BullMqSenderAdapterOptions} options - Connection, prefix, and optional job-name settings used when creating queues.
+   * @param {BullMqProducerAdapterOptions} options - Connection, prefix, and optional job-name settings used when creating queues.
    */
-  constructor(private readonly options: BullMqSenderAdapterOptions) {
+  constructor(private readonly options: BullMqProducerAdapterOptions) {
     super();
   }
 
@@ -40,7 +40,7 @@ export class BullMqSenderAdapter
    * @param {string} queue - Name of the destination queue.
    * @param {unknown} payload - The message body to enqueue.
    * @returns {Promise<void>} Resolves once the job has been enqueued.
-   * @throws {QueueSenderError} With code SEND_FAILED if enqueuing fails.
+   * @throws {QueueProducerError} With code SEND_FAILED if enqueuing fails.
    */
   async send(queue: string, payload: unknown): Promise<void> {
     await this.dispatch({ queue, payload });
@@ -54,7 +54,7 @@ export class BullMqSenderAdapter
    *
    * @param {QueueEnvelope} envelope - Queue name, payload, optional headers, and delivery options.
    * @returns {Promise<void>} Resolves once the job has been enqueued.
-   * @throws {QueueSenderError} With code SEND_FAILED if enqueuing fails, or if unsupported delivery options are provided.
+   * @throws {QueueProducerError} With code SEND_FAILED if enqueuing fails, or if unsupported delivery options are provided.
    */
   async dispatch(envelope: QueueEnvelope): Promise<void> {
     const { queue, payload, headers = {}, options } = envelope;
@@ -63,7 +63,7 @@ export class BullMqSenderAdapter
     assertSupportedDeliveryOptions(
       options,
       ['delay', 'priority'],
-      'BullMqSenderAdapter',
+      'BullMqProducerAdapter',
     );
 
     const jobOptions: JobsOptions = {
@@ -83,7 +83,7 @@ export class BullMqSenderAdapter
    *
    * @param {BullMqAddJobParams} params - Queue name, payload, optional headers, and native BullMQ job options.
    * @returns {Promise<void>} Resolves once the job has been enqueued.
-   * @throws {QueueSenderError} With code SEND_FAILED if enqueuing fails.
+   * @throws {QueueProducerError} With code SEND_FAILED if enqueuing fails.
    */
   async addJob(params: BullMqAddJobParams): Promise<void> {
     const { queue, payload, headers = {}, options = {} } = params;
@@ -110,7 +110,7 @@ export class BullMqSenderAdapter
    * @param {Record<string, string>} headers - Header metadata stored alongside the payload.
    * @param {JobsOptions} options - Native BullMQ job options to apply.
    * @returns {Promise<void>} Resolves once the job has been enqueued.
-   * @throws {QueueSenderError} With code SEND_FAILED if the underlying enqueue call fails.
+   * @throws {QueueProducerError} With code SEND_FAILED if the underlying enqueue call fails.
    */
   private async _enqueue(
     queue: string,
@@ -130,8 +130,8 @@ export class BullMqSenderAdapter
         data: { queue },
         error,
       });
-      throw new QueueSenderError(
-        QUEUE_SENDER_ERRORS.SEND_FAILED,
+      throw new QueueProducerError(
+        QUEUE_PRODUCER_ERRORS.SEND_FAILED,
         `Failed to enqueue job to "${queue}"`,
         { queue, cause: (error as Error).message },
       );

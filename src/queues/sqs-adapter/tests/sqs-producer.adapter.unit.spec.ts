@@ -1,11 +1,11 @@
 /* eslint-disable @typescript-eslint/no-explicit-any */
 import { SQSClient } from '@aws-sdk/client-sqs';
-import { SqsSenderAdapter } from '../sqs-sender.adapter';
+import { SqsProducerAdapter } from '../sqs-producer.adapter';
 import { SQS_RESERVED_HEADERS } from '../sqs-adapter.interfaces';
 import {
-  QueueSenderError,
-  QUEUE_SENDER_ERRORS,
-} from '../../abstract/sender/queue-sender.error';
+  QueueProducerError,
+  QUEUE_PRODUCER_ERRORS,
+} from '../../abstract/producer/queue-producer.error';
 
 const mockSend = jest.fn();
 const mockDestroy = jest.fn();
@@ -35,12 +35,12 @@ function lastSendMessage(): any {
 }
 
 function makeAdapter(
-  overrides: Partial<ConstructorParameters<typeof SqsSenderAdapter>[0]> = {},
-): SqsSenderAdapter {
-  return new SqsSenderAdapter({ region: 'us-east-1', ...overrides });
+  overrides: Partial<ConstructorParameters<typeof SqsProducerAdapter>[0]> = {},
+): SqsProducerAdapter {
+  return new SqsProducerAdapter({ region: 'us-east-1', ...overrides });
 }
 
-describe('SqsSenderAdapter', () => {
+describe('SqsProducerAdapter', () => {
   beforeEach(() => {
     jest.clearAllMocks();
     wireHappyPath();
@@ -93,7 +93,7 @@ describe('SqsSenderAdapter', () => {
           options: { priority: 1 },
         }),
       ).rejects.toMatchObject({
-        code: QUEUE_SENDER_ERRORS.UNSUPPORTED_OPTION,
+        code: QUEUE_PRODUCER_ERRORS.UNSUPPORTED_OPTION,
         data: { option: 'priority' },
       });
     });
@@ -107,7 +107,7 @@ describe('SqsSenderAdapter', () => {
           payload: {},
           options: { delay: 900_001 },
         }),
-      ).rejects.toMatchObject({ code: QUEUE_SENDER_ERRORS.DISPATCH_FAILED });
+      ).rejects.toMatchObject({ code: QUEUE_PRODUCER_ERRORS.DISPATCH_FAILED });
     });
   });
 
@@ -153,7 +153,7 @@ describe('SqsSenderAdapter', () => {
       await expect(
         adapter.dispatch({ queue: 'orders.fifo', payload: { id: 1 } }),
       ).rejects.toMatchObject({
-        code: QUEUE_SENDER_ERRORS.DISPATCH_FAILED,
+        code: QUEUE_PRODUCER_ERRORS.DISPATCH_FAILED,
       });
     });
 
@@ -168,7 +168,7 @@ describe('SqsSenderAdapter', () => {
           options: { delay: 5000 },
         }),
       ).rejects.toMatchObject({
-        code: QUEUE_SENDER_ERRORS.UNSUPPORTED_OPTION,
+        code: QUEUE_PRODUCER_ERRORS.UNSUPPORTED_OPTION,
         data: { option: 'delay' },
       });
     });
@@ -190,7 +190,7 @@ describe('SqsSenderAdapter', () => {
       const adapter = makeAdapter();
 
       await expect(adapter.send('missing', {})).rejects.toMatchObject({
-        code: QUEUE_SENDER_ERRORS.CONNECTION_FAILED,
+        code: QUEUE_PRODUCER_ERRORS.CONNECTION_FAILED,
         data: { queue: 'missing', cause: 'no such queue' },
       });
     });
@@ -205,10 +205,10 @@ describe('SqsSenderAdapter', () => {
       const adapter = makeAdapter();
 
       await expect(adapter.send('orders', {})).rejects.toBeInstanceOf(
-        QueueSenderError,
+        QueueProducerError,
       );
       await expect(adapter.send('orders', {})).rejects.toMatchObject({
-        code: QUEUE_SENDER_ERRORS.SEND_FAILED,
+        code: QUEUE_PRODUCER_ERRORS.SEND_FAILED,
         data: { queue: 'orders', cause: 'send boom' },
       });
     });

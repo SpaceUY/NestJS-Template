@@ -11,7 +11,7 @@ export interface RabbitMqConnectionOptions {
   assertTopology?: boolean;
 }
 
-export interface RabbitMqSenderAdapterOptions extends RabbitMqConnectionOptions {
+export interface RabbitMqProducerAdapterOptions extends RabbitMqConnectionOptions {
   // Mark published messages as persistent so they survive a broker restart (on
   // durable queues). Defaults to true; set false to trade durability for
   // throughput.

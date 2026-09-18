@@ -1,5 +1,8 @@
-import { QueueDeliveryOptions } from './queue-sender.interfaces';
-import { QueueSenderError, QUEUE_SENDER_ERRORS } from './queue-sender.error';
+import { QueueDeliveryOptions } from './queue-producer.interfaces';
+import {
+  QueueProducerError,
+  QUEUE_PRODUCER_ERRORS,
+} from './queue-producer.error';
 
 /**
  * Enforces the "honor or throw" contract for delivery options: any option set on
@@ -11,7 +14,7 @@ import { QueueSenderError, QUEUE_SENDER_ERRORS } from './queue-sender.error';
  * @param {ReadonlyArray<keyof QueueDeliveryOptions>} supported - Option keys the adapter can honor natively.
  * @param {string} adapter - Adapter name, used in the error message and data.
  * @returns {void} Returns nothing when all set options are supported.
- * @throws {QueueSenderError} With code `UNSUPPORTED_OPTION` if a set option is not supported.
+ * @throws {QueueProducerError} With code `UNSUPPORTED_OPTION` if a set option is not supported.
  */
 export function assertSupportedDeliveryOptions(
   options: QueueDeliveryOptions | undefined,
@@ -23,8 +26,8 @@ export function assertSupportedDeliveryOptions(
   for (const key of Object.keys(options) as (keyof QueueDeliveryOptions)[]) {
     if (options[key] === undefined) continue;
     if (!supported.includes(key)) {
-      throw new QueueSenderError(
-        QUEUE_SENDER_ERRORS.UNSUPPORTED_OPTION,
+      throw new QueueProducerError(
+        QUEUE_PRODUCER_ERRORS.UNSUPPORTED_OPTION,
         `${adapter} does not support the "${key}" delivery option`,
         { adapter, option: key },
       );

@@ -1,8 +1,8 @@
 /* eslint-disable @typescript-eslint/no-explicit-any */
 import { connect } from 'amqplib';
-import { RabbitMqSenderAdapter } from '../rabbitmq-sender.adapter';
+import { RabbitMqProducerAdapter } from '../rabbitmq-producer.adapter';
 import { RABBITMQ_RESERVED_HEADERS } from '../rabbitmq-adapter.interfaces';
-import { QUEUE_SENDER_ERRORS } from '../../abstract/sender/queue-sender.error';
+import { QUEUE_PRODUCER_ERRORS } from '../../abstract/producer/queue-producer.error';
 
 jest.mock('amqplib', () => ({ connect: jest.fn() }));
 
@@ -37,13 +37,13 @@ function wireHappyPath(): void {
 
 function makeAdapter(
   overrides: Partial<
-    ConstructorParameters<typeof RabbitMqSenderAdapter>[0]
+    ConstructorParameters<typeof RabbitMqProducerAdapter>[0]
   > = {},
-): RabbitMqSenderAdapter {
-  return new RabbitMqSenderAdapter({ url: 'amqp://localhost', ...overrides });
+): RabbitMqProducerAdapter {
+  return new RabbitMqProducerAdapter({ url: 'amqp://localhost', ...overrides });
 }
 
-describe('RabbitMqSenderAdapter', () => {
+describe('RabbitMqProducerAdapter', () => {
   beforeEach(() => {
     jest.clearAllMocks();
     wireHappyPath();
@@ -195,7 +195,7 @@ describe('RabbitMqSenderAdapter', () => {
           options: { delay: 1000 },
         }),
       ).rejects.toMatchObject({
-        code: QUEUE_SENDER_ERRORS.UNSUPPORTED_OPTION,
+        code: QUEUE_PRODUCER_ERRORS.UNSUPPORTED_OPTION,
         data: { option: 'delay' },
       });
     });
@@ -207,7 +207,7 @@ describe('RabbitMqSenderAdapter', () => {
       const adapter = makeAdapter();
 
       await expect(adapter.send('orders', {})).rejects.toMatchObject({
-        code: QUEUE_SENDER_ERRORS.CONNECTION_FAILED,
+        code: QUEUE_PRODUCER_ERRORS.CONNECTION_FAILED,
         data: { cause: 'econnrefused' },
       });
     });
@@ -219,7 +219,7 @@ describe('RabbitMqSenderAdapter', () => {
       const adapter = makeAdapter();
 
       await expect(adapter.send('orders', {})).rejects.toMatchObject({
-        code: QUEUE_SENDER_ERRORS.SEND_FAILED,
+        code: QUEUE_PRODUCER_ERRORS.SEND_FAILED,
         data: { target: 'orders', cause: 'channel closed' },
       });
     });
@@ -234,7 +234,7 @@ describe('RabbitMqSenderAdapter', () => {
       const adapter = makeAdapter();
 
       await expect(adapter.send('orders', {})).rejects.toMatchObject({
-        code: QUEUE_SENDER_ERRORS.SEND_FAILED,
+        code: QUEUE_PRODUCER_ERRORS.SEND_FAILED,
         data: { target: 'orders', cause: 'broker nack' },
       });
     });

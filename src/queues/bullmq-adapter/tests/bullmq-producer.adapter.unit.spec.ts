@@ -1,7 +1,7 @@
 /* eslint-disable @typescript-eslint/no-explicit-any */
 import { Queue } from 'bullmq';
-import { BullMqSenderAdapter } from '../bullmq-sender.adapter';
-import { QUEUE_SENDER_ERRORS } from '../../abstract/sender/queue-sender.error';
+import { BullMqProducerAdapter } from '../bullmq-producer.adapter';
+import { QUEUE_PRODUCER_ERRORS } from '../../abstract/producer/queue-producer.error';
 
 const mockAdd = jest.fn();
 const mockQueueClose = jest.fn().mockResolvedValue(undefined);
@@ -17,12 +17,14 @@ jest.mock('bullmq', () => ({
 const connection = { host: 'localhost', port: 6379 };
 
 function makeAdapter(
-  overrides: Partial<ConstructorParameters<typeof BullMqSenderAdapter>[0]> = {},
-): BullMqSenderAdapter {
-  return new BullMqSenderAdapter({ connection, ...overrides } as any);
+  overrides: Partial<
+    ConstructorParameters<typeof BullMqProducerAdapter>[0]
+  > = {},
+): BullMqProducerAdapter {
+  return new BullMqProducerAdapter({ connection, ...overrides } as any);
 }
 
-describe('BullMqSenderAdapter', () => {
+describe('BullMqProducerAdapter', () => {
   beforeEach(() => {
     jest.clearAllMocks();
     mockAdd.mockResolvedValue({ id: 'job-1' });
@@ -103,7 +105,7 @@ describe('BullMqSenderAdapter', () => {
       const adapter = makeAdapter();
 
       await expect(adapter.send('orders', {})).rejects.toMatchObject({
-        code: QUEUE_SENDER_ERRORS.SEND_FAILED,
+        code: QUEUE_PRODUCER_ERRORS.SEND_FAILED,
         data: { queue: 'orders', cause: 'redis down' },
       });
     });

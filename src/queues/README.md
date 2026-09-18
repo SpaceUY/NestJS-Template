@@ -8,7 +8,7 @@ broker libraries (e.g. `amqplib`, AWS SDK v3).
 The module is split into two **independent** dynamic modules, each with its own
 connection to the broker:
 
-- **`QueueSenderModule`** — publishing messages.
+- **`QueueProducerModule`** — publishing messages.
 - **`QueueConsumerModule`** — consuming messages.
 
 Three concrete adapters ship alongside the abstract contracts: BullMQ, RabbitMQ
@@ -20,12 +20,12 @@ either of the others means writing that wiring yourself.
 ```text
 src/queues/
 ├── abstract/
-│   ├── sender/
-│   │   ├── queue-sender.service.ts        # abstract QueueSenderService (DI token)
-│   │   ├── queue-sender.module.ts         # QueueSenderModule
-│   │   ├── queue-sender.interfaces.ts     # QueueEnvelope, module options
+│   ├── producer/
+│   │   ├── queue-producer.service.ts        # abstract QueueProducerService (DI token)
+│   │   ├── queue-producer.module.ts         # QueueProducerModule
+│   │   ├── queue-producer.interfaces.ts     # QueueEnvelope, module options
 │   │   ├── queue-delivery-options.util.ts # assertSupportedDeliveryOptions
-│   │   └── queue-sender.error.ts          # QueueSenderError
+│   │   └── queue-producer.error.ts          # QueueProducerError
 │   ├── consumer/
 │   │   ├── queue-consumer.adapter.ts      # abstract QueueConsumerAdapter (DI token)
 │   │   ├── queue-consumer.handler.ts      # abstract QueueConsumerHandler<T>
@@ -43,7 +43,7 @@ src/queues/
 
 ## Core Contracts
 
-### Sender — `QueueSenderService`
+### Producer — `QueueProducerService`
 
 The abstract class doubles as the NestJS injection token. Inject it to publish.
 
@@ -104,19 +104,19 @@ setup; otherwise `undefined`).
 
 ## Registration
 
-### Sender
+### Producer
 
 ```ts
 // Synchronous — adapter has a no-arg constructor
-QueueSenderModule.forRoot({
-  adapter: MyBrokerSenderAdapter,
+QueueProducerModule.forRoot({
+  adapter: MyBrokerProducerAdapter,
   isGlobal: true,
 });
 
 // Async — adapter config injected from DI
-QueueSenderModule.forRootAsync({
+QueueProducerModule.forRootAsync({
   inject: [someConfig.KEY],
-  useFactory: (config) => new MyBrokerSenderAdapter({ url: config.brokerUrl }),
+  useFactory: (config) => new MyBrokerProducerAdapter({ url: config.brokerUrl }),
   isGlobal: true,
 });
 ```
@@ -196,7 +196,7 @@ export class OrdersHandler extends QueueConsumerHandler<OrderPayload> {
 `dispatch` accepts optional, broker-agnostic per-message delivery options:
 
 ```ts
-await sender.dispatch({
+await producer.dispatch({
   queue: 'orders',
   payload: { id: 1 },
   options: { delay: 5000, priority: 3 }, // ms, and relative priority
@@ -208,7 +208,7 @@ broker-specific knobs (retries/backoff, cron, exchanges) stay in adapter-level
 extensions (e.g. BullMQ's `addJob`, RabbitMQ's `publishToExchange`).
 
 **Honor-or-throw**: an adapter applies an option natively or throws
-`QUEUE_SENDER_UNSUPPORTED_OPTION` — it never silently drops one (a delay that
+`QUEUE_PRODUCER_UNSUPPORTED_OPTION` — it never silently drops one (a delay that
 fires immediately is a correctness bug, not a degradation). Support matrix:
 
 | Option | SQS | RabbitMQ | BullMQ |
@@ -217,16 +217,16 @@ fires immediately is a correctness bug, not a degradation). Support matrix:
 | `priority` | ❌ throws | ✅ (needs a priority queue) | ✅ |
 
 Adapters validate via `assertSupportedDeliveryOptions(options, supported, name)`
-([util](./abstract/sender/queue-delivery-options.util.ts)).
+([util](./abstract/producer/queue-delivery-options.util.ts)).
 
 ## What Adapters Must Implement
 
-### Sender adapter
+### Producer adapter
 
-- Extend `QueueSenderService`.
+- Extend `QueueProducerService`.
 - Implement `send(queue, payload)` and `dispatch(envelope)`.
 - Accept config via constructor; use `forRootAsync` for DI-sourced config.
-- Throw `QueueSenderError` on failures.
+- Throw `QueueProducerError` on failures.
 
 ### Consumer adapter
 
@@ -247,15 +247,15 @@ Adapters validate via `assertSupportedDeliveryOptions(options, supported, name)`
 ## Built-in Adapter: AWS SQS
 
 A ready-to-use adapter for Amazon SQS lives in `src/queues/sqs-adapter/`
-(`SqsSenderAdapter` + `SqsConsumerAdapter`). Each builds its own `SQSClient`, so
+(`SqsProducerAdapter` + `SqsConsumerAdapter`). Each builds its own `SQSClient`, so
 the two modules keep independent connections. Credentials are optional — prefer
 IAM roles in remote environments and only pass explicit keys for local
 development (same convention as the secrets-manager adapter).
 
 ```ts
-// Sender
-QueueSenderModule.forRoot({
-  adapter: class extends SqsSenderAdapter {
+// Producer
+QueueProducerModule.forRoot({
+  adapter: class extends SqsProducerAdapter {
     constructor() {
       super({ region: 'us-east-1' });
     }
@@ -263,9 +263,9 @@ QueueSenderModule.forRoot({
 });
 
 // ...or, with DI-sourced config:
-QueueSenderModule.forRootAsync({
+QueueProducerModule.forRootAsync({
   inject: [awsConfig.KEY],
-  useFactory: (aws) => new SqsSenderAdapter({ region: aws.region }),
+  useFactory: (aws) => new SqsProducerAdapter({ region: aws.region }),
 });
 
 // Consumer
@@ -284,12 +284,12 @@ resolves it to a queue URL via `GetQueueUrl` (cached per name).
 optionally `MessageDeduplicationId` through `dispatch`'s `headers` — the adapter
 lifts these reserved keys into native SQS parameters and maps any remaining
 headers to message attributes. A FIFO send without a `MessageGroupId` throws
-`QueueSenderError(DISPATCH_FAILED)`. FIFO queues also reject the shared `delay`
+`QueueProducerError(DISPATCH_FAILED)`. FIFO queues also reject the shared `delay`
 option (SQS supports delay per-queue only, not per-message), so a FIFO `dispatch`
-with `options.delay` throws `QUEUE_SENDER_UNSUPPORTED_OPTION`.
+with `options.delay` throws `QUEUE_PRODUCER_UNSUPPORTED_OPTION`.
 
 ```ts
-await sender.dispatch({
+await producer.dispatch({
   queue: 'orders.fifo',
   payload: { id: 1 },
   headers: { MessageGroupId: 'tenant-42', traceId: 'abc' },
@@ -324,7 +324,7 @@ shortcut.
 ## Built-in Adapter: RabbitMQ
 
 A RabbitMQ adapter built directly on `amqplib` lives in
-`src/queues/rabbitmq-adapter/` (`RabbitMqSenderAdapter` +
+`src/queues/rabbitmq-adapter/` (`RabbitMqProducerAdapter` +
 `RabbitMqConsumerAdapter`). Unlike SQS, RabbitMQ is a true push broker, so the
 consumer uses `channel.consume` callbacks (no polling). Each adapter owns its
 connection and connects **lazily** on first use (memoized); on connection
@@ -335,7 +335,7 @@ no active retry loop. The same applies one level down: each adapter attaches
 than reused dead or surfaced as an uncaught exception. On module shutdown both
 adapters close their connection (`OnModuleDestroy`).
 
-Note the reconnect is driven by the *next call*: the **sender** reconnects on its
+Note the reconnect is driven by the *next call*: the **producer** reconnects on its
 next publish (channel and connection both rebuild lazily), so it self-heals with
 no operator action. A **push consumer** has no such trigger — if its channel or
 connection drops, in-flight consumers are not auto-restored and consumption stays
@@ -366,10 +366,10 @@ Grafana, per the stack) so "consumption halted" is observable and something —
 operator, supervisor, or watcher — pulls the lever.
 
 ```ts
-// Sender
-QueueSenderModule.forRootAsync({
+// Producer
+QueueProducerModule.forRootAsync({
   inject: [rabbitConfig.KEY],
-  useFactory: (cfg) => new RabbitMqSenderAdapter({ url: cfg.url }),
+  useFactory: (cfg) => new RabbitMqProducerAdapter({ url: cfg.url }),
 });
 
 // Consumer
@@ -393,24 +393,24 @@ as AMQP message headers.
 
 **Message persistence.** Published messages are marked persistent by default so
 they survive a broker restart (on durable queues). Set `persistent: false` on
-the sender options to trade durability for throughput. (Queue/exchange
+the producer options to trade durability for throughput. (Queue/exchange
 durability stays on — use `assertTopology: false` and declare your own topology
 if you need non-durable infrastructure.)
 
-**Publisher confirms.** The sender uses a [confirm
+**Publisher confirms.** The producer uses a [confirm
 channel](https://www.rabbitmq.com/docs/confirms#publisher-confirms): `send` /
 `dispatch` / `publishToExchange` resolve only once the broker has acknowledged
-the message, and a broker nack rejects with `QUEUE_SENDER_SEND_FAILED`. So a
+the message, and a broker nack rejects with `QUEUE_PRODUCER_SEND_FAILED`. So a
 resolved publish means the broker accepted the message, not merely that it was
 written to the local socket buffer — matching the awaited delivery guarantee of
-the SQS and BullMQ senders. (This adds one broker round-trip per publish.)
+the SQS and BullMQ producers. (This adds one broker round-trip per publish.)
 
 **Exchanges — two ways** (per design, both are supported):
 
-1. Dedicated, type-safe method on the concrete sender:
+1. Dedicated, type-safe method on the concrete producer:
 
    ```ts
-   await sender.publishToExchange({
+   await producer.publishToExchange({
      exchange: 'orders',
      routingKey: 'order.created',
      payload: { id: 1 },
@@ -419,11 +419,11 @@ the SQS and BullMQ senders. (This adds one broker round-trip per publish.)
    ```
 
 2. Reserved headers on the abstract `dispatch`, for callers that only hold a
-   `QueueSenderService`. `x-exchange` / `x-routing-key` are lifted out and route
+   `QueueProducerService`. `x-exchange` / `x-routing-key` are lifted out and route
    the message through that exchange (never forwarded as message headers):
 
    ```ts
-   await sender.dispatch({
+   await producer.dispatch({
      queue: 'unused',
      payload: { id: 1 },
      headers: { 'x-exchange': 'orders', 'x-routing-key': 'order.created' },
@@ -445,16 +445,16 @@ channel.
 ## Built-in Adapter: BullMQ
 
 A Redis-backed adapter using [BullMQ](https://docs.bullmq.io/) lives in
-`src/queues/bullmq-adapter/` (`BullMqSenderAdapter` + `BullMqConsumerAdapter`).
+`src/queues/bullmq-adapter/` (`BullMqProducerAdapter` + `BullMqConsumerAdapter`).
 BullMQ is a job queue rather than a raw broker, built on `ioredis` (already a
 project dependency).
 
 ```ts
 const connection = { host: 'localhost', port: 6379 };
 
-// Sender
-QueueSenderModule.forRootAsync({
-  useFactory: () => new BullMqSenderAdapter({ connection }),
+// Producer
+QueueProducerModule.forRootAsync({
+  useFactory: () => new BullMqProducerAdapter({ connection }),
 });
 
 // Consumer — BullMQ workers need a connection with maxRetriesPerRequest: null
@@ -471,7 +471,7 @@ QueueConsumerModule.forRootAsync({
 **Job ↔ message mapping.** `send`/`dispatch` enqueue a job via `queue.add`. BullMQ
 jobs have no header slot, so the adapter wraps the message as
 `{ payload, headers }` job data and unwraps it on consume; `ctx.messageId` is the
-BullMQ job id and `ctx.deliveryCount` is `attemptsMade + 1`. The sender closes its
+BullMQ job id and `ctx.deliveryCount` is `attemptsMade + 1`. The producer closes its
 queues on `OnModuleDestroy`. The shared `delay`/`priority` delivery options map
 straight onto BullMQ job options. Every job is enqueued under a single job name
 (`'message'` by default, overridable via the `jobName` option) — the worker
@@ -479,10 +479,10 @@ processes all names, so this only affects the BullMQ dashboard label.
 
 **Richer job options — `addJob`.** For BullMQ-specific options beyond the shared
 tier (`attempts`, `backoff`, `jobId`, `lifo`, `removeOnComplete`, …), inject the
-concrete `BullMqSenderAdapter` and use the dedicated extension:
+concrete `BullMqProducerAdapter` and use the dedicated extension:
 
 ```ts
-await sender.addJob({
+await producer.addJob({
   queue: 'orders',
   payload: { id: 1 },
   options: { attempts: 5, backoff: { type: 'exponential', delay: 1000 } },
@@ -511,10 +511,10 @@ the processor throws. The adapter maps the context contract onto that:
 
 | Class | Code | Meaning |
 |---|---|---|
-| `QueueSenderError` | `QUEUE_SENDER_SEND_FAILED` | `send()` failed |
-| `QueueSenderError` | `QUEUE_SENDER_DISPATCH_FAILED` | `dispatch()` failed |
-| `QueueSenderError` | `QUEUE_SENDER_CONNECTION_FAILED` | broker connection failed |
-| `QueueSenderError` | `QUEUE_SENDER_UNSUPPORTED_OPTION` | a delivery option the adapter can't honor |
+| `QueueProducerError` | `QUEUE_PRODUCER_SEND_FAILED` | `send()` failed |
+| `QueueProducerError` | `QUEUE_PRODUCER_DISPATCH_FAILED` | `dispatch()` failed |
+| `QueueProducerError` | `QUEUE_PRODUCER_CONNECTION_FAILED` | broker connection failed |
+| `QueueProducerError` | `QUEUE_PRODUCER_UNSUPPORTED_OPTION` | a delivery option the adapter can't honor |
 | `QueueConsumerError` | `QUEUE_CONSUMER_CONSUME_FAILED` | consuming a message failed |
 | `QueueConsumerError` | `QUEUE_CONSUMER_ACK_FAILED` | acknowledging failed |
 | `QueueConsumerError` | `QUEUE_CONSUMER_NACK_FAILED` | negative-acknowledging failed |

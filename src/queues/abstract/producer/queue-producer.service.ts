@@ -1,13 +1,13 @@
-import { QueueEnvelope } from './queue-sender.interfaces';
+import { QueueEnvelope } from './queue-producer.interfaces';
 import { LoggerService } from '../../../common/observability/logger/abstract/logger.service';
 import { NestLoggerAdapter } from '../../../common/observability/logger/nest-adapter/nest-logger.adapter';
 
 /**
- * Contract all queue sender adapters must implement to work alongside the
- * `QueueSenderModule`. The abstract class doubles as the NestJS injection
+ * Contract all queue producer adapters must implement to work alongside the
+ * `QueueProducerModule`. The abstract class doubles as the NestJS injection
  * token, consistent with the other abstract modules in this template.
  */
-export abstract class QueueSenderService {
+export abstract class QueueProducerService {
   protected logger: LoggerService = new NestLoggerAdapter(
     this.constructor.name,
   );

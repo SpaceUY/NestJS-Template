@@ -2,7 +2,7 @@
  * Compiles the real Nest module graph (unlike the shape-only `.unit.spec` tests
  * elsewhere in this module) to catch DI-wiring mistakes Nest only surfaces on
  * actual resolution. `QueuesModule` leans on three things a shape-only test
- * cannot reach: the `BullMqSenderAdapter` alias over a global dynamic module,
+ * cannot reach: the `BullMqProducerAdapter` alias over a global dynamic module,
  * handler instantiation inside `QueueConsumerModule`'s own injector scope, and
  * the `imports` array carrying that handler's non-global dependencies.
  *
@@ -13,8 +13,8 @@
 import { Global, Module } from '@nestjs/common';
 import { Test, TestingModule } from '@nestjs/testing';
 import { QueuesModule } from '../../queues.module';
-import { QueueSenderService } from '../sender/queue-sender.service';
-import { BullMqSenderAdapter } from '../../bullmq-adapter/bullmq-sender.adapter';
+import { QueueProducerService } from '../producer/queue-producer.service';
+import { BullMqProducerAdapter } from '../../bullmq-adapter/bullmq-producer.adapter';
 import { SpaceshipNotificationProcessor } from '../../../spaceship/notification/notification.processor';
 import { EmailService } from '../../../email/abstract/email.service';
 import { TemplateService } from '../../../templating/abstract/template.service';
@@ -111,21 +111,24 @@ describe('QueuesModule (DI graph)', () => {
     await moduleRef?.close();
   });
 
-  it('resolves QueueSenderService to the wired BullMQ adapter', () => {
-    const sender = moduleRef.get<QueueSenderService>(QueueSenderService, {
+  it('resolves QueueProducerService to the wired BullMQ adapter', () => {
+    const producer = moduleRef.get<QueueProducerService>(QueueProducerService, {
       strict: false,
     });
 
-    expect(sender).toBeInstanceOf(BullMqSenderAdapter);
+    expect(producer).toBeInstanceOf(BullMqProducerAdapter);
   });
 
-  it('resolves the BullMqSenderAdapter alias to that same instance', () => {
-    const abstract = moduleRef.get<QueueSenderService>(QueueSenderService, {
+  it('resolves the BullMqProducerAdapter alias to that same instance', () => {
+    const abstract = moduleRef.get<QueueProducerService>(QueueProducerService, {
       strict: false,
     });
-    const concrete = moduleRef.get<BullMqSenderAdapter>(BullMqSenderAdapter, {
-      strict: false,
-    });
+    const concrete = moduleRef.get<BullMqProducerAdapter>(
+      BullMqProducerAdapter,
+      {
+        strict: false,
+      },
+    );
 
     expect(concrete).toBe(abstract);
     // The producer depends on this method existing; the abstract token does not
@@ -133,39 +136,42 @@ describe('QueuesModule (DI graph)', () => {
     expect(typeof concrete.addJob).toBe('function');
   });
 
-  it('gives the sender adapter the container logger, tagged with its class name', () => {
-    const sender = moduleRef.get<BullMqSenderAdapter>(BullMqSenderAdapter, {
-      strict: false,
-    });
+  it('gives the producer adapter the container logger, tagged with its class name', () => {
+    const producer = moduleRef.get<BullMqProducerAdapter>(
+      BullMqProducerAdapter,
+      {
+        strict: false,
+      },
+    );
 
-    const logger = (sender as unknown as { logger: LoggerService }).logger;
+    const logger = (producer as unknown as { logger: LoggerService }).logger;
 
     expect(logger).toBeInstanceOf(NestLoggerAdapter);
     expect((logger as unknown as { context: string }).context).toBe(
-      'BullMqSenderAdapter',
+      'BullMqProducerAdapter',
     );
   });
 
-  it('refuses to alias BullMqSenderAdapter onto a sender from another broker', () => {
+  it('refuses to alias BullMqProducerAdapter onto a producer from another broker', () => {
     // Guards the swap the module guide invites: changing the wired adapter to
     // RabbitMQ/SQS still compiles, and without this the failure would surface
     // as `addJob is not a function` on the first enqueue in production.
     const providers = Reflect.getMetadata('providers', QueuesModule) as Array<{
       provide: unknown;
-      useFactory?: (sender: QueueSenderService) => unknown;
+      useFactory?: (producer: QueueProducerService) => unknown;
     }>;
     const aliasProvider = providers.find(
-      (p) => p.provide === BullMqSenderAdapter,
+      (p) => p.provide === BullMqProducerAdapter,
     );
 
-    class NotBullMq extends QueueSenderService {
+    class NotBullMq extends QueueProducerService {
       async send(): Promise<void> {}
       async dispatch(): Promise<void> {}
     }
 
     expect(aliasProvider?.useFactory).toBeDefined();
     expect(() => aliasProvider!.useFactory!(new NotBullMq())).toThrow(
-      /wired sender is NotBullMq/,
+      /wired producer is NotBullMq/,
     );
   });
 

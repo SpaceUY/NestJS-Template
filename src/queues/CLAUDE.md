@@ -6,10 +6,10 @@
 
 ## Scope
 
-Owns a provider-agnostic **sender** and **consumer** abstraction for message
+Owns a provider-agnostic **producer** and **consumer** abstraction for message
 queues, plus the BullMQ, RabbitMQ and SQS adapters behind them. Unlike the
 single-abstract-class shape most modules use, queues are bidirectional, so
-the contract is split in two: `QueueSenderService` (publish) and
+the contract is split in two: `QueueProducerService` (publish) and
 `QueueConsumerAdapter`/`QueueConsumerHandler` (consume). BullMQ is the only
 adapter wired by default (`src/queues/queues.module.ts`); RabbitMQ and SQS
 ship complete but unwired — see "Known gaps".
@@ -25,15 +25,15 @@ still has to name one.
 
 | Import | From | Purpose |
 |---|---|---|
-| `QueueSenderService` | `abstract/sender/queue-sender.service.ts` | Abstract contract/DI token: `send(queue, payload)`, `dispatch(envelope)` |
-| `QueueSenderModule` | `abstract/sender/queue-sender.module.ts` | `forRoot`/`forRootAsync` — binds a sender adapter |
+| `QueueProducerService` | `abstract/producer/queue-producer.service.ts` | Abstract contract/DI token: `send(queue, payload)`, `dispatch(envelope)` |
+| `QueueProducerModule` | `abstract/producer/queue-producer.module.ts` | `forRoot`/`forRootAsync` — binds a producer adapter |
 | `QueueConsumerHandler<TPayload>` | `abstract/consumer/queue-consumer.handler.ts` | Base class for a domain's per-queue message handler — `handle(payload, ctx)` |
 | `QueueConsumerModule` | `abstract/consumer/queue-consumer.module.ts` | `forRoot`/`forRootAsync({ consumers: [...] })` — binds a consumer adapter and starts every registered handler |
 | `MessageContext` | `abstract/consumer/queue-consumer.interfaces.ts` | Per-message `ack()`/`nack()`, `messageId`, `deliveryCount` |
-| `QueueSenderError`, `QUEUE_SENDER_ERRORS` | `abstract/sender/queue-sender.error.ts` | Sender error type/codes — `send`/`dispatch` never leak a raw broker error |
+| `QueueProducerError`, `QUEUE_PRODUCER_ERRORS` | `abstract/producer/queue-producer.error.ts` | Producer error type/codes — `send`/`dispatch` never leak a raw broker error |
 | `QueueConsumerError`, `QUEUE_CONSUMER_ERRORS` | `abstract/consumer/queue-consumer.error.ts` | Consumer error type/codes |
-| `BullMqSenderAdapter`, `BullMqConsumerAdapter` | `bullmq-adapter/` | The wired default. Named outside this module only in `queues.module.ts` |
-| `RabbitMqSenderAdapter`/`RabbitMqConsumerAdapter`, `Sqs*Adapter` | `rabbitmq-adapter/`, `sqs-adapter/` | Available, not wired anywhere today |
+| `BullMqProducerAdapter`, `BullMqConsumerAdapter` | `bullmq-adapter/` | The wired default. Named outside this module only in `queues.module.ts` |
+| `RabbitMqProducerAdapter`/`RabbitMqConsumerAdapter`, `Sqs*Adapter` | `rabbitmq-adapter/`, `sqs-adapter/` | Available, not wired anywhere today |
 
 ## Configuration
 
@@ -42,11 +42,11 @@ configures the wired BullMQ connection. `rabbitmqScope`
 (`rabbitmq-adapter/config/rabbitmq.scope.ts`) exists for the RabbitMQ
 adapter's own connection config and is registered in
 `ConfigProviderAbstractModule`'s `scopes` even though nothing constructs a
-`RabbitMqSenderAdapter`/`RabbitMqConsumerAdapter` from it yet.
+`RabbitMqProducerAdapter`/`RabbitMqConsumerAdapter` from it yet.
 
 ## Rules
 
-1. Consumers inject the abstract `QueueSenderService` where only `send`/
+1. Consumers inject the abstract `QueueProducerService` where only `send`/
    `dispatch` (broker-agnostic `delay`/`priority`) are needed. A consumer
    needing adapter-specific options (BullMQ `attempts`/`backoff`, etc.)
    injects the concrete adapter class directly and is coupled to that
@@ -63,11 +63,11 @@ adapter's own connection config and is registered in
    module's. This is the one sanctioned exception to "does not own a
    domain handler" above, forced by the API shape, not a precedent for
    putting business logic in `src/queues/` itself.
-3. Adapters translate errors: `QueueSenderError`/`QueueConsumerError` with a
-   code from `QUEUE_SENDER_ERRORS`/`QUEUE_CONSUMER_ERRORS`, never a raw
+3. Adapters translate errors: `QueueProducerError`/`QueueConsumerError` with a
+   code from `QUEUE_PRODUCER_ERRORS`/`QUEUE_CONSUMER_ERRORS`, never a raw
    `bullmq`/`amqplib`/`@aws-sdk/client-sqs` error (invariant `T3`).
-4. A sender adapter that doesn't support a requested delivery option throws
-   `UNSUPPORTED_OPTION` (`abstract/sender/queue-delivery-options.util.ts`)
+4. A producer adapter that doesn't support a requested delivery option throws
+   `UNSUPPORTED_OPTION` (`abstract/producer/queue-delivery-options.util.ts`)
    rather than silently dropping it.
 5. A handler must be singleton-scoped — `QueueConsumerModule` resolves it
    once via `ModuleRef.get` at startup; request/transient scope is
@@ -85,7 +85,7 @@ rather than "fixing" them one at a time.
 
 `abstract/tests/queues.module.di.spec.ts` compiles the real Nest graph, unlike
 the shape-only module specs beside it. It exists because three things here fail
-only on actual resolution: the `BullMqSenderAdapter` alias over a global dynamic
+only on actual resolution: the `BullMqProducerAdapter` alias over a global dynamic
 module, handler instantiation inside `QueueConsumerModule`'s injector scope, and
 the `imports` array carrying a handler's non-global dependencies. Changing any
 of those without running it is how a wiring bug reaches production.
@@ -103,7 +103,7 @@ module's `QueueConsumerHandler` alongside it.
 
 - RabbitMQ and SQS adapters are complete but unwired: only BullMQ is
   registered in `queues.module.ts`. Selecting either today means writing
-  the `QueueSenderModule`/`QueueConsumerModule` wiring yourself.
+  the `QueueProducerModule`/`QueueConsumerModule` wiring yourself.
 - `queues.module.ts` names a domain handler class and imports a
   domain-specific recipients module (see Rule 2) — a real, visible
   deviation from "generic infra module, zero domain knowledge" that every
@@ -111,7 +111,7 @@ module's `QueueConsumerHandler` alongside it.
   `QueueConsumerModule`'s single-registration-call API; a `forFeature`-style
   per-domain registration (like the module-contract's other modules use)
   would remove it, but wasn't implemented.
-- `notification.producer.ts` injecting the concrete `BullMqSenderAdapter`
+- `notification.producer.ts` injecting the concrete `BullMqProducerAdapter`
   (Rule 1) means swapping the wired adapter away from BullMQ breaks spaceship
   notifications' retry/backoff. TypeScript cannot catch it — the alias in
   `queues.module.ts` is resolved at runtime — so that alias guards it with an

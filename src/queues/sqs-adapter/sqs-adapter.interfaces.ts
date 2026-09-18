@@ -11,7 +11,7 @@ export interface SqsConnectionOptions {
   endpoint?: string;
 }
 
-export type SqsSenderAdapterOptions = SqsConnectionOptions;
+export type SqsProducerAdapterOptions = SqsConnectionOptions;
 
 export interface SqsConsumerAdapterOptions extends SqsConnectionOptions {
   // Long-poll wait time per ReceiveMessage call (0-20). Defaults to 20.

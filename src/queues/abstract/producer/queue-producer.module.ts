@@ -1,29 +1,29 @@
 import { DynamicModule, Module } from '@nestjs/common';
-import { QueueSenderService } from './queue-sender.service';
+import { QueueProducerService } from './queue-producer.service';
 import {
-  QueueSenderModuleAsyncOptions,
-  QueueSenderModuleOptions,
-} from './queue-sender.interfaces';
+  QueueProducerModuleAsyncOptions,
+  QueueProducerModuleOptions,
+} from './queue-producer.interfaces';
 import { LoggerService } from '../../../common/observability/logger/abstract/logger.service';
 
 @Module({})
-export class QueueSenderModule {
+export class QueueProducerModule {
   /**
    * Configures the module with a directly-instantiated adapter (no DI for the
    * adapter itself).
    *
-   * @param {QueueSenderModuleOptions} options - Adapter class and global flag.
-   * @returns {DynamicModule} A dynamic module that provides and exports the sender.
+   * @param {QueueProducerModuleOptions} options - Adapter class and global flag.
+   * @returns {DynamicModule} A dynamic module that provides and exports the producer.
    */
-  static forRoot(options: QueueSenderModuleOptions): DynamicModule {
+  static forRoot(options: QueueProducerModuleOptions): DynamicModule {
     const { adapter, isGlobal = false } = options;
 
     return {
-      module: QueueSenderModule,
+      module: QueueProducerModule,
       global: isGlobal,
       providers: [
         {
-          provide: QueueSenderService,
+          provide: QueueProducerService,
           useFactory: (logger?: LoggerService) => {
             const instance = new adapter();
             if (logger) instance.setLogger(logger);
@@ -32,7 +32,7 @@ export class QueueSenderModule {
           inject: [{ token: LoggerService, optional: true }],
         },
       ],
-      exports: [QueueSenderService],
+      exports: [QueueProducerService],
     };
   }
 
@@ -40,19 +40,19 @@ export class QueueSenderModule {
    * Configures the module with an adapter built by a factory, so its
    * configuration can be resolved from DI.
    *
-   * @param {QueueSenderModuleAsyncOptions} options - Factory, its injected dependencies, imports, and global flag.
-   * @returns {DynamicModule} A dynamic module that provides and exports the sender.
+   * @param {QueueProducerModuleAsyncOptions} options - Factory, its injected dependencies, imports, and global flag.
+   * @returns {DynamicModule} A dynamic module that provides and exports the producer.
    */
-  static forRootAsync(options: QueueSenderModuleAsyncOptions): DynamicModule {
+  static forRootAsync(options: QueueProducerModuleAsyncOptions): DynamicModule {
     const { isGlobal = false } = options;
 
     return {
-      module: QueueSenderModule,
+      module: QueueProducerModule,
       global: isGlobal,
       imports: options.imports || [],
       providers: [
         {
-          provide: QueueSenderService,
+          provide: QueueProducerService,
           useFactory: async (
             logger: LoggerService | undefined,
             ...args: unknown[]
@@ -67,7 +67,7 @@ export class QueueSenderModule {
           ],
         },
       ],
-      exports: [QueueSenderService],
+      exports: [QueueProducerService],
     };
   }
 }

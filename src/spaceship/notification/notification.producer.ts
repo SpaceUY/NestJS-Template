@@ -1,5 +1,5 @@
 import { Injectable } from '@nestjs/common';
-import { BullMqSenderAdapter } from '../../queues/bullmq-adapter/bullmq-sender.adapter';
+import { BullMqProducerAdapter } from '../../queues/bullmq-adapter/bullmq-producer.adapter';
 import {
   SPACESHIP_NOTIFICATION_QUEUE,
   SPACESHIP_CREATED_JOB,
@@ -11,18 +11,18 @@ import { LoggerService } from '../../common/observability/logger/abstract/logger
 @Injectable()
 export class SpaceshipNotificationProducer {
   constructor(
-    // Concrete adapter, not the abstract QueueSenderService: the abstract
+    // Concrete adapter, not the abstract QueueProducerService: the abstract
     // `dispatch()` only supports broker-agnostic delay/priority, not the
     // BullMQ-specific attempts/backoff this notification relies on. See
     // src/queues/CLAUDE.md's "Rules".
-    private readonly sender: BullMqSenderAdapter,
+    private readonly producer: BullMqProducerAdapter,
     private readonly logger: LoggerService,
   ) {
     this.logger.setContext(SpaceshipNotificationProducer.name);
   }
 
   async enqueueSpaceshipCreated(data: SpaceshipCreatedJobData): Promise<void> {
-    await this.sender.addJob({
+    await this.producer.addJob({
       queue: SPACESHIP_NOTIFICATION_QUEUE,
       payload: data,
       headers: { jobType: SPACESHIP_CREATED_JOB },

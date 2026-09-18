@@ -1,8 +1,8 @@
 import { Module } from '@nestjs/common';
-import { QueueSenderModule } from './abstract/sender/queue-sender.module';
-import { QueueSenderService } from './abstract/sender/queue-sender.service';
+import { QueueProducerModule } from './abstract/producer/queue-producer.module';
+import { QueueProducerService } from './abstract/producer/queue-producer.service';
 import { QueueConsumerModule } from './abstract/consumer/queue-consumer.module';
-import { BullMqSenderAdapter } from './bullmq-adapter/bullmq-sender.adapter';
+import { BullMqProducerAdapter } from './bullmq-adapter/bullmq-producer.adapter';
 import { BullMqConsumerAdapter } from './bullmq-adapter/bullmq-consumer.adapter';
 import { redisScope, RedisScopeConfig } from '../redis.scope';
 import { SPACESHIP_NOTIFICATION_QUEUE } from '../spaceship/notification/notification.constants';
@@ -21,11 +21,11 @@ import {
 // src/queues/CLAUDE.md's "Rules" for why.
 @Module({
   imports: [
-    QueueSenderModule.forRootAsync({
+    QueueProducerModule.forRootAsync({
       isGlobal: true,
       inject: [redisScope.KEY],
       useFactory: (redis: RedisScopeConfig) =>
-        new BullMqSenderAdapter({
+        new BullMqProducerAdapter({
           connection: {
             host: redis.host,
             port: redis.port,
@@ -64,7 +64,7 @@ import {
   ],
   providers: [
     // Alias so the concrete adapter's BullMQ-specific `addJob` (retry
-    // attempts/backoff) is reachable — the abstract `QueueSenderService`
+    // attempts/backoff) is reachable — the abstract `QueueProducerService`
     // token only exposes the broker-agnostic `send`/`dispatch`.
     //
     // A plain `useExisting` would be an untyped runtime alias: swapping the
@@ -72,19 +72,19 @@ import {
     // first `addJob` call dies with "is not a function" in the request path.
     // The guard turns that into a startup failure instead.
     {
-      provide: BullMqSenderAdapter,
-      useFactory: (sender: QueueSenderService): BullMqSenderAdapter => {
-        if (!(sender instanceof BullMqSenderAdapter)) {
+      provide: BullMqProducerAdapter,
+      useFactory: (producer: QueueProducerService): BullMqProducerAdapter => {
+        if (!(producer instanceof BullMqProducerAdapter)) {
           throw new Error(
-            `QueuesModule: BullMqSenderAdapter was requested but the wired sender is ${sender.constructor.name}. ` +
+            `QueuesModule: BullMqProducerAdapter was requested but the wired producer is ${producer.constructor.name}. ` +
               'Consumers needing BullMQ-specific options must not be used with another broker — see src/queues/CLAUDE.md, Rule 1.',
           );
         }
-        return sender;
+        return producer;
       },
-      inject: [QueueSenderService],
+      inject: [QueueProducerService],
     },
   ],
-  exports: [BullMqSenderAdapter],
+  exports: [BullMqProducerAdapter],
 })
 export class QueuesModule {}

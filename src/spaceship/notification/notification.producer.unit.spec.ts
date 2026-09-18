@@ -1,6 +1,6 @@
 import { Test, TestingModule } from '@nestjs/testing';
 import { SpaceshipNotificationProducer } from './notification.producer';
-import { BullMqSenderAdapter } from '../../queues/bullmq-adapter/bullmq-sender.adapter';
+import { BullMqProducerAdapter } from '../../queues/bullmq-adapter/bullmq-producer.adapter';
 import {
   SPACESHIP_NOTIFICATION_QUEUE,
   SPACESHIP_CREATED_JOB,
@@ -11,7 +11,7 @@ import { LoggerService } from '../../common/observability/logger/abstract/logger
 describe('SpaceshipNotificationProducer', () => {
   let producer: SpaceshipNotificationProducer;
 
-  const mockSender = { addJob: jest.fn() };
+  const mockProducer = { addJob: jest.fn() };
   const mockLogger = {
     setContext: jest.fn(),
     log: jest.fn(),
@@ -24,7 +24,7 @@ describe('SpaceshipNotificationProducer', () => {
     const module: TestingModule = await Test.createTestingModule({
       providers: [
         SpaceshipNotificationProducer,
-        { provide: BullMqSenderAdapter, useValue: mockSender },
+        { provide: BullMqProducerAdapter, useValue: mockProducer },
         { provide: LoggerService, useValue: mockLogger },
       ],
     }).compile();
@@ -44,11 +44,11 @@ describe('SpaceshipNotificationProducer', () => {
       name: 'Falcon',
       fleet: 'Alpha',
     };
-    mockSender.addJob.mockResolvedValue(undefined);
+    mockProducer.addJob.mockResolvedValue(undefined);
 
     await producer.enqueueSpaceshipCreated(data);
 
-    expect(mockSender.addJob).toHaveBeenCalledWith({
+    expect(mockProducer.addJob).toHaveBeenCalledWith({
       queue: SPACESHIP_NOTIFICATION_QUEUE,
       payload: data,
       headers: { jobType: SPACESHIP_CREATED_JOB },
@@ -65,7 +65,7 @@ describe('SpaceshipNotificationProducer', () => {
       name: 'Falcon',
       fleet: 'Alpha',
     };
-    mockSender.addJob.mockResolvedValue(undefined);
+    mockProducer.addJob.mockResolvedValue(undefined);
 
     await producer.enqueueSpaceshipCreated(data);
 

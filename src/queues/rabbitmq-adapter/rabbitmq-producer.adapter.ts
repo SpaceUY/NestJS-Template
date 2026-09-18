@@ -1,22 +1,22 @@
 import { Injectable, OnModuleDestroy } from '@nestjs/common';
 import { Buffer } from 'node:buffer';
 import { Channel, ChannelModel, ConfirmChannel, connect } from 'amqplib';
-import { QueueSenderService } from '../abstract/sender/queue-sender.service';
-import { QueueEnvelope } from '../abstract/sender/queue-sender.interfaces';
+import { QueueProducerService } from '../abstract/producer/queue-producer.service';
+import { QueueEnvelope } from '../abstract/producer/queue-producer.interfaces';
 import {
-  QueueSenderError,
-  QUEUE_SENDER_ERRORS,
-} from '../abstract/sender/queue-sender.error';
+  QueueProducerError,
+  QUEUE_PRODUCER_ERRORS,
+} from '../abstract/producer/queue-producer.error';
 import {
   PublishToExchangeParams,
   RABBITMQ_RESERVED_HEADERS,
-  RabbitMqSenderAdapterOptions,
+  RabbitMqProducerAdapterOptions,
 } from './rabbitmq-adapter.interfaces';
-import { assertSupportedDeliveryOptions } from '../abstract/sender/queue-delivery-options.util';
+import { assertSupportedDeliveryOptions } from '../abstract/producer/queue-delivery-options.util';
 
 @Injectable()
-export class RabbitMqSenderAdapter
-  extends QueueSenderService
+export class RabbitMqProducerAdapter
+  extends QueueProducerService
   implements OnModuleDestroy
 {
   private connectionPromise: Promise<ChannelModel> | null = null;
@@ -27,9 +27,9 @@ export class RabbitMqSenderAdapter
   /**
    * Creates the adapter with the connection URL and publish/topology options.
    *
-   * @param {RabbitMqSenderAdapterOptions} options - RabbitMQ connection URL plus optional persistence and topology settings.
+   * @param {RabbitMqProducerAdapterOptions} options - RabbitMQ connection URL plus optional persistence and topology settings.
    */
-  constructor(private readonly options: RabbitMqSenderAdapterOptions) {
+  constructor(private readonly options: RabbitMqProducerAdapterOptions) {
     super();
   }
 
@@ -39,7 +39,7 @@ export class RabbitMqSenderAdapter
    * @param {string} queue - Destination queue name.
    * @param {unknown} payload - Message body; serialized to JSON.
    * @returns {Promise<void>} Resolves once the broker has acknowledged the message.
-   * @throws {QueueSenderError} If the message cannot be published (see `dispatch`).
+   * @throws {QueueProducerError} If the message cannot be published (see `dispatch`).
    */
   async send(queue: string, payload: unknown): Promise<void> {
     await this.dispatch({ queue, payload });
@@ -56,7 +56,7 @@ export class RabbitMqSenderAdapter
    *
    * @param {QueueEnvelope} envelope - Queue name, payload, optional headers and delivery options.
    * @returns {Promise<void>} Resolves once the broker has acknowledged the message.
-   * @throws {QueueSenderError} With code `SEND_FAILED` if the broker nacks or
+   * @throws {QueueProducerError} With code `SEND_FAILED` if the broker nacks or
    * publishing otherwise fails.
    */
   async dispatch(envelope: QueueEnvelope): Promise<void> {
@@ -67,7 +67,7 @@ export class RabbitMqSenderAdapter
     assertSupportedDeliveryOptions(
       options,
       ['priority'],
-      'RabbitMqSenderAdapter',
+      'RabbitMqProducerAdapter',
     );
 
     // Reserved headers route through a named exchange; everything else is
@@ -106,7 +106,7 @@ export class RabbitMqSenderAdapter
         ),
       );
     } catch (error) {
-      throw this._sendError(QUEUE_SENDER_ERRORS.SEND_FAILED, queue, error);
+      throw this._sendError(QUEUE_PRODUCER_ERRORS.SEND_FAILED, queue, error);
     }
 
     this.logger.debug({ message: 'Message sent to RabbitMQ', data: { queue } });
@@ -122,7 +122,7 @@ export class RabbitMqSenderAdapter
    *
    * @param {PublishToExchangeParams} params - Exchange name, routing key, payload, headers, exchange type, and priority.
    * @returns {Promise<void>} Resolves once the broker has acknowledged the message.
-   * @throws {QueueSenderError} With code `SEND_FAILED` if the broker nacks or
+   * @throws {QueueProducerError} With code `SEND_FAILED` if the broker nacks or
    * publishing otherwise fails.
    */
   async publishToExchange(params: PublishToExchangeParams): Promise<void> {
@@ -154,7 +154,7 @@ export class RabbitMqSenderAdapter
       );
     } catch (error) {
       throw this._sendError(
-        QUEUE_SENDER_ERRORS.SEND_FAILED,
+        QUEUE_PRODUCER_ERRORS.SEND_FAILED,
         `${exchange}/${routingKey}`,
         error,
       );
@@ -183,7 +183,7 @@ export class RabbitMqSenderAdapter
       await connection.close();
     } catch (error) {
       this.logger.error({
-        message: 'Failed to close RabbitMQ sender connection',
+        message: 'Failed to close RabbitMQ producer connection',
         error,
       });
     }
@@ -288,7 +288,7 @@ export class RabbitMqSenderAdapter
    * channel; clears the cache on failure so the next call retries.
    *
    * @returns {Promise<ConfirmChannel>} Resolves with the established confirm channel.
-   * @throws {QueueSenderError} With code `CONNECTION_FAILED` if the channel cannot be created.
+   * @throws {QueueProducerError} With code `CONNECTION_FAILED` if the channel cannot be created.
    */
   private async _getChannel(): Promise<ConfirmChannel> {
     if (!this.channelPromise) {
@@ -312,7 +312,7 @@ export class RabbitMqSenderAdapter
         .catch((error) => {
           this.channelPromise = null;
           throw this._sendError(
-            QUEUE_SENDER_ERRORS.CONNECTION_FAILED,
+            QUEUE_PRODUCER_ERRORS.CONNECTION_FAILED,
             'channel',
             error,
           );
@@ -328,7 +328,7 @@ export class RabbitMqSenderAdapter
    * and resets all cached state on close so the next call reconnects lazily.
    *
    * @returns {Promise<ChannelModel>} Resolves with the established channel model.
-   * @throws {QueueSenderError} With code `CONNECTION_FAILED` if the connection cannot be established.
+   * @throws {QueueProducerError} With code `CONNECTION_FAILED` if the connection cannot be established.
    */
   private async _getConnection(): Promise<ChannelModel> {
     if (!this.connectionPromise) {
@@ -348,7 +348,7 @@ export class RabbitMqSenderAdapter
         .catch((error) => {
           this.connectionPromise = null;
           throw this._sendError(
-            QUEUE_SENDER_ERRORS.CONNECTION_FAILED,
+            QUEUE_PRODUCER_ERRORS.CONNECTION_FAILED,
             'connection',
             error,
           );
@@ -370,33 +370,37 @@ export class RabbitMqSenderAdapter
   }
 
   /**
-   * Logs the failure and builds a wrapped sender error for a target.
+   * Logs the failure and builds a wrapped producer error for a target.
    *
-   * Already-wrapped `QueueSenderError`s pass through unchanged so the original
+   * Already-wrapped `QueueProducerError`s pass through unchanged so the original
    * code and cause are preserved.
    *
-   * @param {(typeof QUEUE_SENDER_ERRORS)[keyof typeof QUEUE_SENDER_ERRORS]} code - Sender error code to assign to newly wrapped errors.
+   * @param {(typeof QUEUE_PRODUCER_ERRORS)[keyof typeof QUEUE_PRODUCER_ERRORS]} code - Producer error code to assign to newly wrapped errors.
    * @param {string} target - Queue or `exchange/routingKey` the failure relates to.
    * @param {unknown} error - Underlying cause.
-   * @returns {QueueSenderError} The existing `QueueSenderError`, or a new one wrapping the cause.
+   * @returns {QueueProducerError} The existing `QueueProducerError`, or a new one wrapping the cause.
    */
   private _sendError(
-    code: (typeof QUEUE_SENDER_ERRORS)[keyof typeof QUEUE_SENDER_ERRORS],
+    code: (typeof QUEUE_PRODUCER_ERRORS)[keyof typeof QUEUE_PRODUCER_ERRORS],
     target: string,
     error: unknown,
-  ): QueueSenderError {
+  ): QueueProducerError {
     // Already-wrapped errors (e.g. connection failure surfaced through the
     // channel factory) pass through unchanged.
-    if (error instanceof QueueSenderError) return error;
+    if (error instanceof QueueProducerError) return error;
 
     this.logger.error({
       message: 'RabbitMQ send failed',
       data: { target, code },
       error,
     });
-    return new QueueSenderError(code, `RabbitMQ send failed for "${target}"`, {
-      target,
-      cause: (error as Error).message,
-    });
+    return new QueueProducerError(
+      code,
+      `RabbitMQ send failed for "${target}"`,
+      {
+        target,
+        cause: (error as Error).message,
+      },
+    );
   }
 }

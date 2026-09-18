@@ -1,5 +1,5 @@
 import { InjectionToken, ModuleMetadata } from '@nestjs/common';
-import { QueueSenderService } from './queue-sender.service';
+import { QueueProducerService } from './queue-producer.service';
 
 /**
  * Broker-agnostic, per-message delivery options. Only fields with a genuine
@@ -27,16 +27,16 @@ export interface QueueEnvelope {
   options?: QueueDeliveryOptions;
 }
 
-export interface QueueSenderModuleOptions {
+export interface QueueProducerModuleOptions {
   // forRoot instantiates the adapter directly (no NestJS DI). Adapters that
   // need constructor arguments must use forRootAsync instead. No `imports` here
   // by design: the sync path uses no DI factory, so there is nothing to import —
   // use forRootAsync to bring in a non-global module (e.g. a custom logger).
-  adapter: new () => QueueSenderService;
+  adapter: new () => QueueProducerService;
   isGlobal?: boolean;
 }
 
-export interface QueueSenderModuleAsyncOptions {
+export interface QueueProducerModuleAsyncOptions {
   imports?: ModuleMetadata['imports'];
   inject?: InjectionToken[];
   // `any[]` mirrors NestJS's own *ModuleAsyncOptions: the factory's args are the
@@ -46,6 +46,6 @@ export interface QueueSenderModuleAsyncOptions {
   useFactory: (
     // eslint-disable-next-line @typescript-eslint/no-explicit-any
     ...args: any[]
-  ) => Promise<QueueSenderService> | QueueSenderService;
+  ) => Promise<QueueProducerService> | QueueProducerService;
   isGlobal?: boolean;
 }
