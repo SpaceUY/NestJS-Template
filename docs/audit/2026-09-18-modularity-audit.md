@@ -629,15 +629,16 @@ don't need" — confirmed by reading all 98 lines; the only content about the
 template's structure is the 12-line "SpaceDev template documentation"
 section, which points a reader at the per-module guides but supplies no
 catalogue, no extraction-cost data and no deletion order itself.~~ **Fixed:**
-both recipes below (`Workflow 1`/`Workflow 2`, left in place as the record
-of what data existed to write them) are now written into the README as
-`## Use a module in another project` and `## Clone the template and strip
-what you don't need`. Re-tested: `grep -n "^## " README.md` shows both
-headings present; the evidence paragraphs immediately below are kept as the
-audit's supporting record, not as a live claim that the workflows are still
-missing.
+both recipes below (`Workflow 1`/`Workflow 2`) are now written into the
+README as `## Use a module in another project` and `## Clone the template
+and strip what you don't need`. Re-tested: `grep -n "^## " README.md` shows
+both headings present. **Correction (Task 12, fix round 1):** the
+`Workflow 1`/`Workflow 2` bullets below assert, sentence by sentence, that
+this data is absent from the README — that is no longer true of any of it,
+so they are struck through in full below, the same as (a)-(c) above, rather
+than left standing as if still live.
 
-- **Workflow 1 — lift a module into an existing project.** The README names
+- **Workflow 1 — lift a module into an existing project.** ~~The README names
   no per-module extraction cost anywhere, even though this audit's Task 4
   extraction probes already produced exactly that data in reproducible form:
   `EXT1` shows `cache` lifts with **zero** companion directories (`cp -r
@@ -658,13 +659,18 @@ missing.
   task's Step 4). None of this — which modules are cheap to lift, which are
   not, and the one non-import dependency extraction can hit — appears in the
   root README, and every number above is already measured and citable by ID;
-  the recipe the README is missing does not need new investigation to write.
+  the recipe the README is missing does not need new investigation to write.~~
+  **Fixed (Task 9, commit `2bbbfa9`):** `README.md`'s `## Use a module in
+  another project` now states the `@types`/`typeRoots` step explicitly and
+  gives the `cache`/`email`/`queues` numbers (`EXT1`, `EXT5`, `EXT3`/`EXT4`)
+  by name. Re-tested by reading that section in full against the numbers
+  above — they match.
 
-- **Workflow 2 — clone and strip.** Nobody has documented this workflow
+- **Workflow 2 — clone and strip.** ~~Nobody has documented this workflow
   anywhere in the repo (confirmed: `grep -rn "strip\|delete.*module\|remove
   this module" README.md CLAUDE.md` returns nothing relevant). This audit's
-  own findings answer every question such a recipe would need to raise:
-  - *Which directories are demo/reference, not template infrastructure.*
+  own findings answer every question such a recipe would need to raise:~~
+  - ~~*Which directories are demo/reference, not template infrastructure.*
     `src/spaceship/CLAUDE.md:1` is literally titled "Spaceship — reference
     domain module," and `:90` gives the workflow its own named first step in
     words the root README never repeats: "Do not copy this module into a
@@ -682,8 +688,12 @@ missing.
     `current-user.decorator.ts` plus "an empty `src/user/user.module.ts`
     that nothing imports," citing prior finding `R3`
     (`docs/audit/2026-09-11-template-audit.md:81`) — dead scaffolding a
-    stripped-down clone would otherwise inherit unexamined.
-  - *What `src/app.module.ts` and `.env.example` need edited after each
+    stripped-down clone would otherwise inherit unexamined.~~ **Fixed** —
+    `README.md`'s clone-and-strip section now names `spaceship` as the
+    demo module to delete (quoting `src/spaceship/CLAUDE.md:90` directly)
+    and correctly scopes the `src/templates/` deletion to
+    `src/templates/spaceship/` rather than the whole directory.
+  - ~~*What `src/app.module.ts` and `.env.example` need edited after each
     deletion.* Concretely, for `spaceship` alone: `src/app.module.ts:32`
     (`import { SpaceshipModule } from './spaceship/spaceship.module'`),
     `:55` (`notificationRecipientsScope` import), `:56`
@@ -693,22 +703,35 @@ missing.
     (`NOTIFICATION_EMPLOYEE_EMAILS`, `SPACESHIP_LIST_CACHE_TTL_SECONDS`) are
     both `spaceship`-only env vars that would become dead configuration if
     left behind. None of this is in the README or in `spaceship`'s own
-    guide (which describes what to keep, not what else references it).
-  - *What breaks if you delete a module something else imports.* This is
+    guide (which describes what to keep, not what else references it).~~
+    **Fixed** — the README now lists all six `src/app.module.ts` reference
+    points (lines 32, 55-56, 80-81, 98) and the one `.env.example` variable
+    to remove.
+  - ~~*What breaks if you delete a module something else imports.* This is
     exactly what Task 3's import graph and `M5` already answer: `(app)`,
     `queues` and `spaceship` form one mutually-dependent cycle (`M5`), so
     deleting any one of the three without also removing the other two leaves
     an unresolvable import — a fact a stripping developer needs *before*
     deleting `spaceship` on `src/spaceship/CLAUDE.md:90`'s advice, not after
-    hitting a build error.
+    hitting a build error.~~ **Fixed** — the README now states the
+    `(app)`/`queues`/`spaceship` cycle (`M2`, `M3`, `M5`) explicitly before
+    the deletion steps, and tells the reader to re-run
+    `pnpm run modularity:check -- --report` rather than trust a stale copy
+    of the graph.
 
-  The point of citing `EXT1`, `EXT3`, `EXT4`, `EXT7`, `M5`, `R3` and
+  ~~The point of citing `EXT1`, `EXT3`, `EXT4`, `EXT7`, `M5`, `R3` and
   `src/spaceship/CLAUDE.md:90` together is that a "clone and strip" recipe
   and a "lift one module" catalogue are both writable today from data this
   audit already produced — the gap is that nobody has written them into the
   one document a new consumer of this template would actually open first.
   This finding does not draft that content; establishing that it is missing,
-  and that the material to write it exists, is the deliverable.
+  and that the material to write it exists, is the deliverable.~~ **Fixed by
+  `fix/documentation-remediation` (commit `2bbbfa9`):** both recipes this
+  finding said were writable-but-missing are now written, using the exact
+  IDs and data cited throughout this finding. Re-tested by reading
+  `README.md`'s `## Use a module in another project` and `## Clone the
+  template and strip what you don't need` sections in full against every
+  claim above.
 
 ### Prior-audit reconciliation
 
