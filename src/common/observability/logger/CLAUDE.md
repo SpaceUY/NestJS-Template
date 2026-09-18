@@ -83,9 +83,11 @@ the decorator directly around a mock `LoggerService`.
 ## Reuse
 
 Copy `src/common/observability/logger/` whole, minus the adapter directories you do not want.
-`abstract/` and `nest-adapter/` need only `@nestjs/common`. `pino-adapter/` needs
-`pino` (and `pino-pretty` for the dev preset); `winston-adapter/` needs
-`winston`. Take `PRACTICES.md` with it — the practices are the valuable half.
+`abstract/` needs `@nestjs/common` and `class-transformer` (`logger-abstract.module.ts`
+imports `ClassConstructor` from it); `nest-adapter/` needs only `@nestjs/common`.
+`pino-adapter/` needs `pino` (and `pino-pretty` for the dev preset);
+`winston-adapter/` needs `winston`. Take `PRACTICES.md` with it — the
+practices are the valuable half.
 
 ## Known gaps
 

@@ -75,12 +75,18 @@ fake `ArgumentsHost` / `ExecutionContext`, not by booting the app.
 ## Reuse
 
 `src/common/exception/`, `src/common/utils/` and `src/common/decorators/` are
-self-contained — copy the files you need, they depend only on `@nestjs/common`
-and, for the interceptor, `rxjs` and `express` types.
+self-contained — copy the files you need, they depend only on `@nestjs/common`.
 
 `src/common/middleware/` is opinionated about response shape. Copy it only if the
 target project wants the `{ success, data }` envelope; otherwise take the filter
-and leave the interceptor.
+and leave the interceptor. The interceptor also needs `rxjs`, plus a real
+non-import dependency: `src/common/middleware/response.interceptor.ts:40`
+(`user.id`) only type-checks because of the ambient global type augmentation
+the repo root ships in `@types/express/index.d.ts`, loaded solely because
+`tsconfig.json` sets `"typeRoots": ["@types", "./node_modules/@types"]`. No
+import statement references it. Copying the interceptor without also copying
+the root `@types/` directory and adding that `typeRoots` entry to the
+destination project's `tsconfig.json` leaves it failing to compile (`EXT7`).
 
 ## Known gaps
 

@@ -92,12 +92,28 @@ of those without running it is how a wiring bug reaches production.
 
 ## Reuse
 
-`abstract/` depends only on `@nestjs/common`. `bullmq-adapter/` additionally
+`abstract/` depends on `@nestjs/common` **and**
+`src/common/observability/logger/` — `LoggerService`/`NestLoggerAdapter` are
+imported by `abstract/producer/queue-producer.service.ts`,
+`abstract/producer/queue-producer.module.ts`,
+`abstract/consumer/queue-consumer.adapter.ts` and
+`abstract/consumer/queue-consumer.module.ts`. `bullmq-adapter/` additionally
 needs `bullmq` plus `src/redis.scope.ts` (or a queues-local replacement if
 lifting it without `cache/`); `rabbitmq-adapter/` needs `amqplib` (+
-`rabbitmq.scope.ts`); `sqs-adapter/` needs `@aws-sdk/client-sqs`. Copy
-`abstract/` plus the adapter directories you want — never copy a domain
-module's `QueueConsumerHandler` alongside it.
+`rabbitmq.scope.ts`); `sqs-adapter/` needs `@aws-sdk/client-sqs`.
+
+`queues.module.ts` — the wired default this file's "Scope" section describes
+— does **not** lift. It imports the app-root `../redis.scope` and five
+symbols from `../spaceship/notification/` (findings `M2`, `M3`). Its measured
+extraction closure is 11 of the template's 13 top-level `src/` directories
+plus `src/redis.scope.ts`; the verdict on copying it is **does not lift**
+(`EXT3`, `EXT4`) — this is not a trim-and-go, the module's own wired default
+cannot be extracted.
+
+What to actually do: copy `abstract/` plus `src/common/observability/logger/`
+and the adapter directories you want, then write your own thin wiring module
+in the destination project. Do not copy `queues.module.ts`, and never copy a
+domain module's `QueueConsumerHandler` alongside it.
 
 ## Known gaps
 
