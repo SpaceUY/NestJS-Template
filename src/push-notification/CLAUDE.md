@@ -92,7 +92,7 @@ plain-`Error` shape, and add `forRootAsync`.
 
 ## Known gaps
 
-See `docs/audit/2026-09-11-template-audit.md`.
+See `docs/audit/2026-09-11-template-audit.md` and `docs/audit/2026-09-18-modularity-audit.md`.
 
 - **`N1`** — `push-notification-abstract.module.ts.ts` has a doubled extension.
 - **`N2`** — `PUSH_NOTIFICATION_ERRORS` contains three entries whose codes are all

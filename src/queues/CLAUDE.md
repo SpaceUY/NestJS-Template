@@ -117,6 +117,8 @@ domain module's `QueueConsumerHandler` alongside it.
 
 ## Known gaps
 
+See `docs/audit/2026-09-18-modularity-audit.md`.
+
 - RabbitMQ and SQS adapters are complete but unwired: only BullMQ is
   registered in `queues.module.ts`. Selecting either today means writing
   the `QueueProducerModule`/`QueueConsumerModule` wiring yourself.

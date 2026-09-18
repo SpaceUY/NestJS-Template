@@ -90,7 +90,7 @@ destination project's `tsconfig.json` leaves it failing to compile (`EXT7`).
 
 ## Known gaps
 
-See `docs/audit/2026-09-11-template-audit.md`.
+See `docs/audit/2026-09-11-template-audit.md` and `docs/audit/2026-09-18-modularity-audit.md`.
 
 - **`N2`** — four competing error models across the template, and `ApiException`'s
   three callers in the cloud-storage default controller escape the global filter

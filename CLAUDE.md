@@ -39,7 +39,9 @@ Before changing anything under `src/<module>/`, read `src/<module>/CLAUDE.md`.
 empty `src/user/user.module.ts` that nothing imports (finding `R3`).
 
 Shared references: `docs/architecture/module-contract.md` (the adapter-module
-contract), `docs/audit/2026-09-11-template-audit.md` (known defects),
+contract), `docs/audit/2026-09-11-template-audit.md` (known defects, the
+`B`/`N`/`D`/`C`/`TS`/`L`/`R`/`G` series) and `docs/audit/2026-09-18-modularity-audit.md`
+(the `M`/`EXT`/`DOC` series, and its reconciliation of the older audit),
 `src/common/observability/logger/PRACTICES.md` (logging rules).
 
 ## Commands
