@@ -29,9 +29,9 @@ The general recipe:
 3. If `common` is one of those companions, also copy the repo-root `@types/`
    directory and add `"typeRoots": ["@types", "./node_modules/@types"]` to the
    destination's `tsconfig.json`. `common` depends on the ambient `Express.User`
-   type declared there, and nothing in `common`'s own guide says so — this is
-   the dependency with no import statement, so no amount of reading the source
-   will surface it.
+   type declared there — see `src/common/CLAUDE.md`'s `## Reuse` section for
+   the details, since this is the dependency with no import statement, so no
+   amount of reading the source will surface it.
 4. Install the module's npm packages (below).
 5. Register the module in the destination's `src/app.module.ts`, the way this
    template's own `src/app.module.ts` does.
@@ -68,13 +68,17 @@ project. Delete it, and copy its *shape*."
 
 `src/templates/` is only partly demo. `src/templates/template.const.ts`
 registers three templates: `WELCOME` and `VERIFICATION` are generic and
-should stay; `SPACESHIP_CREATED` belongs to `spaceship` and should go with it.
+should stay; `SPACESHIP_CREATED` belongs to `spaceship` and should go with
+it, along with the files it points to under `src/templates/spaceship/` and
+its entries in the `TEMPLATES`, `TEMPLATE_PATHS` and `TEMPLATE_SUBJECTS`
+maps.
 
 Deleting `spaceship` means editing two other files by hand. `src/app.module.ts`
 references it in six places: the import (line 32), its two config-scope
 imports (lines 55-56), both scope registrations (lines 80-81), and the module
-registration itself (line 98). `.env.example` declares one spaceship-specific
-variable, `SPACESHIP_LIST_CACHE_TTL_SECONDS` (line 33).
+registration itself (line 98). `.env.example` declares two spaceship-specific
+variables: `NOTIFICATION_EMPLOYEE_EMAILS` (line 32) and
+`SPACESHIP_LIST_CACHE_TTL_SECONDS` (line 33).
 
 `spaceship` can't just be deleted, either — `src/queues/queues.module.ts`
 imports its notification code, which closes a three-way import cycle among

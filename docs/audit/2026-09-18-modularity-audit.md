@@ -469,7 +469,7 @@ Judged module by module:
   never says so explicitly.** `src/spaceship/CLAUDE.md:6` opens "**This module
   exists to be copied**" as a worked *example*, and its own `## Reuse` section
   (`:90`) is explicit: "Do not copy this module into a project. Delete it, and
-  copy its *shape*." A module whose own guide tells a reader not to lift it as
+  copy its *shape*:" A module whose own guide tells a reader not to lift it as
   a unit has a coherent reason to skip a human-facing "how to lift this"
   guide — the inconsistency `DOC7` flags for `queues` (silence where the
   module actually is meant to be lifted) does not apply here.
@@ -674,7 +674,7 @@ than left standing as if still live.
     `src/spaceship/CLAUDE.md:1` is literally titled "Spaceship — reference
     domain module," and `:90` gives the workflow its own named first step in
     words the root README never repeats: "Do not copy this module into a
-    project. Delete it, and copy its *shape*." `src/templates/` is partially
+    project. Delete it, and copy its *shape*:" `src/templates/` is partially
     demo content, not wholly: `src/templates/template.const.ts` registers
     three templates, `WELCOME` and `VERIFICATION` (generic onboarding/auth,
     used regardless of `spaceship`) alongside `SPACESHIP_CREATED`, whose
@@ -705,7 +705,7 @@ than left standing as if still live.
     left behind. None of this is in the README or in `spaceship`'s own
     guide (which describes what to keep, not what else references it).~~
     **Fixed** — the README now lists all six `src/app.module.ts` reference
-    points (lines 32, 55-56, 80-81, 98) and the one `.env.example` variable
+    points (lines 32, 55-56, 80-81, 98) and both `.env.example` variables
     to remove.
   - ~~*What breaks if you delete a module something else imports.* This is
     exactly what Task 3's import graph and `M5` already answer: `(app)`,

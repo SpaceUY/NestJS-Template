@@ -110,7 +110,7 @@ those four exist in the target project.
 **Peer dependencies.**
 
 ```bash
-pnpm add @nestjs/jwt @nestjs/passport passport passport-jwt passport-google-oauth20 google-auth-library ms
+pnpm add @nestjs/jwt @nestjs/passport passport passport-jwt passport-google-oauth20 google-auth-library ms joi class-validator
 ```
 
 `src/auth/auth0/` adds none of its own — it calls Auth0's `/userinfo` with the

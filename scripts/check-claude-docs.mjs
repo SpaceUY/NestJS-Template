@@ -22,7 +22,7 @@ const REQUIRED_SECTIONS = [
 // which is how a doc records drift in a neighbouring file without the validator
 // treating that citation as its own error.
 const PATH_LIKE =
-  /^!?(src|docs|scripts|test)\/[\w./-]+(\.(ts|mjs|js|json|md|pug|yml)|\/)$/;
+  /^!?(src|docs|scripts|test|@types)\/[\w./-]+(\.(ts|mjs|js|json|md|pug|yml)|\/)$/;
 
 /**
  * Recursively collects every CLAUDE.md and README.md path under `dir`,

@@ -167,8 +167,8 @@ were measured green in `docs/audit/2026-09-18-modularity-audit.md`'s gate table;
   once; verified in `docs/audit/2026-09-18-modularity-audit.md` (`DOC5`).
 - **`B3`** — `Dockerfile` uses `apk` on a Debian image and runs `prisma generate`
   in a TypeORM project.
-- **`G2`** — CI runs lint and build only; `pnpm test` never runs in the
-  pipeline.
+- **`G2`** — CI runs `docs:check`, `modularity:check`, `lint` and `build`;
+  `pnpm test` never runs in the pipeline.
 - **`TS1`** — `tsconfig.json` is not in strict mode, contrary to the SpaceDev
   standard.
 
