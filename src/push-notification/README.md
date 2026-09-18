@@ -24,7 +24,7 @@ push-notification/
 │   ├── push-notification.exception.ts
 │   ├── push-notification.service.ts
 ├── expo-adapter/
-│   ├── expo-adapter-config.provider.const.ts
+│   ├── expo-adapter-config-provider.const.ts
 │   ├── expo-adapter-config.interface.ts
 │   ├── expo-adapter.module.ts
 │   ├── expo-adapter.service.ts
@@ -45,7 +45,7 @@ push-notification/
 Ensure you have the required dependencies:
 
 ```bash
-npm expo-server-sdk
+pnpm add expo-server-sdk
 ```
 
 ## Usage
@@ -167,8 +167,8 @@ To use the default controller, set `useDefaultController: true` when registering
 
 ```typescript
 import { Module } from '@nestjs/common';
-import { PushNotificationAbstractModule } from './push-notification/push-notification-abstract.module';
-import { ExpoAdapterModule } from './adapters/expo-adapter.module';
+import { PushNotificationAbstractModule } from './push-notification/abstract/push-notification-abstract.module.ts';
+import { ExpoAdapterModule } from './push-notification/expo-adapter/expo-adapter.module';
 import { expoScope, ExpoScopeConfig } from './push-notification/expo-adapter/config/expo.scope';
 
 @Module({
@@ -194,8 +194,8 @@ To use a custom controller, set `useDefaultController: false` when registering t
 
 ```typescript
 import { Module } from '@nestjs/common';
-import { PushNotificationAbstractModule } from './push-notification/push-notification-abstract.module';
-import { ExpoAdapterModule } from './adapters/expo-adapter.module';
+import { PushNotificationAbstractModule } from './push-notification/abstract/push-notification-abstract.module.ts';
+import { ExpoAdapterModule } from './push-notification/expo-adapter/expo-adapter.module';
 import { CustomNotificationController } from './custom-notification.controller';
 import { expoScope, ExpoScopeConfig } from './push-notification/expo-adapter/config/expo.scope';
 
@@ -209,7 +209,7 @@ import { expoScope, ExpoScopeConfig } from './push-notification/expo-adapter/con
         }),
       }),
       useDefaultController: false, // Disable the default controller
-      customController: [YourController], // Registers the custom controller
+      controllers: [YourController], // Registers the custom controller
       isGlobal: true, // If you need, enables the module as global
     }),
   ], 
