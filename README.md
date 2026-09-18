@@ -1,8 +1,7 @@
 # SpaceDev NestJS Template
 
-A SpaceDev reusable NestJS backend template. Every top-level directory under
-`src/` is a module built so it can be lifted into another repository on its
-own.
+SpaceDev's reusable NestJS backend template. See below for what that means and
+how to work with it.
 
 ## SpaceDev template documentation
 
@@ -67,4 +66,6 @@ $ pnpm run test:cov
 ```bash
 $ pnpm run docs:check
 $ pnpm run modularity:check
+$ pnpm run lint
+$ pnpm run build
 ```
