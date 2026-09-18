@@ -66,12 +66,86 @@ function moduleOf(file) {
 }
 
 /**
- * Extracts every import/export specifier from TypeScript source text.
+ * Strips comments from TypeScript source text so that a relative-import-
+ * looking string inside a comment (JSDoc example, disabled code, a note) is
+ * never mistaken for a real edge. Block comments are stripped before line
+ * comments, since a block comment may itself contain `//`.
+ * @param {string} text Source text.
+ * @returns {string} Source text with comments removed.
+ */
+function stripComments(text) {
+  return text.replace(/\/\*[\s\S]*?\*\//g, '').replace(/\/\/.*$/gm, '');
+}
+
+/**
+ * Extracts every import/export specifier from TypeScript source text,
+ * including dynamic `import('…')` calls.
  * @param {string} text Source text.
  * @returns {string[]} Raw module specifiers.
  */
 function specifiersOf(text) {
-  return [...text.matchAll(/(?:from|import)\s*['"]([^'"]+)['"]/g)].map((m) => m[1]);
+  return [
+    ...stripComments(text).matchAll(/(?:from|import)\s*\(?\s*['"]([^'"]+)['"]/g),
+  ].map((m) => m[1]);
+}
+
+/**
+ * Finds strongly-connected components (Tarjan's algorithm) of size >= 2 in
+ * the directed module graph, i.e. genuine import cycles of any length.
+ * Recursion depth is bounded by the number of distinct modules, which is
+ * small (tens, not thousands), so a recursive implementation is safe here.
+ * @param {Map<string, string[]>} edges Directed edges keyed as "from -> to".
+ * @returns {string[][]} Each cycle as its member module names.
+ */
+function stronglyConnectedComponents(edges) {
+  const adjacency = new Map();
+  for (const key of edges.keys()) {
+    const [a, b] = key.split(' -> ');
+    if (!adjacency.has(a)) adjacency.set(a, new Set());
+    adjacency.get(a).add(b);
+    if (!adjacency.has(b)) adjacency.set(b, new Set());
+  }
+
+  const indices = new Map();
+  const lowlink = new Map();
+  const onStack = new Set();
+  const stack = [];
+  const components = [];
+  let index = 0;
+
+  function strongconnect(v) {
+    indices.set(v, index);
+    lowlink.set(v, index);
+    index += 1;
+    stack.push(v);
+    onStack.add(v);
+
+    for (const w of adjacency.get(v) ?? []) {
+      if (!indices.has(w)) {
+        strongconnect(w);
+        lowlink.set(v, Math.min(lowlink.get(v), lowlink.get(w)));
+      } else if (onStack.has(w)) {
+        lowlink.set(v, Math.min(lowlink.get(v), indices.get(w)));
+      }
+    }
+
+    if (lowlink.get(v) === indices.get(v)) {
+      const component = [];
+      let w;
+      do {
+        w = stack.pop();
+        onStack.delete(w);
+        component.push(w);
+      } while (w !== v);
+      components.push(component);
+    }
+  }
+
+  for (const v of adjacency.keys()) {
+    if (!indices.has(v)) strongconnect(v);
+  }
+
+  return components.filter((component) => component.length >= 2);
 }
 
 /**
@@ -114,9 +188,8 @@ async function analyse() {
     }
   }
 
-  for (const key of edges.keys()) {
-    const [a, b] = key.split(' -> ');
-    if (a < b && edges.has(`${b} -> ${a}`)) violations.push(`cycle|${a}|${b}`);
+  for (const component of stronglyConnectedComponents(edges)) {
+    violations.push(`cycle|${[...component].sort().join(',')}`);
   }
 
   return { violations: [...new Set(violations)].sort(), edges };
