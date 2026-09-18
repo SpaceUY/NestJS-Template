@@ -162,15 +162,19 @@ async function analyse() {
     const from = moduleOf(file);
 
     for (const spec of specifiersOf(text)) {
-      if (spec.startsWith('src/')) {
-        violations.push(`abs-import|${file}|${spec}`);
-        continue;
-      }
-      if (!spec.startsWith('.')) continue; // package import, not our concern
+      const absolute = spec.startsWith('src/');
+      if (!absolute && !spec.startsWith('.')) continue; // package import, not our concern
 
-      const target = normalize(join(dirname(file), spec));
+      const target = absolute ? normalize(spec) : normalize(join(dirname(file), spec));
       if (!target.startsWith('src')) continue;
       const to = moduleOf(target);
+
+      // An absolute `src/...` specifier is both a portability violation (it
+      // breaks the moment the file is copied elsewhere) AND a real
+      // dependency — it must count as both, not short-circuit out of the
+      // edge/tier/cycle checks the way it used to.
+      if (absolute) violations.push(`abs-import|${file}|${spec}`);
+
       if (to === from) continue;
 
       const key = `${from} -> ${to}`;
@@ -224,7 +228,20 @@ const known = existsSync(baselinePath)
 const added = violations.filter((v) => !known.has(v));
 const removed = [...known].filter((v) => !violations.includes(v));
 
-for (const v of removed) console.log(`fixed (drop from baseline): ${v}`);
+// A non-empty `removed` with an empty `added` used to be silent success: if
+// an analyser regression empties `violations` outright (a broken regex in
+// specifiersOf, a changed moduleOf, a broken stripComments), every recorded
+// violation looks "fixed" and the script printed a success message and
+// exited 0 — a blind gate reporting green. `removed` on its own is not
+// proof of a fix, only proof the recorded shape of the graph changed, so it
+// must fail until someone re-records the baseline with --update-baseline in
+// the same commit. This is also the fix for the ratchet never tightening:
+// a violation cannot be quietly dropped from the baseline by accident, only
+// deliberately, in a reviewed diff. (Fix 1, final review, 2026-09-18.)
+if (removed.length > 0) {
+  console.log(`module independence: ${removed.length} violation(s) fixed (drop from baseline):`);
+  for (const v of removed) console.log(`  ${v}`);
+}
 
 if (added.length > 0) {
   console.error(`module independence: ${added.length} NEW violation(s):`);
@@ -232,6 +249,15 @@ if (added.length > 0) {
   console.error('\nFix it, or run with --update-baseline and justify it in review.');
   process.exit(1);
 }
+
+if (removed.length > 0 && !UPDATE) {
+  console.error(
+    `\nmodule independence: the baseline is stale — ${removed.length} recorded violation(s) no longer reproduce.`,
+  );
+  console.error('Run `pnpm run modularity:check -- --update-baseline` and commit the updated baseline.');
+  process.exit(1);
+}
+
 console.log(
   `module independence: no new violations (${known.size} known, ${removed.length} now fixed)`,
 );
