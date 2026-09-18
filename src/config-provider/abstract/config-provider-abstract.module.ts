@@ -5,7 +5,10 @@ import {
   Provider,
 } from '@nestjs/common';
 import { reloadableSourceToken } from './config-provider-tokens';
-import { ConfigProviderError, CONFIG_PROVIDER_ERRORS } from './config-provider.error';
+import {
+  ConfigProviderError,
+  CONFIG_PROVIDER_ERRORS,
+} from './config-provider.error';
 import {
   ConfigProviderModuleAsyncOptions,
   ConfigProviderModuleOptions,
@@ -14,7 +17,6 @@ import {
 } from './config-provider.interfaces';
 import { ConfigProviderService } from './config-provider.service';
 import { ReloadableConfigProviderService } from './reloadable-config-provider.service';
-import { LoggerService } from '../../common/logger/abstract/logger.service';
 
 function sourceToken(name: string): string {
   return `CONFIG_PROVIDER_SOURCE_${name.toUpperCase()}`;
@@ -220,24 +222,9 @@ export class ConfigProviderAbstractModule {
     const sourceProviders: Provider[] = Object.entries(sources).map(
       ([name, src]) => {
         if (src.useValue !== undefined) {
-          return {
-            provide: sourceToken(name),
-            useFactory: (logger?: LoggerService) => {
-              if (logger) src.useValue!.setLogger(logger);
-              return src.useValue!;
-            },
-            inject: [{ token: LoggerService, optional: true }],
-          };
+          return { provide: sourceToken(name), useValue: src.useValue };
         }
-        return {
-          provide: sourceToken(name),
-          useFactory: (logger?: LoggerService) => {
-            const instance = new src.useClass!();
-            if (logger) instance.setLogger(logger);
-            return instance;
-          },
-          inject: [{ token: LoggerService, optional: true }],
-        };
+        return { provide: sourceToken(name), useClass: src.useClass! };
       },
     );
 
@@ -273,12 +260,8 @@ export class ConfigProviderAbstractModule {
     const sourceProviders: Provider[] = Object.entries(sources).map(
       ([name, src]) => ({
         provide: sourceToken(name),
-        useFactory: async (logger: LoggerService | undefined, ...args: unknown[]) => {
-          const instance = await src.useFactory(...args);
-          if (logger) instance.setLogger(logger);
-          return instance;
-        },
-        inject: [{ token: LoggerService, optional: true }, ...(src.inject || [])],
+        useFactory: src.useFactory,
+        inject: src.inject || [],
       }),
     );
 

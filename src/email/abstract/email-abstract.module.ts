@@ -3,20 +3,19 @@ import {
   InjectionToken,
   Module,
   ModuleMetadata,
+  Type,
 } from '@nestjs/common';
 import { EmailService } from './email.service';
-import { LoggerService } from '../../common/logger/abstract/logger.service';
 
 interface EmailModuleOptions {
-  // forRoot instantiates the adapter directly (no NestJS DI). Adapters that
-  // need constructor arguments must use forRootAsync instead.
-  adapter: new () => EmailService;
+  adapter: Type<EmailService>;
   isGlobal?: boolean;
 }
 
 interface EmailModuleAsyncOptions {
   imports?: ModuleMetadata['imports'];
   inject?: InjectionToken[];
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
   useFactory: (...args: any[]) => Promise<EmailService> | EmailService;
   isGlobal?: boolean;
 }
@@ -32,12 +31,7 @@ export class EmailAbstractModule {
       providers: [
         {
           provide: EmailService,
-          useFactory: (logger?: LoggerService) => {
-            const instance = new adapter();
-            if (logger) instance.setLogger(logger);
-            return instance;
-          },
-          inject: [{ token: LoggerService, optional: true }],
+          useClass: adapter,
         },
       ],
       exports: [EmailService],
@@ -54,12 +48,8 @@ export class EmailAbstractModule {
       providers: [
         {
           provide: EmailService,
-          useFactory: async (logger: LoggerService | undefined, ...args: unknown[]) => {
-            const instance = await options.useFactory(...args);
-            if (logger) instance.setLogger(logger);
-            return instance;
-          },
-          inject: [{ token: LoggerService, optional: true }, ...(options.inject || [])],
+          useFactory: options.useFactory,
+          inject: options.inject || [],
         },
       ],
       exports: [EmailService],

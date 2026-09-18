@@ -13,7 +13,10 @@ import {
   CloudStorageFile,
   CloudStorageUploadFile,
 } from '../abstract/cloud-storage.interfaces';
-import { CloudStorageError, CLOUD_STORAGE_ERRORS } from '../abstract/cloud-storage.error';
+import {
+  CloudStorageError,
+  CLOUD_STORAGE_ERRORS,
+} from '../abstract/cloud-storage.error';
 
 type GetSignedUrlCompat = (
   client: S3Client,
@@ -58,11 +61,9 @@ export class S3AdapterService extends CloudStorageService {
       Body: file.buffer,
       ContentType: file.mimetype,
     };
-    this.logger.debug({ message: 'Uploading file to S3', data: { key: id, bucket: this.bucket } });
     try {
       await this.s3.send(new PutObjectCommand(params));
     } catch (error) {
-      this.logger.error({ message: 'File upload to S3 failed', error });
       throw new CloudStorageError(
         CLOUD_STORAGE_ERRORS.UPLOAD_FAILED,
         'File upload to S3 failed',
@@ -70,7 +71,6 @@ export class S3AdapterService extends CloudStorageService {
       );
     }
     const url = `https://${this.bucket}.s3.${this.region}.amazonaws.com/${params.Key}`;
-    this.logger.log({ message: 'File uploaded to S3', data: { key: id } });
     return { url, id };
   }
 
@@ -79,18 +79,15 @@ export class S3AdapterService extends CloudStorageService {
       Bucket: this.bucket,
       Key: fileKey,
     };
-    this.logger.debug({ message: 'Deleting file from S3', data: { key: fileKey, bucket: this.bucket } });
     try {
       await this.s3.send(new DeleteObjectCommand(params));
     } catch (error) {
-      this.logger.error({ message: 'File deletion from S3 failed', error });
       throw new CloudStorageError(
         CLOUD_STORAGE_ERRORS.DELETE_FAILED,
         'File deletion from S3 failed',
         { cause: String(error) },
       );
     }
-    this.logger.log({ message: 'File deleted from S3', data: { key: fileKey } });
   }
 
   async getFile(fileKey: string): Promise<CloudStorageFile> {
@@ -99,7 +96,6 @@ export class S3AdapterService extends CloudStorageService {
       Key: fileKey,
     };
 
-    this.logger.debug({ message: 'Generating signed URL from S3', data: { key: fileKey } });
     // AWS SDK packages can pull different @smithy type instances in some installs.
     // This keeps runtime behavior with the real helper while avoiding false type incompatibilities.
     try {
@@ -108,10 +104,8 @@ export class S3AdapterService extends CloudStorageService {
         new GetObjectCommand(params),
         { expiresIn: this.expiresInSeconds },
       );
-      this.logger.log({ message: 'Signed URL generated', data: { key: fileKey } });
       return { url, id: fileKey };
     } catch (error) {
-      this.logger.error({ message: 'Failed to generate signed URL from S3', error });
       throw new CloudStorageError(
         CLOUD_STORAGE_ERRORS.GET_FAILED,
         'Failed to generate signed URL from S3',

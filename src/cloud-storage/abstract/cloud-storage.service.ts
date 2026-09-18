@@ -2,19 +2,10 @@ import {
   CloudStorageUploadFile,
   CloudStorageFile,
 } from './cloud-storage.interfaces';
-import { LoggerService } from '../../common/logger/abstract/logger.service';
-import { NestLoggerAdapter } from '../../common/logger/nest-adapter/nest-logger.adapter';
-
 /**
  * Interface for adapters to implement to work alongside the `CloudStorageModule.`
  */
 export abstract class CloudStorageService {
-  protected logger: LoggerService = new NestLoggerAdapter(this.constructor.name);
-
-  setLogger(logger: LoggerService): void {
-    this.logger = logger;
-  }
-
   /**
    * Uploads a file to the Cloud Storage provider.
    * @param file - The file payload to upload.

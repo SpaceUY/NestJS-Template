@@ -13,7 +13,7 @@ export class ResponseInterceptor implements NestInterceptor {
     timestamp: true,
   });
 
-  intercept(ctx: ExecutionContext, next: CallHandler): Observable<any> {
+  intercept(ctx: ExecutionContext, next: CallHandler): Observable<unknown> {
     return next.handle().pipe(
       map((data) => (data === undefined ? {} : data)),
       map((data) => {
