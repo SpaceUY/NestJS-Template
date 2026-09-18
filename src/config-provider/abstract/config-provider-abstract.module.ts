@@ -17,6 +17,7 @@ import {
 } from './config-provider.interfaces';
 import { ConfigProviderService } from './config-provider.service';
 import { ReloadableConfigProviderService } from './reloadable-config-provider.service';
+import { LoggerService } from '../../common/observability/logger/abstract/logger.service';
 
 function sourceToken(name: string): string {
   return `CONFIG_PROVIDER_SOURCE_${name.toUpperCase()}`;
@@ -221,10 +222,23 @@ export class ConfigProviderAbstractModule {
 
     const sourceProviders: Provider[] = Object.entries(sources).map(
       ([name, src]) => {
+        // useValue is deliberately left alone: the instance belongs to the
+        // caller, who may already hold a reference to it or have registered it
+        // under a second source name. Callers wanting the container's logger on
+        // a useValue source call setLogger() on it themselves.
         if (src.useValue !== undefined) {
           return { provide: sourceToken(name), useValue: src.useValue };
         }
-        return { provide: sourceToken(name), useClass: src.useClass! };
+        const adapter = src.useClass!;
+        return {
+          provide: sourceToken(name),
+          useFactory: (logger?: LoggerService) => {
+            const instance = new adapter();
+            if (logger) instance.setLogger(logger);
+            return instance;
+          },
+          inject: [{ token: LoggerService, optional: true }],
+        };
       },
     );
 
@@ -260,8 +274,18 @@ export class ConfigProviderAbstractModule {
     const sourceProviders: Provider[] = Object.entries(sources).map(
       ([name, src]) => ({
         provide: sourceToken(name),
-        useFactory: src.useFactory,
-        inject: src.inject || [],
+        useFactory: async (
+          logger: LoggerService | undefined,
+          ...args: unknown[]
+        ) => {
+          const instance = await src.useFactory(...args);
+          if (logger) instance.setLogger(logger);
+          return instance;
+        },
+        inject: [
+          { token: LoggerService, optional: true },
+          ...(src.inject || []),
+        ],
       }),
     );
 

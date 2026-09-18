@@ -20,11 +20,14 @@ export abstract class QueueConsumerAdapter {
 
   /**
    * Replaces the default logger, letting the module inject the container's
-   * `LoggerService` after instantiation.
+   * `LoggerService` after instantiation. `LoggerService` is registered as
+   * `Scope.TRANSIENT`, so re-tagging the context here affects only this
+   * adapter's own instance.
    *
    * @param {LoggerService} logger - Logger the adapter should use from now on.
    */
   setLogger(logger: LoggerService): void {
+    logger.setContext(this.constructor.name);
     this.logger = logger;
   }
 

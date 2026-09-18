@@ -6,6 +6,38 @@ import { ConfigProviderService } from './config-provider.service';
 import { ReloadableConfigProviderService } from './reloadable-config-provider.service';
 import { defineConfigScope } from './define-config-scope.util';
 import { SOURCES } from './config-source.util';
+import { LoggerService } from '../../common/observability/logger/abstract/logger.service';
+import { NestLoggerAdapter } from '../../common/observability/logger/nest-adapter/nest-logger.adapter';
+
+/** Zero-arg adapter, the only shape `useClass` accepts. */
+class ZeroArgAdapter extends ConfigProviderService {
+  async get(): Promise<string | undefined> {
+    return undefined;
+  }
+
+  async getOrThrow(): Promise<string> {
+    throw new Error('not found');
+  }
+
+  // `logger` is protected on ConfigProviderService.
+  exposeLogger(): LoggerService {
+    return this.logger;
+  }
+}
+
+/** Captures the context `setLogger` assigns, so tests can assert on it. */
+class RecordingLogger extends LoggerService {
+  context = '';
+
+  setContext(context: string): void {
+    this.context = context;
+  }
+
+  log(): void {}
+  warn(): void {}
+  error(): void {}
+  debug(): void {}
+}
 
 class MockEnvAdapter extends ConfigProviderService {
   constructor(private readonly store: Record<string, string>) {
@@ -302,6 +334,93 @@ describe('ConfigProviderAbstractModule', () => {
           code: CONFIG_PROVIDER_ERRORS.DUPLICATE_SCOPE_KEY,
         }),
       );
+    });
+  });
+
+  describe('logger wiring', () => {
+    const sourceToken = 'CONFIG_PROVIDER_SOURCE_ENV';
+
+    const findSource = (moduleRef: {
+      providers?: unknown[];
+    }): {
+      inject?: unknown[];
+      useFactory?: (...args: any[]) => any;
+      useValue?: unknown;
+    } =>
+      (moduleRef.providers as any[]).find(
+        (p) => p?.provide === sourceToken,
+      ) as any;
+
+    it('hands the injected logger to a useClass source, re-tagged with its class name', () => {
+      const moduleRef = ConfigProviderAbstractModule.forRoot({
+        sources: { env: { useClass: ZeroArgAdapter } },
+      });
+
+      const provider = findSource(moduleRef);
+      const injected = new RecordingLogger();
+      const instance = provider?.useFactory!(injected) as ZeroArgAdapter;
+
+      expect(provider?.inject).toEqual([
+        { token: LoggerService, optional: true },
+      ]);
+      expect(instance.exposeLogger()).toBe(injected);
+      expect(injected.context).toBe('ZeroArgAdapter');
+    });
+
+    it('leaves a useValue source untouched, since the instance belongs to the caller', () => {
+      const caller = new ZeroArgAdapter();
+      const before = caller.exposeLogger();
+
+      const moduleRef = ConfigProviderAbstractModule.forRoot({
+        sources: { env: { useValue: caller } },
+      });
+
+      const provider = findSource(moduleRef);
+
+      expect(provider?.useValue).toBe(caller);
+      expect(provider?.useFactory).toBeUndefined();
+      expect(caller.exposeLogger()).toBe(before);
+    });
+
+    it('prepends the optional logger to a useFactory source inject list', async () => {
+      const moduleRef = ConfigProviderAbstractModule.forRootAsync({
+        sources: {
+          env: {
+            inject: ['TOKEN_A'],
+            useFactory: (value: string) => {
+              expect(value).toBe('value-a');
+              return new ZeroArgAdapter();
+            },
+          },
+        },
+      });
+
+      const provider = findSource(moduleRef);
+      const injected = new RecordingLogger();
+      const instance = (await provider?.useFactory!(
+        injected,
+        'value-a',
+      )) as ZeroArgAdapter;
+
+      expect(provider?.inject).toEqual([
+        { token: LoggerService, optional: true },
+        'TOKEN_A',
+      ]);
+      expect(instance.exposeLogger()).toBe(injected);
+      expect(injected.context).toBe('ZeroArgAdapter');
+    });
+
+    it('falls back to the adapter default logger when LoggerService is unavailable', async () => {
+      const moduleRef = ConfigProviderAbstractModule.forRootAsync({
+        sources: { env: { useFactory: () => new ZeroArgAdapter() } },
+      });
+
+      const provider = findSource(moduleRef);
+      const instance = (await provider?.useFactory!(
+        undefined,
+      )) as ZeroArgAdapter;
+
+      expect(instance.exposeLogger()).toBeInstanceOf(NestLoggerAdapter);
     });
   });
 });

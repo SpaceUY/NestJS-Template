@@ -1,5 +1,4 @@
 import { InjectionToken, ModuleMetadata } from '@nestjs/common';
-import { ClassConstructor } from 'class-transformer';
 import { ConfigProviderService } from './config-provider.service';
 
 export interface ConfigScopeFieldMapping {
@@ -16,7 +15,10 @@ export interface ConfigScopeDefinition<T> {
 }
 
 export interface ConfigProviderSourceSync {
-  useClass?: ClassConstructor<ConfigProviderService>;
+  // forRoot instantiates the adapter directly (no NestJS DI) so the module can
+  // hand it the container's logger. Adapters that need constructor arguments
+  // must use a source with `useFactory` instead.
+  useClass?: new () => ConfigProviderService;
   useValue?: ConfigProviderService;
 }
 

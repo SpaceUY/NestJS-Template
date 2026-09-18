@@ -112,28 +112,24 @@ import { RedisCacheAdapterService } from './cache/redis-adapter/redis-adapter.se
       isGlobal: true,
     }),
     EmailAbstractModule.forRootAsync({
-      inject: [emailScope.KEY, LoggerService],
-      useFactory: (email: EmailScopeConfig, logger: LoggerService) => {
+      // No LoggerService here: EmailAbstractModule injects it itself (optionally)
+      // and calls setLogger() on whatever adapter this factory returns.
+      inject: [emailScope.KEY],
+      useFactory: (email: EmailScopeConfig) => {
         const configuredAdapter = email.adapter?.toUpperCase();
 
         if (configuredAdapter === EMAIL_ADAPTERS.SENDGRID) {
-          return new SendgridAdapterService(
-            {
-              sendgridApiKey: email.sendgridApiKey,
-              emailFrom: email.from,
-            },
-            logger,
-          );
+          return new SendgridAdapterService({
+            sendgridApiKey: email.sendgridApiKey,
+            emailFrom: email.from,
+          });
         }
 
         if (configuredAdapter === EMAIL_ADAPTERS.RESEND) {
-          return new ResendAdapterService(
-            {
-              resendApiKey: email.resendApiKey,
-              emailFrom: email.resendEmailFrom || email.from,
-            },
-            logger,
-          );
+          return new ResendAdapterService({
+            resendApiKey: email.resendApiKey,
+            emailFrom: email.resendEmailFrom || email.from,
+          });
         }
 
         if (configuredAdapter === EMAIL_ADAPTERS.AWS_SES) {

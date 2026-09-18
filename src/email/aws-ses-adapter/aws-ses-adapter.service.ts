@@ -1,4 +1,4 @@
-import { Injectable, Logger } from '@nestjs/common';
+import { Injectable } from '@nestjs/common';
 import { EmailService } from '../abstract/email.service';
 import {
   MailingResponse,
@@ -14,10 +14,8 @@ import {
 
 @Injectable()
 export class AwsSesAdapterService extends EmailService {
-  private readonly logger = new Logger(this.constructor.name, {
-    timestamp: true,
-  });
-
+  // `logger` is inherited from EmailService — declaring one here would shadow
+  // it and silently defeat EmailAbstractModule's setLogger() injection.
   private readonly fromEmail: string;
 
   private readonly sesClient: SESClient;
@@ -81,7 +79,7 @@ export class AwsSesAdapterService extends EmailService {
         headers: {},
       };
     } catch (error) {
-      this.logger.error(failureLogMessage, error);
+      this.logger.error({ message: failureLogMessage, error });
       throw error;
     }
   }
