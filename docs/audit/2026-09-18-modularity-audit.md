@@ -208,4 +208,159 @@ their source, since Step 5 scopes that deeper pass to the four newest guides.
 
 ### Human guides (README.md)
 
+Evidence: the Step 1 path-existence grep over all 12 module `README.md` files
+(the brief's own `find`-plus-backticked-path-extraction command), a grep for
+`registerAs|ConfigType<|@nestjs/config` and for `npm install|npm run|yarn `
+across the same files, `grep '"@nestjs/config"' package.json` (no hits —
+confirmed not a dependency), and — the part that
+actually finds drift — reading every README in full and checking its primary
+registration example's option names against the real `*-abstract.module.ts`
+(or `*.module.ts`) options interface and the real adapter config interface,
+opening the source file in each case rather than trusting the guide's prose.
+Findings continue the documentation series at **DOC7**.
+
+**Prior findings `D1`–`D4`, re-verified against `964eb88`: all four still
+open, unfixed since 2026-09-11.**
+
+- **`D1`** — `src/cloud-storage/README.md` still documents a
+  `src/modules/infrastructure/cloud-storage/` tree with
+  `cloud-storage.module.ts`, `cloud-storage-orchestrator.service.ts`,
+  `cloud-storage.targets.ts`, `cloud-storage.tokens.ts`,
+  `cloud-storage.config.ts` and an `IPFSAdapterService` (`:25-30`, `:50`,
+  `:121-123`, `:187-223`). `find src/cloud-storage -type f` shows none of
+  these exist; the real tree is `src/cloud-storage/abstract/`,
+  `s3-adapter/`, `local-adapter/` with no orchestrator, targets enum, tokens
+  file or IPFS adapter anywhere. `src/cloud-storage/CLAUDE.md`'s own "Known
+  gaps" already carries this finding verbatim.
+- **`D2`** — `src/email/README.md` still documents `utils/email-logger.adapter.ts`
+  (`:38`, `:88`), `abstract/email-logger.interface.ts` (`:24`) and
+  `src/config/email.config.ts` (`:90`, `:145`). None exist (confirmed both by
+  the Step 1 mechanical grep, which flags `src/config/email.config.ts` as
+  the one `MISSING:` path across all 12 READMEs, and by `find src/email
+  -type f`). The real config file is `src/email/config/email.scope.ts`.
+- **`D3`** — `src/config-provider/README.md:25` still names
+  `config-provider-error-codes.ts`; the real file is
+  `src/config-provider/abstract/config-provider.error.ts`
+  (`find src/config-provider -type f`).
+- **`D4`** — `@nestjs/config`'s `ConfigType<...>` is still taught, unfixed, in
+  four READMEs: `src/cache/README.md:65`, `src/cloud-storage/README.md:92,101`,
+  `src/email/README.md:82,97-98` and `src/push-notification/README.md:59,69` (plus
+  every `registerAsync` example in the last one). `src/common/observability/logger/README.md:82`
+  also uses `ConfigType<typeof appConfig>` in one example — a fifth hit the
+  original `D4` did not name, first surfaced by this task's grep.
+  `grep '"@nestjs/config"' package.json` returns nothing — the package is not
+  installed, so every one of these examples fails to compile if followed
+  literally.
+
+**New findings.**
+
+| ID | Finding |
+|----|---------|
+| **DOC7** | **`src/queues/README.md` is completely silent about the module's real extraction cost — worse than its own `CLAUDE.md` (`DOC2`), which at least mentions the coupling in passing.** `grep -n "spaceship\|redis.scope\|Reuse\|lift\|extract\|companion\|copy" src/queues/README.md` returns three hits, none relevant (`companion` inside "the cross-broker read-side companion to retries"; `lift`/`lifted` describing SQS header handling). The README has no `## Reuse` section at all, unlike `cache`, `cloud-storage`, `config-provider`, `email` and `templating`'s guides. It documents the producer/consumer contracts, all three adapters (BullMQ, RabbitMQ, SQS) and their broker-specific behavior in real depth and with real accuracy (every registration example checked against `queue-producer.interfaces.ts` / `queue-consumer.interfaces.ts` matches exactly), but a reader deciding whether to lift `queues` — the one document a non-agent reader would consult — gets zero indication that `queues.module.ts` (the module's own "wired default", per its `CLAUDE.md` Scope) imports the demo module `spaceship` and the app-root `src/redis.scope.ts`, or that the module's real closure is 11 of 13 top-level `src/` directories (`M2`, `M3`, `EXT3`, `EXT4` — `EXT4`: "does not lift"). This is a stronger silence than `DOC2` found in the agent guide, whose "Known gaps" section at least names the `spaceship` coupling "in general terms." |
+| **DOC8** | **`src/common/observability/logger/README.md`'s two `Registration` examples import from a path alias that does not exist in this project.** Lines 64-65 and 76-77: `import { LoggerAbstractModule } from '@/common/observability/logger/abstract/logger-abstract.module';` (and the `NestLoggerAdapter`/`PinoLoggerAdapter` siblings). `cat tsconfig.json` has no `"paths"` key at all — only `baseUrl: "./"` — so `@/...` resolves to nothing; confirmed by `grep -rn "from '@/" src --include='*.ts'`, which returns zero hits anywhere in the real source tree, and by checking `package.json`/no `nest-cli.json` alias config. A developer copying either example verbatim gets an unresolvable import. (`src/cloud-storage/README.md` uses the same `@/modules/infrastructure/...` alias twice, but that is already covered by `D1`'s fictional-path finding; this is the first time the `@/` alias itself, independent of `D1`'s fictional directory, is named as the defect.) |
+| **DOC9** | **`src/push-notification/README.md` carries five independent internal drifts, in addition to the already-known `D4`.** (a) Two import statements (`:171`, `:197`) read `import { PushNotificationAbstractModule } from './push-notification/push-notification-abstract.module';` — wrong on two counts: missing the `/abstract/` path segment, and missing the `.ts` suffix the doubled-extension file (`push-notification-abstract.module.ts.ts`, finding `N1`) requires in the import specifier. The README gets this right once, at `:60` (`'./push-notification/abstract/push-notification-abstract.module.ts'`, matching what `src/app.module.ts` actually does), then wrong twice later. (b) `import { ExpoAdapterModule } from './adapters/expo-adapter.module';` (`:172`, `:198`) — the real path is `./push-notification/expo-adapter/expo-adapter.module`; no `adapters/` directory exists anywhere in `src/`. (c) `:211` — `customController: [YourController], // Registers the custom controller` names an option the module does not have. `src/push-notification/abstract/push-notification-abstract.module.ts.ts:16` shows the real `forRoot` option is `controllers?: Type<any>[]`, not `customController`; this is drift in the option name itself, not merely the path around it, and is not covered by any `M`-series finding since the module *does* have the feature — the README just names it wrong. (d) The directory tree (`:27`) lists `expo-adapter-config.provider.const.ts`; the real file (`find src/push-notification -type f`) is `expo-adapter-config-provider.const.ts` (hyphen, not dot, before `provider`). (e) `## Installation` (`:48`) reads literally `npm expo-server-sdk` — not valid syntax for any package manager (missing `install`/`add`), and if corrected would still be `npm`, not `pnpm`; every other README's install instructions correctly use `pnpm add` (`src/common/observability/logger/README.md:159-160,296,324,332`, `src/config-provider/README.md:274`). This line is why the brief's own Step 2 grep (`npm install\|npm run\|yarn `) is not sufficient by itself — it does not match `npm expo-server-sdk` because the line has no `install`/`run` keyword, so this hit surfaced only by reading the file. Checked separately per brief item 4: this README does **not** repeat `DOC1`'s/`M15`'s false claim that `PushNotificationException` is thrown — the string never appears in the file at all, so the human guide does not carry that particular falsehood, only these five. |
+
+**Modules with no finding above, checked in full.** `src/cache/README.md`
+(registration examples for `forRoot`/`forRootAsync` and the `RedisAdapterConfig`
+shape both match `cache.interfaces.ts` and `redis-adapter-config.interface.ts`
+exactly; the module has no `Reuse`/extraction-cost section at all, so unlike
+its `CLAUDE.md` it makes no claim about `EXT1`'s "lifts with nothing else"
+finding to credit or fault — it is silent, not wrong). `src/common/README.md`
+(the one documented function, `validateAdapterModule`, matches
+`nest-module-validation.ts`'s real signature exactly; confirmed, per brief
+item 4, that it never mentions `@types/express`, `typeRoots` or "augmentation"
+— the same silence about `EXT7` that `DOC3` already found in its `CLAUDE.md`,
+now confirmed from the README's side too, not a new finding since `DOC3`
+already names the underlying defect and this task's brief treats a doc
+defect as reportable once). `src/common/observability/analytics/README.md`
+(matches `analytics-abstract.module.ts`'s options; carries no registration
+code example to check further). `src/common/observability/telemetry/README.md`
+(the `@Span()` examples match `span.decorator.ts` exactly). `src/config-provider/README.md`
+(every option in the `forRootAsync`/`forRoot` examples, `defineConfigScope`'s
+four-argument signature, `reloadableSourceToken`, and `jwtScope.KEY`'s literal
+value `'CONFIG_SCOPE_JWT'` all match `config-provider.interfaces.ts`,
+`define-config-scope.util.ts` and `config-provider-tokens.ts` exactly — `D3` is
+its only defect). `src/templates/README.md` (correctly documents that this
+directory ships no Nest module/provider at all, matching its `CLAUDE.md`; its
+registry example is illustrative and omits the real third entry,
+`SPACESHIP_CREATED`, but never claims to be exhaustive, so that is not drift).
+`src/templating/README.md` (the `TemplateModule.forRoot`, `PugAdapterModule.register`
+and `TemplateService.compile` signatures in its examples all match
+`template.module.ts`, `pug-adapter.module.ts` and `template.service.ts`
+exactly — no findings).
+
+**`PRACTICES.md` verdict.** `src/common/observability/logger/PRACTICES.md`
+(cited by the root `CLAUDE.md` as the logging rules and by the 2026-09-11
+audit's `C5`) was read in full and checked against `LoggerService`'s real
+abstract methods (`setContext`, `log`, `warn`, `error`, `debug`) and
+`LogInput`'s real shape (`{ message, data? }`) in
+`src/common/observability/logger/abstract/logger.interfaces.ts`. Every code
+example (`this.logger.log({ message, data })`, `setContext(ClassName.name)`,
+the past-tense event-name examples) uses the real API correctly, names no
+file that does not exist, and describes no method the service does not have.
+**No drift found** — the rules describe policy (which level to use, what
+never to log, controllers stay log-free) rather than an API surface, which is
+exactly the kind of content that does not go stale when the code changes
+underneath it. This is not the same claim as "every rule is followed" — `C5`
+already documents one violation of it (`src/auth/google/google.service.ts`
+logging a raw provider error) — only that the document itself teaches nothing
+false.
+
+**Step 4 — the three modules with a `CLAUDE.md` and no `README.md`.**
+`src/auth`, `src/database` and `src/spaceship` are all marked `—` in the root
+`CLAUDE.md`'s module map "Human guide" column. None of the three `CLAUDE.md`
+files contains the word "README" anywhere (`grep -n "README" src/auth/CLAUDE.md
+src/database/CLAUDE.md src/spaceship/CLAUDE.md` — zero hits) — so in every
+case the absence is undocumented; no guide states whether it is deliberate.
+Judged module by module:
+
+- **`src/spaceship` — the absence reads as deliberate, even though the guide
+  never says so explicitly.** `src/spaceship/CLAUDE.md:6` opens "**This module
+  exists to be copied**" as a worked *example*, and its own `## Reuse` section
+  (`:90`) is explicit: "Do not copy this module into a project. Delete it, and
+  copy its *shape*." A module whose own guide tells a reader not to lift it as
+  a unit has a coherent reason to skip a human-facing "how to lift this"
+  guide — the inconsistency `DOC7` flags for `queues` (silence where the
+  module actually is meant to be lifted) does not apply here.
+- **`src/database` — a real gap, not a clear "deliberate."** `src/database/CLAUDE.md`
+  ships a full `## Reuse` section (`:77-88`) that reads exactly like the
+  Reuse section of a module that does have a README: what transfers unchanged
+  (`base.entity.ts`, the migration scripts), what carries a dependency to port
+  together (`database.module.ts` / `database.scope.ts` with
+  `config-provider`), and what to do about the `auth` coupling
+  (`User.authType`). Nothing in the file explains why that guidance lives only
+  in the agent-facing doc.
+- **`src/auth` — the sharpest case, and worth a finding either way.**
+  `src/auth/CLAUDE.md:142-155` likewise ships a full `## Reuse` section (what
+  four things to port first, the peer-dependency list, how to drop
+  `google`/`auth0` cleanly) — again, the same kind of content every
+  README-bearing module puts in its human guide. `src/auth` now fronts three
+  independent login methods (email, Google, Auth0, per its own `## Scope`),
+  making it one of the larger, more consequential modules in the template by
+  surface area — and a developer deciding *whether to adopt this module's auth
+  strategy at all*, as opposed to an agent already committed to editing it,
+  has no human-facing document to read. Given both `auth` and `database`
+  document their extraction cost in agent-only form with no stated reason,
+  this reads as a documentation gap the template should either close (write
+  the READMEs) or own explicitly (state in each `CLAUDE.md`, as `spaceship`'s
+  effectively does, that no human guide is planned and why).
+
+**Coverage.** All 12 module `README.md` files were read in full, and for each
+one at least one registration/usage code example was checked line-by-line
+against the real `*-abstract.module.ts` (or `*.module.ts`) options interface
+and the real adapter config interface named in that example — not sampled.
+`src/common/observability/logger/PRACTICES.md` was also read in full. The
+three `CLAUDE.md` files in Step 4 (`src/auth`, `src/database`, `src/spaceship`)
+were read for their `Scope`/`Reuse`/`Known gaps` sections only, not
+symbol-by-symbol, since Task 6 already audited them as agent guides. The
+Step 1 path-existence grep and the Step 2 `@nestjs/config`/`npm` greps were
+run mechanically over all 12 files as specified in the brief; every hit they
+produced was opened and confirmed by hand before being written up above.
+7 of the 12 READMEs carry at least one finding above: `cache` (`D4`),
+`cloud-storage` (`D1`, `D4`), `email` (`D2`, `D4`), `config-provider` (`D3`),
+`push-notification` (`D4`, `DOC9`), `queues` (`DOC7`),
+`common/observability/logger` (`D4`, `DOC8`). The remaining 5 (`common`,
+`common/observability/analytics`, `common/observability/telemetry`,
+`templates`, `templating`) carry none.
+
 ### Prior-audit reconciliation
