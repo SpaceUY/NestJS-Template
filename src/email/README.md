@@ -17,11 +17,10 @@ Provider-agnostic email delivery for NestJS using adapter **services**.
 src/email/
 ├── abstract/
 │   ├── email-abstract.module.ts
+│   ├── email.error.ts
 │   ├── email.interface.ts
 │   ├── email.service.ts
-│   ├── email.types.ts
-│   ├── email-error.ts
-│   └── email-logger.interface.ts
+│   └── email.types.ts
 ├── aws-ses-adapter/
 │   ├── aws-ses-adapter-config.interface.ts
 │   └── aws-ses-adapter.service.ts
@@ -34,8 +33,10 @@ src/email/
 ├── console-adapter/
 │   ├── console-adapter-config.interface.ts
 │   └── console-adapter.service.ts
+├── config/
+│   └── email.scope.ts
 └── utils/
-    └── email-logger.adapter.ts
+    └── execute-html-email-send.ts
 ```
 
 ## Core Contract
@@ -79,59 +80,50 @@ This is the recommended pattern for reusable templates.
 
 ```ts
 import { Module } from '@nestjs/common';
-import { ConfigType } from '@nestjs/config';
 import { EmailAbstractModule } from './email/abstract/email-abstract.module';
 import { AwsSesAdapterService } from './email/aws-ses-adapter/aws-ses-adapter.service';
 import { SendgridAdapterService } from './email/sendgrid-adapter/sendgrid-adapter.service';
 import { ResendAdapterService } from './email/resend-adapter/resend-adapter.service';
 import { ConsoleAdapterService } from './email/console-adapter/console-adapter.service';
-import { createDefaultEmailLogger } from './email/utils/email-logger.adapter';
-import awsConfig from './config/aws.config';
-import emailConfig, { EMAIL_ADAPTERS } from './config/email.config';
+import {
+  emailScope,
+  EmailScopeConfig,
+  EMAIL_ADAPTERS,
+} from './email/config/email.scope';
 
 @Module({
   imports: [
     EmailAbstractModule.forRootAsync({
-      inject: [emailConfig.KEY, awsConfig.KEY],
-      useFactory: (
-        email: ConfigType<typeof emailConfig>,
-        aws: ConfigType<typeof awsConfig>,
-      ) => {
-        const logger = createDefaultEmailLogger();
-        const adapter = email.adapter?.toUpperCase();
+      // No LoggerService here: EmailAbstractModule injects it itself
+      // (optionally) and calls setLogger() on whatever the factory returns.
+      inject: [emailScope.KEY],
+      useFactory: (email: EmailScopeConfig) => {
+        const configuredAdapter = email.adapter?.toUpperCase();
 
-        if (adapter === EMAIL_ADAPTERS.SENDGRID) {
-          return new SendgridAdapterService(
-            {
-              sendgridApiKey: email.sendgrid.apiKey,
-              emailFrom: email.from,
-            },
-            logger,
-          );
-        }
-
-        if (adapter === EMAIL_ADAPTERS.RESEND) {
-          return new ResendAdapterService(
-            {
-              resendApiKey: email.resend.apiKey,
-              emailFrom: email.resend.emailFrom || email.from,
-            },
-            logger,
-          );
-        }
-
-        if (adapter === EMAIL_ADAPTERS.AWS_SES) {
-          return new AwsSesAdapterService({
-            region: aws.ses.region,
-            accessKeyId: aws.ses.accessKeyId,
-            secretAccessKey: aws.ses.secretAccessKey,
-            fromEmail: aws.ses.from || email.from,
+        if (configuredAdapter === EMAIL_ADAPTERS.SENDGRID) {
+          return new SendgridAdapterService({
+            sendgridApiKey: email.sendgridApiKey,
+            emailFrom: email.from,
           });
         }
 
-        return new ConsoleAdapterService({
-          fromEmail: email.from,
-        });
+        if (configuredAdapter === EMAIL_ADAPTERS.RESEND) {
+          return new ResendAdapterService({
+            resendApiKey: email.resendApiKey,
+            emailFrom: email.resendEmailFrom || email.from,
+          });
+        }
+
+        if (configuredAdapter === EMAIL_ADAPTERS.AWS_SES) {
+          return new AwsSesAdapterService({
+            region: email.sesRegion,
+            accessKeyId: email.sesAccessKeyId,
+            secretAccessKey: email.sesSecretAccessKey,
+            fromEmail: email.from,
+          });
+        }
+
+        return new ConsoleAdapterService({ fromEmail: email.from });
       },
       isGlobal: true,
     }),
@@ -142,7 +134,7 @@ export class AppModule {}
 
 ## Config
 
-[`src/config/email.config.ts`](../config/email.config.ts) now supports:
+[`src/email/config/email.scope.ts`](./config/email.scope.ts) supports:
 
 - `EMAIL_ADAPTER`: `AWS_SES | SENDGRID | RESEND | CONSOLE`
 - `EMAIL_FROM`
@@ -165,6 +157,20 @@ await this.emailService.sendEmail({
   },
 });
 ```
+
+## Sending Helper (`executeHtmlEmailSend`)
+
+[`src/email/utils/execute-html-email-send.ts`](./utils/execute-html-email-send.ts)
+is a shared helper used by `ResendAdapterService` and `SendgridAdapterService`'s
+`sendEmail`/`sendEmailBatch` methods. Given the rendered content, a `send`
+function that calls the provider SDK and a `toMailingResponse` mapper, it:
+
+- throws `EmailError` (`EMAIL_ERRORS.INVALID_PARAMS`) if `content.html` is empty
+- calls `send`, logs the outcome, and maps the result with `toMailingResponse`
+- on a thrown provider error, logs it and rethrows `EmailError`
+  (`EMAIL_ERRORS.PROVIDER_REJECTED`) so no provider SDK error escapes the adapter
+
+`AwsSesAdapterService` and `ConsoleAdapterService` do not use it.
 
 ## Extending with a New Adapter
 

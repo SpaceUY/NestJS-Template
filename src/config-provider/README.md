@@ -22,7 +22,7 @@ src/config-provider/
 │   ├── config-provider-abstract.module.ts   Dynamic module (forRoot / forRootAsync)
 │   ├── config-provider.service.ts           Abstract source adapter contract
 │   ├── config-provider.interfaces.ts        Shared types
-│   ├── config-provider-error-codes.ts       Error string constants
+│   ├── config-provider.error.ts             Error type and codes
 │   ├── config-source.util.ts                configSources helper (from.env / from.sm / from.from)
 │   └── define-config-scope.util.ts          defineConfigScope() utility
 ├── env-adapter/
