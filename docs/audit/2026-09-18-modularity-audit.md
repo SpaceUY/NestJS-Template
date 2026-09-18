@@ -10,6 +10,92 @@ completed.
 | `pnpm test` | 36 suites, 295 tests, all passed |
 | `pnpm run docs:check` | passed |
 
+## Priority
+
+Three buckets rank every `M`, `EXT` and `DOC` finding (37 total, none
+omitted) against the template's own stated purpose — every top-level
+directory under `src/` lifts into another repo on its own. No numeric score:
+a reader deciding what to fix next is better served by three ordered groups
+than by a count. Fix bucket 1 first.
+
+### Breaks the promise (8)
+
+A module provably cannot be lifted, or a guide states something false enough
+that trusting it would send a reader straight at that same failure.
+
+- **M2**, **M3**, **M5** — the `(app)`/`queues`/`spaceship` cycle: `queues`
+  reaches into the app-root config scope (`M2`) and into the demo module
+  `spaceship` (`M3`), closing a 3-node cycle (`M5`) that pulls the host
+  application itself into the dependency, not just a sibling module. This is
+  qualitatively worse than a two-module pair that still lifts together
+  (`M6`, `M7`, below) because one of the three nodes is the app root itself.
+- **EXT3**, **EXT4** — the measured proof of the same defect: copying
+  `queues` alone leaves 29 unresolved imports, and the only closure that
+  compiles needs 11 of the template's 13 top-level directories plus the
+  app-root file `src/redis.scope.ts` — `EXT4`'s own verdict is "does not
+  lift."
+- **DOC2**, **DOC5**, **DOC7** — guides that would send a reader straight
+  into the `M2`/`M3`/`M5` trap instead of warning them off it: `queues`'s
+  `CLAUDE.md` Reuse section claims `abstract/` "depends only on
+  `@nestjs/common`" and never names `queues.module.ts`'s app-root/`spaceship`
+  imports at all (`DOC2`); its `README.md` — the document a non-agent reader
+  would actually consult before lifting the module — says nothing about
+  extraction cost whatsoever (`DOC7`); and the root `CLAUDE.md` tells every
+  agent starting a session that build and lint are red and that `dotenv` is
+  still duplicated, both false (`DOC5`). Each is a guide asserting the
+  opposite of what this audit measured, not merely omitting detail.
+
+### Erodes the promise (19)
+
+The module still lifts — alone or with a bounded, real set of companions —
+but a developer or agent copying it is misled about the cost, or hits
+behaviour a module's own contract or guide promises and the code does not
+deliver.
+
+- **M1** — four files still use absolute `src/...` imports that break the
+  moment the file is copied elsewhere; a per-file fix, not a structural one.
+- **M4**, **M6**, **M7**, **M9** — real cross-module cycles/couplings
+  (`auth`↔`database`, `common`↔`config-provider`, `analytics`→`logger`) that
+  still close and lift as a pair, but the root `CLAUDE.md` module map
+  presents some of these as independent siblings with no note that they
+  must travel together.
+- **M10**, **M12**, **M13**, **M15**, **M17**, **M18** — contract violations
+  where a module's own guide or the shared contract promises behaviour
+  (a dynamic-module shape, a thrown module-specific error) the code does not
+  provide, at `queues`, `templating`, `logger`, `push-notification`,
+  `cloud-storage` and `email` respectively. `M10` restates `M2`/`M3`'s
+  mechanism from the contract-shape angle rather than adding new severity,
+  which is why it sits here and not in bucket 1.
+- **EXT7**, **EXT9** — the one coupling the import-graph checker cannot see
+  at all (an ambient `@types/express` augmentation `common` needs in order
+  to compile once extracted) and the resulting meta-finding that a green
+  `pnpm run modularity:check` is not proof a module has no hidden cost.
+- **DOC1**, **DOC3**, **DOC4**, **DOC8**, **DOC9**, **DOC10** — guides whose
+  worked examples do not compile or run as written: `push-notification`'s
+  dead exception class taught as live (`DOC1`), `common`'s missing
+  `typeRoots` note (`DOC3`), `logger`'s undercounted dependency and broken
+  `@/` import alias (`DOC4`, `DOC8`), five independent drifts in
+  `push-notification/README.md` (`DOC9`), and the root `README.md`'s
+  license/package-manager contradictions plus its silence on both of the
+  template's two workflows (`DOC10`).
+
+### Cosmetic (10)
+
+Naming, ordering, dead files, or a finding that documents a working, bounded
+extraction cost rather than a defect.
+
+- **M8**, **M11**, **M14**, **M16** — a disputed tier call this audit
+  deliberately leaves as-is, a directory-shape deviation with no proven
+  extraction cost, a DI-decorator inconsistency that still works stand-alone,
+  and an analytics adapter whose error-swallowing is disclosed accurately in
+  its own guide (so nothing here is a false claim, only a rule-4 technicality).
+- **EXT1**, **EXT2**, **EXT5**, **EXT6**, **EXT8** — the successful
+  measurements: `cache` lifts alone (`EXT1`/`EXT6`), `email` lifts with 2
+  named companions confirmed by closure (`EXT2`/`EXT5`), and the per-module
+  npm-package list (`EXT8`) — reference data, not defects.
+- **DOC6** — `spaceship`'s `CLAUDE.md` test-naming note omits one of two
+  legacy-named spec files; an incomplete inventory, not a false claim.
+
 ## What this audit asks
 
 The template's stated purpose (`CLAUDE.md`, opening paragraph) is that every
@@ -70,7 +156,7 @@ predicted was most entangled).
 | **EXT6** | **Closure probe, `cache` — closes at 1 directory.** Trivial given EXT1: `cache` alone already closes, 0 companions, `tsc` exit 0. |
 | **EXT7** | **`common` has a real, non-import extraction dependency: an ambient global type augmentation, root-caused.** Both the `email` closure (EXT5) and the `queues` closure (EXT4) leave a `TS2339` at `src/common/middleware/response.interceptor.ts:40` (`Property 'id' does not exist on type 'User'`) even with every `TS2307` resolved. Root cause: the repo root ships `@types/express/index.d.ts` (untracked by `src/`, at the template root), which reads `declare namespace Express { interface User { id: string } }` — this is what supplies `.id` on `req.user`. The template's own `tsconfig.json` loads it via `"typeRoots": ["@types", "./node_modules/@types"]`; the brief's from-scratch probe `tsconfig.json` sets no `typeRoots`, so TypeScript falls back to `./node_modules/@types` only and the augmentation is never loaded — which is why the error appears in every probe and in no full-tree `tsc --noEmit -p tsconfig.json` run (confirmed: that run's only error is an unrelated `test/app.e2e-spec.ts` supertest issue, `TS2349`), and why adding `auth` and `database` to the closure did not fix it (the declaration is not under `src/` at all). **Verified both directions**: copying `@types/` into the `email` closure probe and adding `"typeRoots": ["@types", "./node_modules/@types"]` to its `tsconfig.json` makes the `TS2339` disappear entirely (`extract-email-closure-with-typeroots.txt`) — the only error left is EXT7(b) below. Grepping `src/` for `req.user`, `request.user` and `Express.User` (`grep -rn "req\.user\|request\.user\|Express\.User" src --include='*.ts'`) finds exactly one other read of `request.user` — `src/user/current-user.decorator.ts:7` — but it returns the value untyped without touching `.id`, and both of its consumers (`src/auth/google/google.controller.ts:22`, `src/spaceship/spaceship.controller.ts:40`) declare their own explicit `User` (the database entity) as the parameter type rather than relying on the ambient `Express.User`, so neither depends on the augmentation. **`response.interceptor.ts:40` is the only line in the template that does.** Neither `src/common/CLAUDE.md` nor `src/common/README.md` mentions `@types/express`, the augmentation, or `typeRoots` (confirmed by grep — no hits). **Consequence:** extracting `common` into another repo compiles only if the destination project also copies the root `@types/` directory and sets `typeRoots` to include it; nothing in `common`'s own guide says so, so a developer following the module's documentation has no way to know. (b) `src/config-provider/abstract/config-provider-abstract.module.ts:223` — `TS2322`, a `Provider[]` assignability error — remains a probe-harness artifact, not a coupling defect: it disappears when the probe's `tsconfig.json` adds `strictNullChecks: true` (confirmed by rerunning EXT5's probe with only that flag added), the one strictness flag the template's root `tsconfig.json` sets that the brief's from-scratch probe config deliberately omits. Recorded so a reader does not mistake it for a missing module. |
 | **EXT8** | **npm packages per module**, read from non-relative import specifiers (`grep -rhn "from '[^.]" src/<module> --include='*.ts'`), excluding what a fresh `nest new` project already ships (`@nestjs/*`, `reflect-metadata`, `rxjs`): `cache` needs only **`ioredis`**. `email` needs **`resend`, `@sendgrid/mail`, `@aws-sdk/client-ses`, `joi`**. `queues` needs **`bullmq`, `amqplib`, `@aws-sdk/client-sqs`, `joi`**, and also imports the Node builtin `node:buffer`, which needs no install. `node_modules` was symlinked into every probe precisely so none of this ever surfaced as a probe failure — this list comes from reading source, not from `tsc` output. |
-| **EXT9** | **Coverage boundary: the modularity checker cannot see ambient-type dependencies, so a green `modularity:check` is not proof a module extracts cleanly.** `scripts/check-module-independence.mjs` builds its graph by regex-matching `from`/`import` specifiers in source text (`stripComments` + `extractImports`, matching `/(?:from|import)\s*\(?\s*['"]([^'"]+)['"]/g`) and only follows specifiers starting with `.` (relative imports) into the graph at all. `@types/express/index.d.ts` (EXT7) contains zero `import`/`export`/`from` statements — it is a bare `declare namespace` block — so no amount of tightening that regex would ever surface it; the dependency has no import specifier to match. This is a second coverage boundary alongside `M9`'s (nested `observability` submodules folding into one `common` node): `M9` is a blind spot in how the checker buckets known edges, while this one is a blind spot in what counts as an edge at all. A reader must not treat a clean `pnpm run modularity:check` run as evidence that a module has no hidden extraction cost. |
+| **EXT9** | **Coverage boundary: the modularity checker cannot see ambient-type dependencies, so a green `modularity:check` is not proof a module extracts cleanly.** `scripts/check-module-independence.mjs` builds its graph by regex-matching `from`/`import` specifiers in source text (`stripComments` + `specifiersOf`, matching `/(?:from|import)\s*\(?\s*['"]([^'"]+)['"]/g`) and only follows specifiers starting with `.` (relative imports) into the graph at all. `@types/express/index.d.ts` (EXT7) contains zero `import`/`export`/`from` statements — it is a bare `declare namespace` block — so no amount of tightening that regex would ever surface it; the dependency has no import specifier to match. This is a second coverage boundary alongside `M9`'s (nested `observability` submodules folding into one `common` node): `M9` is a blind spot in how the checker buckets known edges, while this one is a blind spot in what counts as an edge at all. A reader must not treat a clean `pnpm run modularity:check` run as evidence that a module has no hidden extraction cost. |
 
 ### Contract conformance
 
@@ -518,3 +604,59 @@ catalogue, no extraction-cost data and no deletion order itself.
   and that the material to write it exists, is the deliverable.
 
 ### Prior-audit reconciliation
+
+Every finding from `docs/audit/2026-09-11-template-audit.md` (32 IDs,
+`B1`-`B3`, `N1`-`N7`, `D1`-`D5`, `C1`-`C5`, `TS1`-`TS3`, `L1`-`L3`, `R1`-`R4`,
+`G1`-`G2`), verified against today's tree at branch point `aa9ab86`. Fourteen
+of these were already re-verified in earlier sections of this audit (Task 5's
+"Prior findings re-verified" under `### Contract conformance`, Task 6's pass
+over the root `CLAUDE.md`'s "Known template-wide gaps," and Task 7's pass
+over `D1`-`D4`); this table cites their work rather than repeating it and
+adds fresh verification for the remaining eighteen (`N4`, `N7`, `D5`,
+`C1`-`C5`, `R1`-`R4`, `G1`, `TS2`, `TS3`), each confirmed by opening the file
+rather than trusting a grep hit alone, per this document's own house rule
+(see "On grepping for evidence" in the plan this audit followed).
+
+Do not edit `docs/audit/2026-09-11-template-audit.md` — this audit reports on
+it; its own strike-throughs are the prior author's record, not this one's.
+
+| ID | Status | Evidence |
+|----|--------|----------|
+| **B1** | Fixed | `pnpm run build` exits 0 (this audit's own gate table, measured at `ea4d7e1`). The 2026-09-11 audit already struck this through as "Fixed on `fix/build-and-lint`"; that branch has since reached `master`. |
+| **B2** | Fixed | `grep -c '"dotenv"' package.json` → `1` (line 61). Re-verified by Task 6. |
+| **B3** | Still open | `grep -n 'apk\|prisma' Dockerfile` → `:3` `RUN apk add dumb-init`, `:20` `RUN pnpm exec prisma generate` — a Debian base image with no `apk`, and a Prisma call in a TypeORM project. Re-verified by Task 6, unchanged; confirmed again here. |
+| **N1** | Still open | `ls src/push-notification/abstract/` still lists `push-notification-abstract.module.ts.ts` (doubled extension); `src/app.module.ts:26` still imports it by that literal name. Re-verified by Task 5. |
+| **N2** | Still open | Re-verified by Task 5: still exactly four competing error shapes; `queues`'s two new error classes join the existing POJO-constant shape rather than adding a fifth. |
+| **N3** | Still open (for `templating` and `push-notification`) | Re-verified by Task 5: both named modules still ship only `forRoot`, no `forRootAsync`; every module that postdates 2026-09-11 does not repeat the gap. |
+| **N4** | Still open, and worse | `find src -name "*.spec.ts" ! -name "*.unit.spec.ts"` returns the original four files unchanged (`src/app.controller.spec.ts`, `src/auth/email/email.controller.spec.ts`, `src/spaceship/spaceship.controller.spec.ts`, `src/spaceship/spaceship.service.spec.ts`) plus a fifth added since 2026-09-11: `src/queues/abstract/tests/queues.module.di.spec.ts`. Not re-verified elsewhere in this audit; first checked here. `DOC6` (Task 6) separately found `src/spaceship/CLAUDE.md`'s own account of this finding incomplete. |
+| **N5** | Still open | Re-verified by Task 5: `find src -type d -name mocks` still returns only `src/cache/abstract/mocks`. |
+| **N6** | Still open, now tracked as `M1` | Absolute `src/...` imports — this audit re-scoped and re-verified the same defect as `M1` (Task 3): four files, six specifiers, unchanged count from 2026-09-11. |
+| **N7** | Still open | `EmailTemplateService` (`src/email/abstract/templates.abstract.ts`) and `TemplateRenderer`/`TEMPLATE_RENDERER` (`src/templates/template-renderer.interface.ts`) both still exist; `grep -rn "EmailTemplateService\|TemplateRenderer\b\|TEMPLATE_RENDERER" src --include='*.ts'` matches only their own definitions, no callers. Not re-verified elsewhere; first checked here. |
+| **D1** | Still open | Re-verified by Task 7 under `### Human guides (README.md)`: `src/cloud-storage/README.md` still documents a `src/modules/infrastructure/cloud-storage/` tree that does not exist. |
+| **D2** | Still open | Re-verified by Task 7: `src/email/README.md` still documents `utils/email-logger.adapter.ts`, `abstract/email-logger.interface.ts` and `src/config/email.config.ts`, none of which exist. |
+| **D3** | Still open | Re-verified by Task 7: `src/config-provider/README.md:25` still names `config-provider-error-codes.ts`; the real file is `abstract/config-provider.error.ts`. |
+| **D4** | Still open, gained a fifth file | Re-verified by Task 7: four READMEs still teach `@nestjs/config`'s `ConfigType<...>`, plus a fifth this task's own grep surfaced, `src/common/observability/logger/README.md:82`. `@nestjs/config` is confirmed still not a dependency. |
+| **D5** | Still open, detailed further | The `### Root README` subsection (Task 8, finding `DOC10`) re-verified both halves: lines 1-27 and 86-98 of `README.md` remain unmodified `nestjs/nest` boilerplate, and the `npm install`/`pnpm` contradiction is still live — now cited with exact line numbers on both sides plus a same-file self-contradiction (`README.md:40` runs a `pnpm` command four lines below the `npm install` instruction) that `D5` itself did not note. |
+| **C1** | Still open | `.env.example` (30 lines, read in full) still omits `NODE_ENV`, `PORT`, `SELF_URL`, `JWT_SECRET`, `JWT_EXPIRES_IN`, `JWT_IGNORE_EXPIRATION`, `DB_HOST`, `DB_PORT`, `DB_USER`, `DB_PASS`, `DB_NAME`, `DB_SYNCHRONIZE`, `DB_LOGGING`, `EMAIL_ADAPTER`, `RESEND_API_KEY`, `RESEND_EMAIL_FROM`, `AWS_SES_REGION`, `AWS_S3_EXPIRES_IN_SECONDS`, `EXPO_ACCESS_TOKEN` and `GOOGLE_OAUTH_CALLBACK_URL`. Of the original list, only `AWS_REGION` has since been added. |
+| **C2** | Still open | `src/auth/config/jwt.scope.ts:12` — `secret: Joi.string().default('Not A Safe Secret')`, unchanged. |
+| **C3** | Still open | `grep -n origin src/main.ts` → `:12` `origin: '*'`, unchanged, no environment control. |
+| **C4** | Still open | `src/common/middleware/request-exception.filter.ts:10` is still `@Catch(HttpException)` only, and `:27-31` still spreads `exception.getResponse()` straight into the response body. The set of module-specific errors that bypass it unmapped has grown since 2026-09-11: `CacheError`, `EmailError`, `CloudStorageError`, `ConfigProviderError`, and now `QueueProducerError`/`QueueConsumerError` too (`N2`). |
+| **C5** | Still open | `src/auth/google/google.service.ts:56,89` — `this.logger.error('Google login: ', e)`, same two call sites, unchanged. |
+| **TS1** | Still open | `grep -n '"strict"' tsconfig.json` returns nothing — no `strict` key at all. Re-verified by Task 6 and confirmed again here. |
+| **TS2** | Still open | `src/app.scope.ts:11` and `src/email/config/email.scope.ts:23` both still declare `const validate = (raw) => {` with an untyped parameter. |
+| **TS3** | Still open | `typescript-eslint` still sits at `package.json:80`, inside the `dependencies` block (`:33`-`:82`), above where `devDependencies` opens at `:83`. |
+| **L1** | Fixed | Re-verified by Task 6; confirmed again by this audit's own gate table (`pnpm exec eslint` → 0 errors). |
+| **L2** | Fixed | Re-verified by Task 6, same evidence — the invalid `ts/no-explicit-any` disable is gone. |
+| **L3** | Partially fixed | Re-verified by Task 6: the tree is Prettier-clean (no more 20-file rewrite on lint), but the `lint` script still runs with `--fix` and CI still calls that script, so future formatting drift is silently auto-corrected in CI rather than failing the build. |
+| **R1** | Fixed | `src/spaceship/spaceship.controller.ts` — all five handlers (`createSpaceship`, `getAllSpaceships`, `getSpaceshipById`, `updateSpaceship`, `deleteSpaceship`) now declare an explicit return type and carry at least one `@ApiResponse`. |
+| **R2** | Fixed | `src/spaceship/spaceship.repository.ts:72-78` — `findByUuidOrFail` now throws `RequestException(Exceptions.spaceship.notFound(...))`, a real `404`, instead of the service/controller passing a `null` through to a `200`. |
+| **R3** | Still open | `src/user/user.module.ts` is still an empty, unimported `@Module({})`. `src/auth/auth.service.ts` is still an empty `@Injectable()` that `AuthModule` still exports (`src/auth/auth.module.ts:18-19`). `src/auth/email/email.controller.ts` is still an empty `@Controller('email')` with zero handlers — it is now registered in `EmailModule`'s `controllers` array, but registering an empty controller does not give it a route. |
+| **R4** | Fixed | `src/database/migrations/` now ships a real, CLI-generated migration (`1789754373950-AddAuth0IdToUser.ts`) alongside `.gitkeep` — the template no longer ships zero migration baseline. |
+| **G1** | Partially fixed | New unit tests exist since 2026-09-11: `src/auth/auth0/auth0.service.unit.spec.ts` and `src/email/abstract/email-abstract.module.unit.spec.ts`. Still no tests for the jwt strategy, the google service, the auth-token service, the `database` module factory, any concrete email adapter (`aws-ses`/`resend`/`sendgrid`), `push-notification`, `templating`, any `cache` adapter, or `common/middleware`. |
+| **G2** | Partially fixed | `grep -n 'pnpm test' bitbucket-pipelines.yml` returns nothing — `pnpm test` still never runs in CI, unchanged. But the finding's own premise is now half-stale: `bitbucket-pipelines.yml:15` already runs `pnpm run docs:check` before `lint`/`build`, and Step 3 of this task adds `pnpm run modularity:check` at `:16` — a third non-test gate sits in the pipeline today, while the test gate this finding named is still off. Turning it on is a scoped decision of its own, not made on this audit branch. |
+
+**Tally: 7 fixed (`B1`, `B2`, `L1`, `L2`, `R1`, `R2`, `R4`), 22 still open
+(`B3`, `N1`-`N7`, `D1`-`D5`, `C1`-`C5`, `TS1`-`TS3`, `R3`), 3 partially fixed
+(`L3`, `G1`, `G2`), 0 superseded** — `N6` is carried forward under a new ID
+(`M1`) rather than replaced by a different verdict, so it is recorded as
+"still open," not "superseded."
