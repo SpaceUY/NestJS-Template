@@ -52,6 +52,7 @@ pnpm test                     # jest, rootDir src, testRegex .*\.spec\.ts$
 pnpm run test:e2e             # jest --config ./test/jest-e2e.json
 pnpm run lint                 # eslint --fix
 pnpm run docs:check           # validates every CLAUDE.md
+pnpm run modularity:check     # module import graph vs. the recorded baseline
 pnpm run db:migration:generate -- src/database/migrations/<Name>
 pnpm run db:migration:run
 pnpm run db:migration:revert
