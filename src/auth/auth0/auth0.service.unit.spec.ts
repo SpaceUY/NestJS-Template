@@ -25,7 +25,6 @@ describe('Auth0Service', () => {
     domain: 'tenant.auth0.com',
     audience: 'https://api.example.com',
     issuer: 'https://tenant.auth0.com/',
-    jwksUri: 'https://tenant.auth0.com/.well-known/jwks.json',
   };
 
   const makeAccessToken = (

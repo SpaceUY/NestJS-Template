@@ -40,10 +40,9 @@ Protecting a route needs two more imports that do not live here:
 `GOOGLE_OAUTH_CLIENT_SECRET`, `GOOGLE_OAUTH_AUDIENCE`,
 `GOOGLE_OAUTH_CALLBACK_URL` and `SELF_URL`; when `enabled` is true the first
 three become required, and `callbackUrl` derives from `selfUrl` when unset.
-`auth0Scope` reads `AUTH0_ENABLED`, `AUTH0_DOMAIN`, `AUTH0_AUDIENCE`,
-`AUTH0_ISSUER` and `AUTH0_JWKS_URI`; when `enabled` is true `domain` and
-`audience` become required, and `issuer`/`jwksUri` derive from `domain` when
-unset (`https://<domain>/` and `https://<domain>/.well-known/jwks.json`).
+`auth0Scope` reads `AUTH0_ENABLED`, `AUTH0_DOMAIN`, `AUTH0_AUDIENCE` and
+`AUTH0_ISSUER`; when `enabled` is true `domain` and `audience` become
+required, and `issuer` derives from `domain` when unset (`https://<domain>/`).
 
 All three are registered in the `scopes` array in `src/app.module.ts`.
 
@@ -98,6 +97,23 @@ All three are registered in the `scopes` array in `src/app.module.ts`.
    `jwks-rsa`'s `jose` dependency is ESM-only and breaks this template's Jest
    setup, and it would be redundant work for an endpoint that only runs once
    per login, not on every request.
+
+   The client must request the `AUTH0_AUDIENCE` value as the `audience` when it
+   obtains the access token from Auth0 (e.g. the SPA SDK's `audience` option).
+   Without it, Auth0 issues an opaque access token instead of a JWT, the `iss`/
+   `aud` check has nothing to decode, and login always fails with the same
+   generic `invalidCredentials` — fails safe, but worth getting right when
+   wiring up a client.
+
+   Auth0 auto-provisions on first login rather than splitting register/login
+   like `GoogleService` does — Auth0's own Universal Login already covers the
+   sign-up UX, so there is no separate "register" step here. One consequence:
+   if a user already exists under a different provider with the same email
+   (e.g. they signed up with Google), first Auth0 login hits `User.email`'s
+   unique constraint, which surfaces through the generic catch as
+   `invalidCredentials` — no account link, no distinct error. That is
+   intentional per rule 5 (stay generic, never reveal whether an account
+   exists), not a bug; account linking is out of scope here.
 
 ## Tests
 

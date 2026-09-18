@@ -7,7 +7,6 @@ export type Auth0ScopeConfig = {
   domain: string;
   audience: string;
   issuer: string;
-  jwksUri: string;
 };
 
 const schema = Joi.object({
@@ -23,13 +22,9 @@ const schema = Joi.object({
     otherwise: Joi.optional(),
   }),
   issuer: Joi.string().optional(),
-  jwksUri: Joi.string().optional(),
 }).custom((value) => {
   if (!value.issuer && value.domain) {
     value.issuer = `https://${value.domain}/`;
-  }
-  if (!value.jwksUri && value.domain) {
-    value.jwksUri = `https://${value.domain}/.well-known/jwks.json`;
   }
   return value;
 });
@@ -41,7 +36,6 @@ export const auth0Scope = defineConfigScope<Auth0ScopeConfig>(
     domain: from.env('AUTH0_DOMAIN'),
     audience: from.env('AUTH0_AUDIENCE'),
     issuer: from.env('AUTH0_ISSUER'),
-    jwksUri: from.env('AUTH0_JWKS_URI'),
   },
   (raw) => {
     const { error, value } = schema.validate(raw, { abortEarly: false });
