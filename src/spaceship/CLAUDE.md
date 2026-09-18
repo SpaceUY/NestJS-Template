@@ -96,6 +96,23 @@ and Swagger, `src/spaceship/dto/` for DTO conventions,
 its own queue producer/processor on top of `src/queues/` (see
 `src/queues/CLAUDE.md`).
 
+Two couplings in that worked example are deliberate, and copying it means
+copying them knowingly (both are `src/queues/CLAUDE.md` Rule 1 and Rule 2):
+
+- `notification.producer.ts` injects the **concrete** `BullMqSenderAdapter`,
+  not the abstract `QueueSenderService` — a documented `T1` exception, because
+  the abstract `dispatch()` exposes only broker-agnostic `delay`/`priority`,
+  while this notification needs BullMQ's `attempts`/`backoff`. Swapping the
+  wired adapter to RabbitMQ/SQS therefore fails at startup, by design; the
+  guard is in `src/queues/queues.module.ts`.
+- `SpaceshipNotificationProcessor` is **not** declared in
+  `notification.module.ts`. It is registered as a consumer handler in
+  `src/queues/queues.module.ts`, which is also where it is instantiated,
+  because `QueueConsumerModule` takes one app-wide `consumers` array and has no
+  `forFeature` equivalent. Adding a queue consumer to a domain module means
+  editing `src/queues/queues.module.ts` too, along with any non-global provider
+  the handler injects.
+
 Deleting it means removing `src/spaceship/`, `src/database/entities/spaceship.entity.ts`,
 the `Spaceship` entry in `TypeOrmModule.forFeature` in
 `src/database/database.module.ts`, the `ship` relation on

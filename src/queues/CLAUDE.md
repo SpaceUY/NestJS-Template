@@ -75,9 +75,20 @@ adapter's own connection config and is registered in
 
 ## Tests
 
-`*.unit.spec.ts`, colocated under each directory's `tests/` subfolder
-(`abstract/tests/`, `bullmq-adapter/tests/`, `rabbitmq-adapter/tests/`,
-`sqs-adapter/tests/`).
+`*.unit.spec.ts` under each directory's `tests/` subfolder (`abstract/tests/`,
+`bullmq-adapter/tests/`, `rabbitmq-adapter/tests/`, `sqs-adapter/tests/`).
+
+Note this is a **divergence** from the repo-root convention, which colocates
+specs next to the file under test; `src/queues/` is the only module using the
+subfolder layout. Keep new queue specs consistent with their neighbours here
+rather than "fixing" them one at a time.
+
+`abstract/tests/queues.module.di.spec.ts` compiles the real Nest graph, unlike
+the shape-only module specs beside it. It exists because three things here fail
+only on actual resolution: the `BullMqSenderAdapter` alias over a global dynamic
+module, handler instantiation inside `QueueConsumerModule`'s injector scope, and
+the `imports` array carrying a handler's non-global dependencies. Changing any
+of those without running it is how a wiring bug reaches production.
 
 ## Reuse
 
@@ -101,6 +112,9 @@ module's `QueueConsumerHandler` alongside it.
   per-domain registration (like the module-contract's other modules use)
   would remove it, but wasn't implemented.
 - `notification.producer.ts` injecting the concrete `BullMqSenderAdapter`
-  (Rule 1) means swapping the wired adapter away from BullMQ silently breaks
-  spaceship notifications' retry/backoff — no compile-time or startup check
-  catches it.
+  (Rule 1) means swapping the wired adapter away from BullMQ breaks spaceship
+  notifications' retry/backoff. TypeScript cannot catch it — the alias in
+  `queues.module.ts` is resolved at runtime — so that alias guards it with an
+  `instanceof` check and throws during bootstrap instead of failing with
+  `addJob is not a function` on the first enqueue. The swap is still a real
+  coupling; it just fails loudly now.

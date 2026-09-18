@@ -38,3 +38,7 @@ lerna-debug.log*
 
 # Super powers
 /docs/superpowers
+
+# Per-developer agent scratch space. Shared agent config (.claude/agents,
+# .claude/commands, ...) stays tracked; the daily hand-off log does not.
+/.claude/daily-update.md

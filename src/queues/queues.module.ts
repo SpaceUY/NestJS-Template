@@ -66,7 +66,24 @@ import {
     // Alias so the concrete adapter's BullMQ-specific `addJob` (retry
     // attempts/backoff) is reachable — the abstract `QueueSenderService`
     // token only exposes the broker-agnostic `send`/`dispatch`.
-    { provide: BullMqSenderAdapter, useExisting: QueueSenderService },
+    //
+    // A plain `useExisting` would be an untyped runtime alias: swapping the
+    // adapter above for RabbitMQ/SQS still compiles and still boots, and the
+    // first `addJob` call dies with "is not a function" in the request path.
+    // The guard turns that into a startup failure instead.
+    {
+      provide: BullMqSenderAdapter,
+      useFactory: (sender: QueueSenderService): BullMqSenderAdapter => {
+        if (!(sender instanceof BullMqSenderAdapter)) {
+          throw new Error(
+            `QueuesModule: BullMqSenderAdapter was requested but the wired sender is ${sender.constructor.name}. ` +
+              'Consumers needing BullMQ-specific options must not be used with another broker — see src/queues/CLAUDE.md, Rule 1.',
+          );
+        }
+        return sender;
+      },
+      inject: [QueueSenderService],
+    },
   ],
   exports: [BullMqSenderAdapter],
 })

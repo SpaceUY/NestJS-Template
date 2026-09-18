@@ -11,8 +11,9 @@ connection to the broker:
 - **`QueueSenderModule`** — publishing messages.
 - **`QueueConsumerModule`** — consuming messages.
 
-Only the abstract contracts ship here. Concrete broker adapters live in
-application code.
+Three concrete adapters ship alongside the abstract contracts: BullMQ, RabbitMQ
+and SQS. Only BullMQ is wired by default, in `queues.module.ts`; selecting
+either of the others means writing that wiring yourself.
 
 ## Directory Structure
 
@@ -20,16 +21,23 @@ application code.
 src/queues/
 ├── abstract/
 │   ├── sender/
-│   │   ├── queue-sender.service.ts       # abstract QueueSenderService (DI token)
-│   │   ├── queue-sender.module.ts        # QueueSenderModule
-│   │   ├── queue-sender.interfaces.ts    # QueueEnvelope, module options
-│   │   └── queue-sender.error.ts         # QueueSenderError
-│   └── consumer/
-│       ├── queue-consumer.adapter.ts     # abstract QueueConsumerAdapter (DI token)
-│       ├── queue-consumer.handler.ts     # abstract QueueConsumerHandler<T>
-│       ├── queue-consumer.module.ts      # QueueConsumerModule
-│       ├── queue-consumer.interfaces.ts  # MessageContext, ConsumerRegistration, options
-│       └── queue-consumer.error.ts       # QueueConsumerError
+│   │   ├── queue-sender.service.ts        # abstract QueueSenderService (DI token)
+│   │   ├── queue-sender.module.ts         # QueueSenderModule
+│   │   ├── queue-sender.interfaces.ts     # QueueEnvelope, module options
+│   │   ├── queue-delivery-options.util.ts # assertSupportedDeliveryOptions
+│   │   └── queue-sender.error.ts          # QueueSenderError
+│   ├── consumer/
+│   │   ├── queue-consumer.adapter.ts      # abstract QueueConsumerAdapter (DI token)
+│   │   ├── queue-consumer.handler.ts      # abstract QueueConsumerHandler<T>
+│   │   ├── queue-consumer.module.ts       # QueueConsumerModule
+│   │   ├── queue-consumer.interfaces.ts   # MessageContext, ConsumerRegistration, options
+│   │   └── queue-consumer.error.ts        # QueueConsumerError
+│   └── tests/
+├── bullmq-adapter/                        # the wired default (bullmq + redisScope)
+├── rabbitmq-adapter/                      # complete, unwired (amqplib + rabbitmqScope)
+├── sqs-adapter/                           # complete, unwired (@aws-sdk/client-sqs)
+├── queues.module.ts                       # the one place an adapter is named
+├── CLAUDE.md
 └── README.md
 ```
 
@@ -47,6 +55,7 @@ export interface QueueEnvelope {
   queue: string;
   payload: unknown;
   headers?: Record<string, string>;
+  options?: QueueDeliveryOptions; // delay / priority — see Delivery Options
 }
 ```
 
@@ -144,7 +153,11 @@ registration. On `OnModuleDestroy`, it calls `adapter.stopConsuming(queue)` for
 each.
 
 Both modules optionally inject `LoggerService` from the container and call
-`setLogger()` on the adapter instance, identical to the other abstract modules.
+`setLogger()` on the adapter instance — the same pattern `email`,
+`cloud-storage` and `config-provider` use. `setLogger()` re-tags the logger's
+context with the adapter's class name, which is safe because `LoggerService` is
+registered as `Scope.TRANSIENT`. With no `LoggerService` registered, the adapter
+keeps its own `NestLoggerAdapter` default.
 
 ## Acknowledgment Contract
 

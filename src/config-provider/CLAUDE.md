@@ -24,7 +24,7 @@ which is application-level.
 | `defineConfigScope` | `src/config-provider/abstract/define-config-scope.util.ts` | Declare a typed scope |
 | `configSources` (aliased `from`) | `src/config-provider/abstract/config-source.util.ts` | `from.env(key)`, `from.sm(key)`, `from.from(name)(key)` |
 | `ConfigProviderAbstractModule` | `src/config-provider/abstract/config-provider-abstract.module.ts` | `forRoot` / `forRootAsync`, registered once in `src/app.module.ts` |
-| `ConfigProviderService` | `src/config-provider/abstract/config-provider.service.ts` | Source adapter contract — extend to add a source |
+| `ConfigProviderService` | `src/config-provider/abstract/config-provider.service.ts` | Source adapter contract — extend to add a source. Also owns `protected logger` and `setLogger()` |
 | `ReloadableConfigProviderService` | `src/config-provider/abstract/reloadable-config-provider.service.ts` | Extend when a source supports `reload()` |
 | `reloadableSourceToken` | `src/config-provider/abstract/config-provider-tokens.ts` | Inject a source's reload handle |
 | `ConfigProviderError`, `CONFIG_PROVIDER_ERRORS` | `src/config-provider/abstract/config-provider.error.ts` | Error type and codes |
@@ -55,12 +55,21 @@ is not listed there is never resolved and its `KEY` will not inject.
    One scope may mix both; the module resolves each field independently.
 6. Never default a secret to a usable literal. `src/auth/config/jwt.scope.ts:12`
    does exactly that (finding `C2`) — it is the anti-pattern, not the pattern.
-7. `{ live: true }` opts a scope into hot reload via a `Proxy`. Reserve it for
+7. Source adapters do not declare a logger. `ConfigProviderService` owns a
+   `protected logger` defaulting to `new NestLoggerAdapter(<adapter class
+   name>)`, and the module optionally injects the container's `LoggerService`
+   and calls `setLogger()` on `useClass` and `useFactory` sources. A `useValue`
+   source is deliberately left alone — that instance belongs to the caller, who
+   may already hold or share it; call `setLogger()` on it yourself if you want
+   the container logger. Never log a secret value or a raw provider error
+   (invariant `T4`): a `JSON.parse` failure on a secret payload embeds part of
+   that payload in its message.
+8. `{ live: true }` opts a scope into hot reload via a `Proxy`. Reserve it for
    values that genuinely change at runtime (feature flags, rate limits, rotating
    credentials). Application config must stay static.
-8. Every key a scope reads must appear in `.env.example`. Most currently do not
+9. Every key a scope reads must appear in `.env.example`. Most currently do not
    (finding `C1`) — add yours.
-9. Misconfiguration must fail at startup, not at first use. Unknown source names
+10. Misconfiguration must fail at startup, not at first use. Unknown source names
    and duplicate scope keys already throw during module construction; keep new
    checks in the same place.
 
