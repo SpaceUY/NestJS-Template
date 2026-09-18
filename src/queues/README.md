@@ -5,6 +5,10 @@ Provider-agnostic message queues for NestJS using the same adapter pattern as
 `@nestjs/microservices`, no decorators — adapters are built directly against raw
 broker libraries (e.g. `amqplib`, AWS SDK v3).
 
+**Before you lift this:** the wired module this repo ships (`queues.module.ts`)
+does not lift into another project as-is. See [`## Reuse`](#reuse) below for
+what does lift, and what copying the rest actually costs.
+
 The module is split into two **independent** dynamic modules, each with its own
 connection to the broker:
 
@@ -521,13 +525,22 @@ the processor throws. The adapter maps the context contract onto that:
 
 ## Reuse
 
-**What lifts.** `abstract/` — the producer and consumer contracts, both
-dynamic modules, and their tests — is a self-contained unit you can copy into
-another project. It needs `src/common/observability/logger/` alongside it:
+**What lifts.** `abstract/` — the producer and consumer contracts and their
+dynamic modules — is a self-contained unit you can copy into another project.
+It needs `src/common/observability/logger/` alongside it:
 `LoggerService`/`NestLoggerAdapter` are imported by the producer and consumer
-services and modules. Copy the one adapter directory you actually need next
-to it — each adapter has its own extra dependency: `bullmq-adapter/` needs the
-`bullmq` package plus a Redis config scope (`src/redis.scope.ts`, or your own),
+services and modules. Its `tests/` folder mostly travels with it too —
+`queue-producer.module.unit.spec.ts` and `queue-consumer.module.unit.spec.ts`
+need only that same logger import — but leave `queues.module.di.spec.ts`
+behind: it imports `queues.module.ts` itself, plus
+`SpaceshipNotificationProcessor`, `EmailService`, `TemplateService`,
+`ConfigProviderAbstractModule`/`Service`, `redisScope`, `rabbitmqScope`,
+`notificationRecipientsScope` and `emailScope` — essentially the same
+unliftable closure described below, because it exists to compile the real
+wired module, not the abstract contract. Copy the one adapter directory you
+actually need next to it — each adapter has its own extra dependency:
+`bullmq-adapter/` needs the `bullmq` package plus a Redis config scope
+(`src/redis.scope.ts`, or your own),
 `rabbitmq-adapter/` needs `amqplib` plus its own RabbitMQ scope, `sqs-adapter/`
 needs `@aws-sdk/client-sqs`. You do not need all three — pick the broker you
 use.
