@@ -363,4 +363,158 @@ produced was opened and confirmed by hand before being written up above.
 `common/observability/analytics`, `common/observability/telemetry`,
 `templates`, `templating`) carry none.
 
+#### Root README
+
+Evidence: `cat README.md` (98 lines, read in full), `ls LICENSE` (Step 2 of
+the brief), `grep -n "never npm or yarn" CLAUDE.md`, `grep -n "pnpm"
+bitbucket-pipelines.yml`, `ls docs/architecture/module-contract.md
+docs/audit/2026-09-11-template-audit.md` (link-target checks), `grep -n "R3"
+docs/audit/2026-09-11-template-audit.md`, `cat src/templates/template.const.ts`,
+`grep -n "spaceship" src/app.module.ts .env.example`, and
+`src/spaceship/CLAUDE.md:90`. This continues the documentation series at
+**DOC10**.
+
+**Classification of the file.** Of the root `README.md`'s 98 lines, lines
+1–27 (logo, CircleCI/npm/Coveralls/Discord/Open Collective/PayPal/Twitter
+badges, `## Description`) and lines 86–98 (`## Support`, `## Stay in touch`,
+`## License`) are unmodified upstream `nestjs/nest` boilerplate — the same
+finding prior audit `D5` already made ("Root `README.md` is unmodified NestJS
+boilerplate"). Confirming what has changed since `D5`: lines 29–40, the
+"SpaceDev template documentation" section, have been grafted in and are new
+since the 2026-09-11 audit; nothing else has changed. `D5`'s second half
+("instructs `npm install` while CI and Docker use pnpm") is also still
+literally true today, unfixed — see the pnpm/npm finding below.
+
+**What is right and should be kept.** Lines 29–40 ("SpaceDev template
+documentation") are accurate and useful, and a wholesale rewrite of the file
+would be wrong — this 12-line section, not the other 86 lines, is the part
+worth preserving. Every link target it names exists and was checked directly:
+`CLAUDE.md` (root, present), `docs/architecture/module-contract.md`
+(`ls` confirms), `docs/audit/2026-09-11-template-audit.md` (`ls` confirms),
+`src/<module>/CLAUDE.md` and `src/<module>/README.md` (both patterns
+confirmed present for every module carrying a guide, per the root
+`CLAUDE.md` module map already audited by Task 6). `README.md:40`'s
+`pnpm run docs:check` instruction is itself correct against
+`bitbucket-pipelines.yml:15` and `package.json`.
+
+**`DOC10` — the root README serves neither of the two workflows the template
+exists for, misattributes the work in its closing sections, and contradicts
+itself on package manager. Three parts, one finding.**
+
+*(a) Misattribution and a false legal claim.* `README.md:86-88` ("Nest is an
+MIT-licensed open source project... If you'd like to join them, please read
+more here", linking `docs.nestjs.com/support`), `:90-94` ("Author - [Kamil
+Myśliwiec]", "Twitter - @nestframework") and `:96-98` ("Nest is
+[MIT licensed](LICENSE)") all describe the upstream `nestjs/nest` framework
+project, not this repository — they credit a third party's authorship and
+solicit donations/sponsorship to a project this template only depends on. On
+a SpaceDev internal template this is not a stale-content nit, it is
+misattribution: a reader has no way to tell, from the file itself, that these
+three sections describe the framework and not the template. Separately, the
+License section's specific claim is false as written: `README.md:98` links
+`LICENSE` as if that file exists in this repository; `ls LICENSE` returns "No
+such file or directory" — there is no LICENSE file in the repo at all. Note
+for scope: this audit does not take a position on what license (if any) this
+internal template should carry, or draft replacement text — only that the
+document currently asserts an unverifiable/false legal fact and misattributes
+the work; that determination is not the auditor's to make.
+
+*(b) The pnpm/npm contradiction, including a same-file self-contradiction.*
+`README.md:44-46` ("## Installation", `$ npm install`), `:62-71` ("## Running
+the app", `$ npm run start` / `start:dev` / `start:prod`) and `:75-84`
+("## Test", `$ npm run test` / `test:e2e` / `test:cov`) all use `npm`. Every
+other authority disagrees: `CLAUDE.md:48` states "pnpm 10.15.1, Node
+24.15.0 — never npm or yarn"; `bitbucket-pipelines.yml:13-17` runs `corepack
+prepare pnpm@10.15.1 --activate`, `pnpm install --frozen-lockfile`, `pnpm run
+docs:check`, `pnpm run lint`, `pnpm run build` — CI never invokes `npm`. The
+contradiction is not even confined to different sections written at different
+times: `README.md:40`, four lines below the "SpaceDev template documentation"
+section's own accurate content, already tells the reader to run `pnpm run
+docs:check` — so the same file instructs the same reader to install with
+`npm` at line 45 and to run a script with `pnpm` at line 40. This is `D5`'s
+pnpm/npm observation, still open and now cited with exact line numbers on
+both sides plus the same-file self-contradiction `D5` did not note.
+
+*(c) Neither of the two workflows the template exists to serve is
+documented, and this audit's own measurements are what would make both
+recipes writable.* The file has no section addressing either "pull one
+module into another Nest project" or "clone this repo and delete what you
+don't need" — confirmed by reading all 98 lines; the only content about the
+template's structure is the 12-line "SpaceDev template documentation"
+section, which points a reader at the per-module guides but supplies no
+catalogue, no extraction-cost data and no deletion order itself.
+
+- **Workflow 1 — lift a module into an existing project.** The README names
+  no per-module extraction cost anywhere, even though this audit's Task 4
+  extraction probes already produced exactly that data in reproducible form:
+  `EXT1` shows `cache` lifts with **zero** companion directories (`cp -r
+  src/cache <probe>/src/cache && tsc --noEmit` exits 0). `email` lifts with
+  **2** companions, `common` and `config-provider` (`EXT5`). `EXT3`/`EXT4`
+  show `queues` does **not** lift in any practical sense: its closure needs
+  11 of the template's 13 top-level `src/` directories plus the app-root file
+  `src/redis.scope.ts`, and the closure only closes at all because it happens
+  to contain both halves of three cycles this audit already recorded (`M5`,
+  `M6`, `M7`) — copying `queues` alone gets a reader 29 unresolved-import
+  errors, not a working module. `EXT7` adds a dependency the README cannot
+  even gesture at today because nothing in the repo documents it: extracting
+  `common` also requires copying the repo-root `@types/` directory and adding
+  a `typeRoots` entry to the destination project's `tsconfig.json`, or the
+  copy compiles with one remaining type error — `src/common/CLAUDE.md` and
+  `src/common/README.md` are both silent on this (already flagged from the
+  agent-guide side as `DOC3`, confirmed again from the README side in this
+  task's Step 4). None of this — which modules are cheap to lift, which are
+  not, and the one non-import dependency extraction can hit — appears in the
+  root README, and every number above is already measured and citable by ID;
+  the recipe the README is missing does not need new investigation to write.
+
+- **Workflow 2 — clone and strip.** Nobody has documented this workflow
+  anywhere in the repo (confirmed: `grep -rn "strip\|delete.*module\|remove
+  this module" README.md CLAUDE.md` returns nothing relevant). This audit's
+  own findings answer every question such a recipe would need to raise:
+  - *Which directories are demo/reference, not template infrastructure.*
+    `src/spaceship/CLAUDE.md:1` is literally titled "Spaceship — reference
+    domain module," and `:90` gives the workflow its own named first step in
+    words the root README never repeats: "Do not copy this module into a
+    project. Delete it, and copy its *shape*." `src/templates/` is partially
+    demo content, not wholly: `src/templates/template.const.ts` registers
+    three templates, `WELCOME` and `VERIFICATION` (generic onboarding/auth,
+    used regardless of `spaceship`) alongside `SPACESHIP_CREATED`, whose
+    files live under `src/templates/spaceship/` — so "delete `templates`" is
+    the wrong instruction; "delete `src/templates/spaceship/` and its
+    `TEMPLATES.SPACESHIP_CREATED` / `TEMPLATE_PATHS` / `TEMPLATE_SUBJECTS`
+    entries" is the correct one, and only a reader who already has this
+    audit's Task-4/Task-6 detail could know that distinction. `src/user`
+    is a candidate too, on weaker but real grounds: the root `CLAUDE.md`'s
+    module map already notes it "has no guide" and holds only
+    `current-user.decorator.ts` plus "an empty `src/user/user.module.ts`
+    that nothing imports," citing prior finding `R3`
+    (`docs/audit/2026-09-11-template-audit.md:81`) — dead scaffolding a
+    stripped-down clone would otherwise inherit unexamined.
+  - *What `src/app.module.ts` and `.env.example` need edited after each
+    deletion.* Concretely, for `spaceship` alone: `src/app.module.ts:32`
+    (`import { SpaceshipModule } from './spaceship/spaceship.module'`),
+    `:55` (`notificationRecipientsScope` import), `:56`
+    (`spaceshipCacheScope` import), `:81` (`spaceshipCacheScope` registered
+    in the config scopes array) and `:98` (`SpaceshipModule` in the
+    `imports` array) all reference it and would need removing; `.env.example:32-33`
+    (`NOTIFICATION_EMPLOYEE_EMAILS`, `SPACESHIP_LIST_CACHE_TTL_SECONDS`) are
+    both `spaceship`-only env vars that would become dead configuration if
+    left behind. None of this is in the README or in `spaceship`'s own
+    guide (which describes what to keep, not what else references it).
+  - *What breaks if you delete a module something else imports.* This is
+    exactly what Task 3's import graph and `M5` already answer: `(app)`,
+    `queues` and `spaceship` form one mutually-dependent cycle (`M5`), so
+    deleting any one of the three without also removing the other two leaves
+    an unresolvable import — a fact a stripping developer needs *before*
+    deleting `spaceship` on `src/spaceship/CLAUDE.md:90`'s advice, not after
+    hitting a build error.
+
+  The point of citing `EXT1`, `EXT3`, `EXT4`, `EXT7`, `M5`, `R3` and
+  `src/spaceship/CLAUDE.md:90` together is that a "clone and strip" recipe
+  and a "lift one module" catalogue are both writable today from data this
+  audit already produced — the gap is that nobody has written them into the
+  one document a new consumer of this template would actually open first.
+  This finding does not draft that content; establishing that it is missing,
+  and that the material to write it exists, is the deliverable.
+
 ### Prior-audit reconciliation
