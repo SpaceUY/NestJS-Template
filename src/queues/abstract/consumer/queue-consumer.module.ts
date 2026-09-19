@@ -16,6 +16,10 @@ import {
   QueueConsumerModuleOptions,
 } from './queue-consumer.interfaces';
 import { LoggerService } from '../../../common/observability/logger/abstract/logger.service';
+import {
+  QueueConsumerFeatureModule,
+  QUEUE_FEATURE_CONSUMERS,
+} from './queue-consumer-feature.module';
 
 const QUEUE_CONSUMERS = 'QUEUE_CONSUMERS';
 
@@ -36,7 +40,7 @@ export class QueueConsumerModule implements OnModuleInit, OnModuleDestroy {
    * @returns {DynamicModule} A dynamic module wiring the adapter, consumers, and handlers.
    */
   static forRoot(options: QueueConsumerModuleOptions): DynamicModule {
-    const { adapter, consumers, isGlobal = false } = options;
+    const { adapter, consumers = [], isGlobal = false } = options;
 
     return {
       module: QueueConsumerModule,
@@ -66,7 +70,7 @@ export class QueueConsumerModule implements OnModuleInit, OnModuleDestroy {
    * @returns {DynamicModule} A dynamic module wiring the adapter, consumers, and handlers.
    */
   static forRootAsync(options: QueueConsumerModuleAsyncOptions): DynamicModule {
-    const { consumers, isGlobal = false } = options;
+    const { consumers = [], isGlobal = false } = options;
 
     return {
       module: QueueConsumerModule,
@@ -91,6 +95,26 @@ export class QueueConsumerModule implements OnModuleInit, OnModuleDestroy {
         ...QueueConsumerModule.buildSharedProviders(consumers),
       ],
       exports: [QueueConsumerAdapter],
+    };
+  }
+
+  /**
+   * Registers consumers for one domain module, alongside a global root
+   * registration made with `forRoot`/`forRootAsync`.
+   *
+   * The handler classes are **not** provided here — the importing module
+   * declares them itself, so their dependencies resolve in that module's own
+   * injector. This is the path to use for anything but a trivial app; the
+   * root's `consumers` array forces one module to know every handler in the
+   * application.
+   *
+   * @param {ConsumerRegistration[]} consumers - The queue↔handler bindings this feature owns.
+   * @returns {DynamicModule} A module that starts and stops only these consumers.
+   */
+  static forFeature(consumers: ConsumerRegistration[]): DynamicModule {
+    return {
+      module: QueueConsumerFeatureModule,
+      providers: [{ provide: QUEUE_FEATURE_CONSUMERS, useValue: consumers }],
     };
   }
 

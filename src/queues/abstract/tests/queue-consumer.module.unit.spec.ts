@@ -7,6 +7,10 @@ import { QueueConsumerHandler } from '../consumer/queue-consumer.handler';
 import { MessageContext } from '../consumer/queue-consumer.interfaces';
 import { LoggerService } from '../../../common/observability/logger/abstract/logger.service';
 import { NestLoggerAdapter } from '../../../common/observability/logger/nest-adapter/nest-logger.adapter';
+import {
+  QueueConsumerFeatureModule,
+  QUEUE_FEATURE_CONSUMERS,
+} from '../consumer/queue-consumer-feature.module';
 
 class MockConsumerAdapter extends QueueConsumerAdapter {
   startConsuming = jest.fn(async () => {});
@@ -214,6 +218,105 @@ describe('QueueConsumerModule', () => {
       expect(handler.dep.value).toBe('injected');
 
       await app.close();
+    });
+  });
+
+  describe('forFeature', () => {
+    it('returns a QueueConsumerFeatureModule carrying only the registration list', () => {
+      const moduleRef = QueueConsumerModule.forFeature([
+        { queue: 'orders', handler: OrdersHandler },
+      ]);
+
+      expect(moduleRef.module).toBe(QueueConsumerFeatureModule);
+      expect(moduleRef.providers).toContainEqual({
+        provide: QUEUE_FEATURE_CONSUMERS,
+        useValue: [{ queue: 'orders', handler: OrdersHandler }],
+      });
+      // The handler is deliberately NOT provided here. The domain module owns
+      // it, so its dependencies resolve in the domain module's injector — that
+      // is the entire point of this path.
+      expect(moduleRef.providers).not.toContain(OrdersHandler);
+    });
+
+    it('defaults consumers to an empty list when forRoot omits them', () => {
+      const moduleRef = QueueConsumerModule.forRoot({
+        adapter: MockConsumerAdapter,
+      });
+
+      expect(moduleRef.providers).toContainEqual({
+        provide: 'QUEUE_CONSUMERS',
+        useValue: [],
+      });
+    });
+
+    it('defaults consumers to an empty list when forRootAsync omits them', () => {
+      const moduleRef = QueueConsumerModule.forRootAsync({
+        useFactory: () => new MockConsumerAdapter(),
+      });
+
+      expect(moduleRef.providers).toContainEqual({
+        provide: 'QUEUE_CONSUMERS',
+        useValue: [],
+      });
+    });
+  });
+
+  describe('forFeature lifecycle', () => {
+    @Module({
+      imports: [
+        DependencyModule,
+        QueueConsumerModule.forFeature([
+          { queue: 'invoices', handler: HandlerWithDep },
+        ]),
+      ],
+      providers: [HandlerWithDep],
+    })
+    class InvoicesModule {}
+
+    it('starts, invokes and stops a consumer whose handler lives in the domain module', async () => {
+      const testing = await Test.createTestingModule({
+        imports: [
+          QueueConsumerModule.forRoot({
+            adapter: MockConsumerAdapter,
+            isGlobal: true,
+          }),
+          InvoicesModule,
+        ],
+      }).compile();
+
+      await testing.init();
+
+      const adapter = testing.get<MockConsumerAdapter>(QueueConsumerAdapter, {
+        strict: false,
+      });
+      expect(adapter.startConsuming).toHaveBeenCalledWith(
+        'invoices',
+        expect.any(Function),
+      );
+
+      // The handler resolved from the domain module's own injector, so its
+      // non-global dependency was satisfied there. Under the forRoot path this
+      // only worked when the caller hand-copied DependencyModule into the
+      // registration's `imports` array.
+      const handler = testing.get<HandlerWithDep>(HandlerWithDep, {
+        strict: false,
+      });
+      expect(handler.dep.value).toBe('injected');
+
+      // The callback handed to the adapter is bound to that same instance.
+      // Cast through the mock type: `adapter` is declared as
+      // `MockConsumerAdapter`, whose `startConsuming` field infers a
+      // zero-argument mock signature from its own initializer, not the
+      // two-argument signature `QueueConsumerAdapter` actually declares.
+      const callback = (adapter.startConsuming as any).mock.calls[0][1] as (
+        payload: unknown,
+        ctx: MessageContext,
+      ) => Promise<void>;
+      await callback({ id: 1 }, ctx);
+      expect(handler.handle).toHaveBeenCalledWith({ id: 1 }, ctx);
+
+      await testing.close();
+      expect(adapter.stopConsuming).toHaveBeenCalledWith('invoices');
     });
   });
 });
