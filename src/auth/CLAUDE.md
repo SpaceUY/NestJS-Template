@@ -48,7 +48,8 @@ All three are registered in the `scopes` array in `src/app.module.ts`.
 
 ## Rules
 
-1. Protect a route with the guard plus the decorator:
+1. Protect a route with the guard plus the decorator — for example, in a
+   controller of your own:
    ```ts
    @UseGuards(AuthGuard('jwt'))
    @ApiBearerAuth()

@@ -52,7 +52,10 @@ default modern scaffold** until the destination either sets
 `docs/audit/evidence/extract-queues-2026-09-19.txt`.
 
 What that costs, measured by copying each module alone into a fresh `nest new`
-project and running `tsc --noEmit`:
+project and running `tsc --noEmit`. The 2026-09-19 `queues` run is not
+reproducible from a bare `nest new` any more: the scaffold was first aligned to
+this template's CommonJS settings, for the reason given in the prerequisite
+above, before any template code was copied in.
 
 - **`cache`** lifts with **zero** companion directories — `tsc --noEmit` exits
   0 (`EXT1`). Needs the npm package `ioredis`. Measured 2026-09-18
@@ -64,7 +67,9 @@ project and running `tsc --noEmit`:
   `src/common/observability/logger/` and `src/config-provider/`. Copying
   `src/queues/` alone leaves **19** unresolved imports; with both companions
   `tsc --noEmit` exits 0. `src/queues/` itself needs `bullmq`, `amqplib`
-  (plus `@types/amqplib`), `@aws-sdk/client-sqs` and `joi`; the companions
+  (plus `@types/amqplib`), `@aws-sdk/client-sqs` and `joi`, plus
+  `@types/jest` if you copy its `tests/` folders — 7 of those 19 errors are
+  in spec files; the companions
   bring their own — `class-transformer`, `pino`, `winston`,
   `@opentelemetry/api` and `@opentelemetry/sdk-trace-node` for the logger,
   `@aws-sdk/client-secrets-manager` and `dotenv` for `config-provider`.
@@ -93,23 +98,46 @@ and neither does this README.
 The other supported workflow: clone the repository and delete what you don't
 need, keeping the rest wired together.
 
-There is no demo domain module to delete. Every top-level directory under
-`src/` is infrastructure, and each one comes out on its own with the same three
-edits:
+There is no demo domain module to delete. What comes out cleanly is a module no
+other module imports: the seven adapter modules `analytics`, `cache`,
+`cloud-storage`, `email`, `push-notification`, `queues` and `templating`, and
+also `auth`, which is not an adapter module but has no inbound edges either
+(removing it leaves `database` and `user` with no importers left). Each of
+those is removed with the same three edits:
 
 1. Remove its registration from `src/app.module.ts`.
-2. Remove its config scope from that file's `scopes` array.
+2. Remove its config scope from that file's `scopes` array. `templating`
+   registers none; `cache` and `queues` share `src/redis.scope.ts`, so that one
+   goes only when both have.
 3. Remove its variables from `.env.example`.
 
-Two directories are worth knowing about before you start:
+The rest of the tree is not free-standing. `pnpm run modularity:check --
+--report` prints the edges that say so, and today they are:
+
+- `common` is imported by `analytics`, `auth`, `cloud-storage`,
+  `config-provider`, `email`, `queues` and `templating`.
+- `config-provider` is imported by `analytics`, `auth`, `cloud-storage`,
+  `database`, `email`, `push-notification` and `queues` — and imports `common`
+  itself.
+- `database` is imported by `auth` (13 specifiers).
+- `src/user/current-user.decorator.ts` is imported by
+  `src/auth/google/google.controller.ts`.
+
+So `common`, `config-provider`, `database` and `user` do not come out on their
+own: deleting any of them while something above still imports it leaves the
+tree non-compiling. They go last, once everything that imports them has gone.
+
+Two directories fit neither list, having no registration and no config scope in
+`src/app.module.ts`:
 
 - `src/templates/` holds two generic templates, `WELCOME` and `VERIFICATION`,
   registered in `src/templates/template.const.ts`. Both are starting points, not
-  demo content — there is nothing here to strip.
+  demo content — there is nothing here to strip. No module imports it; only
+  `src/app.controller.ts` does, for `TEMPLATE_PATHS`.
 - `src/user/` is two unrelated files, not one module. `src/user/user.module.ts`
   is an empty module that nothing imports and is safe to delete on its own
-  (finding `R3`). `src/user/current-user.decorator.ts` is live —
-  `src/auth/google/google.controller.ts` imports it — so it stays.
+  (finding `R3`). `src/user/current-user.decorator.ts` is live, per the edge
+  above, so it stays.
 
 Run `pnpm run modularity:check -- --report` for the current dependency graph
 before deleting anything, rather than trusting a copy of it that will drift.

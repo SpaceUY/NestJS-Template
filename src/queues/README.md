@@ -408,7 +408,9 @@ no operator action. A **push consumer** has no such trigger — if its channel o
 connection drops, in-flight consumers are not auto-restored and consumption stays
 halted. Each registered queue's handler is retained, so recovery is a manual
 lever rather than a restart: inject the concrete `RabbitMqConsumerAdapter` and
-call `resume(queue)` (or `resume()` for every halted queue).
+call `resume(queue)` (or `resume()` for every halted queue). As with BullMQ's
+`addJob`, injecting a concrete adapter needs an alias provider in your own
+wiring — see `#### Reaching adapter-specific methods` above.
 
 **Why this is deferred, not missing.** Reconnection *policy* — how long to back
 off, when to alert, when to give up and let the process restart — is a genuine
@@ -474,7 +476,9 @@ the SQS and BullMQ producers. (This adds one broker round-trip per publish.)
 
 **Exchanges — two ways** (per design, both are supported):
 
-1. Dedicated, type-safe method on the concrete producer:
+1. Dedicated, type-safe method on the concrete producer (injected through the
+   same alias provider as `addJob` — see `#### Reaching adapter-specific
+   methods`):
 
    ```ts
    await producer.publishToExchange({
@@ -546,7 +550,11 @@ processes all names, so this only affects the BullMQ dashboard label.
 
 **Richer job options — `addJob`.** For BullMQ-specific options beyond the shared
 tier (`attempts`, `backoff`, `jobId`, `lifo`, `removeOnComplete`, …), inject the
-concrete `BullMqProducerAdapter` and use the dedicated extension:
+concrete `BullMqProducerAdapter` and use the dedicated extension. The root
+registration provides `QueueProducerService` and nothing else, so injecting the
+concrete class fails to resolve at startup until you add the alias provider from
+`## Registration` → `#### Reaching adapter-specific methods` above — the
+template does not ship one:
 
 ```ts
 await producer.addJob({
@@ -587,6 +595,14 @@ the processor throws. The adapter maps the context contract onto that:
 | `QueueConsumerError` | `QUEUE_CONSUMER_NACK_FAILED` | negative-acknowledging failed |
 
 ## Reuse
+
+**Scope of this section.** It describes the narrowest useful copy — `abstract/`
+plus the one adapter directory you use — which needs only the logger alongside
+it. The root `README.md` measures a wider scope: all of `src/queues/`, every
+adapter and both `tests/` folders included, which also needs
+`src/config-provider/`, because `rabbitmq-adapter/config/rabbitmq.scope.ts` and
+`abstract/tests/queue-consumer-feature.module.di.spec.ts` import it. Two
+companions there, one here — the same tree, a different amount of it.
 
 **What lifts.** `abstract/` — the producer and consumer contracts and their
 dynamic modules — is a self-contained unit you can copy into another project.

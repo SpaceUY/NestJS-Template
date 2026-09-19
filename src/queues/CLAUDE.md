@@ -101,6 +101,10 @@ production.
 
 ## Reuse
 
+Scoped to the narrowest useful copy — `abstract/` plus one adapter directory.
+Lifting all of `src/queues/`, `tests/` folders included, additionally needs
+`src/config-provider/`; the root `README.md` measures that wider scope.
+
 `abstract/` depends on `@nestjs/common` **and**
 `src/common/observability/logger/` — `LoggerService`/`NestLoggerAdapter` are
 imported by `abstract/producer/queue-producer.service.ts`,
