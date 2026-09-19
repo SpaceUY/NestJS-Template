@@ -97,7 +97,8 @@ error. See `src/common/observability/logger/PRACTICES.md`.
 **T5 — Imports inside a module are relative.** `../abstract/cache.service` —
 never `src/cache/abstract/cache.service`. A module that reaches for an absolute
 `src/...` specifier stops working the moment it is copied into another repo.
-Four files still violate this (finding `N6`); do not add a fifth.
+No file violates this today (findings `N6`/`M1`, closed 2026-09-19); keep it
+that way — `pnpm run modularity:check` fails on the first absolute specifier.
 
 **T6 — Named exports, explicit return types, no `any`.** No default exports.
 Every function and method declares its return type.

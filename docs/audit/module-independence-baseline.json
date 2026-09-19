@@ -1,11 +1,6 @@
 {
   "generated": "2026-09-19",
   "violations": [
-    "abs-import|src/auth/google/google.controller.ts|src/user/current-user.decorator",
-    "abs-import|src/auth/google/google.service.ts|src/common/exception/core/ExceptionBase",
-    "abs-import|src/auth/google/google.service.ts|src/common/exception/exceptions",
-    "abs-import|src/auth/jwt.strategy.ts|src/common/exception/core/ExceptionBase",
-    "abs-import|src/auth/jwt.strategy.ts|src/common/exception/exceptions",
     "cycle|common,config-provider"
   ]
 }
