@@ -604,7 +604,8 @@ there. The root `README.md` measures a wider scope: all of `src/queues/`, every
 adapter and both `tests/` folders included, which also needs
 `src/config-provider/`, because `rabbitmq-adapter/config/rabbitmq.scope.ts` and
 `abstract/tests/queue-consumer-feature.module.di.spec.ts` import it. Two
-companions there, one here — the same tree, a different amount of it.
+companions there; one or two here, depending on the adapter — the same tree, a
+different amount of it.
 
 **What lifts.** `abstract/` — the producer and consumer contracts and their
 dynamic modules — is a self-contained unit you can copy into another project.
