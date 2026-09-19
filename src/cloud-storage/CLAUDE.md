@@ -103,10 +103,12 @@ Drop `cloud-storage.controller.ts` if the target project brings its own.
 
 See `docs/audit/2026-09-11-template-audit.md`.
 
-- **`D1`** — `src/cloud-storage/README.md` documents an orchestrator, a targets
+- **`D1`** — ~~`src/cloud-storage/README.md` documents an orchestrator, a targets
   enum, a tokens file, a config file and an IPFS adapter, all under a
-  `!src/modules/infrastructure/` path. None of it exists. Trust this file and the
-  source, not that README.
+  `!src/modules/infrastructure/` path. None of it exists.~~ **Fixed:** the
+  README now describes the real tree and registration examples; the
+  orchestrator/targets/tokens/IPFS sections were never-built design and were
+  removed rather than described.
 - **`N2`**, **`C4`** — `src/cloud-storage/abstract/cloud-storage.controller.ts`
   throws `ApiException` at lines 43, 58 and 73. `ApiException` is a plain `Error`,
   and the global filter catches only `HttpException`, so these three validation

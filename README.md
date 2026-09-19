@@ -1,30 +1,9 @@
-<p align="center">
-  <a href="http://nestjs.com/" target="blank"><img src="https://nestjs.com/img/logo_text.svg" width="320" alt="Nest Logo" /></a>
-</p>
+# SpaceDev NestJS Template
 
-[circleci-image]: https://img.shields.io/circleci/build/github/nestjs/nest/master?token=abc123def456
-[circleci-url]: https://circleci.com/gh/nestjs/nest
-
-  <p align="center">A progressive <a href="http://nodejs.org" target="_blank">Node.js</a> framework for building efficient and scalable server-side applications.</p>
-    <p align="center">
-<a href="https://www.npmjs.com/~nestjscore" target="_blank"><img src="https://img.shields.io/npm/v/@nestjs/core.svg" alt="NPM Version" /></a>
-<a href="https://www.npmjs.com/~nestjscore" target="_blank"><img src="https://img.shields.io/npm/l/@nestjs/core.svg" alt="Package License" /></a>
-<a href="https://www.npmjs.com/~nestjscore" target="_blank"><img src="https://img.shields.io/npm/dm/@nestjs/common.svg" alt="NPM Downloads" /></a>
-<a href="https://circleci.com/gh/nestjs/nest" target="_blank"><img src="https://img.shields.io/circleci/build/github/nestjs/nest/master" alt="CircleCI" /></a>
-<a href="https://coveralls.io/github/nestjs/nest?branch=master" target="_blank"><img src="https://coveralls.io/repos/github/nestjs/nest/badge.svg?branch=master#9" alt="Coverage" /></a>
-<a href="https://discord.gg/G7Qnnhy" target="_blank"><img src="https://img.shields.io/badge/discord-online-brightgreen.svg" alt="Discord"/></a>
-<a href="https://opencollective.com/nest#backer" target="_blank"><img src="https://opencollective.com/nest/backers/badge.svg" alt="Backers on Open Collective" /></a>
-<a href="https://opencollective.com/nest#sponsor" target="_blank"><img src="https://opencollective.com/nest/sponsors/badge.svg" alt="Sponsors on Open Collective" /></a>
-  <a href="https://paypal.me/kamilmysliwiec" target="_blank"><img src="https://img.shields.io/badge/Donate-PayPal-ff3f59.svg"/></a>
-    <a href="https://opencollective.com/nest#sponsor"  target="_blank"><img src="https://img.shields.io/badge/Support%20us-Open%20Collective-41B883.svg" alt="Support us"></a>
-  <a href="https://twitter.com/nestframework" target="_blank"><img src="https://img.shields.io/twitter/follow/nestframework.svg?style=social&label=Follow"></a>
-</p>
-  <!--[![Backers on Open Collective](https://opencollective.com/nest/backers/badge.svg)](https://opencollective.com/nest#backer)
-  [![Sponsors on Open Collective](https://opencollective.com/nest/sponsors/badge.svg)](https://opencollective.com/nest#sponsor)-->
-
-## Description
-
-[Nest](https://github.com/nestjs/nest) framework TypeScript starter repository.
+SpaceDev's reusable NestJS backend template. It exists to serve two
+workflows: [lift one module into an existing project](#use-a-module-in-another-project),
+or [clone the whole thing and delete what you don't need](#clone-the-template-and-strip-what-you-dont-need).
+See below for what that means and how to work with it.
 
 ## SpaceDev template documentation
 
@@ -34,15 +13,92 @@ This is the SpaceDev reusable NestJS template. Each top-level directory under
 - `CLAUDE.md` — project invariants, commands and the module map. Start here.
 - `docs/architecture/module-contract.md` — the contract every adapter module implements.
 - `docs/audit/2026-09-11-template-audit.md` — known defects, cited by ID from each module guide.
+- `docs/audit/2026-09-18-modularity-audit.md` — the modularity/extraction/documentation findings, and its reconciliation of the older audit.
 - `src/<module>/CLAUDE.md` — rules, public surface and extraction recipe for that module.
 - `src/<module>/README.md` — human-facing recipes and examples for that module.
 
 Run `pnpm run docs:check` after editing any `CLAUDE.md`.
 
+## Use a module in another project
+
+The general recipe:
+
+1. Copy `src/<module>/` into the destination project.
+2. Copy each companion directory that module depends on (see below) into the
+   destination's `src/`.
+3. If `common` is one of those companions, also copy the repo-root `@types/`
+   directory and add `"typeRoots": ["@types", "./node_modules/@types"]` to the
+   destination's `tsconfig.json`. `common` depends on the ambient `Express.User`
+   type declared there — see `src/common/CLAUDE.md`'s `## Reuse` section for
+   the details, since this is the dependency with no import statement, so no
+   amount of reading the source will surface it.
+4. Install the module's npm packages (below).
+5. Register the module in the destination's `src/app.module.ts`, the way this
+   template's own `src/app.module.ts` does.
+
+What that costs, measured by copying each module alone into a fresh `nest new`
+project and running `tsc --noEmit` (`docs/audit/2026-09-18-modularity-audit.md`,
+`### Extraction`):
+
+- **`cache`** lifts with **zero** companion directories — `tsc --noEmit` exits
+  0 (`EXT1`). Needs the npm package `ioredis`.
+- **`email`** lifts with **two** companions, `common` and `config-provider`
+  (`EXT5`). Needs `resend`, `@sendgrid/mail`, `@aws-sdk/client-ses`, `joi`.
+- **`queues`** does not lift: copying `src/queues/` alone leaves 29 unresolved
+  imports, and the only closure that compiles pulls in 11 of the template's 13
+  top-level `src/` directories plus the app-root `src/redis.scope.ts`
+  (`EXT3`, `EXT4`). See `src/queues/README.md`'s `## Reuse` section for what
+  actually lifts out of it and what to write instead.
+
+**This measures compile time, not boot time.** Every result above means
+`tsc --noEmit` exits 0 — it does not mean the lifted module works once
+running. Whether, say, `cache`'s `forRootAsync` resolves when the host project
+registers no matching config scope is untested; the audit does not answer it,
+and neither does this README.
+
+## Clone the template and strip what you don't need
+
+The other supported workflow: clone the repository and delete the modules you
+don't need, keeping the rest wired together.
+
+`src/spaceship/` is a demo, not infrastructure — it is the reference domain
+module the rest of the template is written against. Its own guide says so
+directly (`src/spaceship/CLAUDE.md:90`): "Do not copy this module into a
+project. Delete it, and copy its *shape*."
+
+`src/templates/` is only partly demo. `src/templates/template.const.ts`
+registers three templates: `WELCOME` and `VERIFICATION` are generic and
+should stay; `SPACESHIP_CREATED` belongs to `spaceship` and should go with
+it, along with the files it points to under `src/templates/spaceship/` and
+its entries in the `TEMPLATES`, `TEMPLATE_PATHS` and `TEMPLATE_SUBJECTS`
+maps.
+
+Deleting `spaceship` means editing two other files by hand. `src/app.module.ts`
+references it in six places: the import (line 32), its two config-scope
+imports (lines 55-56), both scope registrations (lines 80-81), and the module
+registration itself (line 98). `.env.example` declares two spaceship-specific
+variables: `NOTIFICATION_EMPLOYEE_EMAILS` (line 32) and
+`SPACESHIP_LIST_CACHE_TTL_SECONDS` (line 33).
+
+`spaceship` can't just be deleted, either — `src/queues/queues.module.ts`
+imports its notification code, which closes a three-way import cycle among
+the app root, `queues` and `spaceship` (`M2`, `M3`, `M5`). Deleting
+`spaceship` without first removing that import from `queues.module.ts` breaks
+`queues`. This coupling is a known, tracked defect that this documentation
+change does not fix — run `pnpm run modularity:check -- --report` for the
+current dependency graph before deleting anything, rather than trusting a
+copy of it that will drift.
+
+`src/user/` is two unrelated files, not one module: `src/user/user.module.ts`
+is an empty module that nothing imports, safe to delete on its own.
+`src/user/current-user.decorator.ts` is live — `src/auth/google/google.controller.ts`
+imports it directly — so it stays even after `spaceship` (which also uses it)
+is gone.
+
 ## Installation
 
 ```bash
-$ npm install
+$ pnpm install
 ```
 
 ## Local development
@@ -61,38 +117,33 @@ email notification) — see `REDIS_HOST` / `REDIS_PORT` / `REDIS_PASSWORD` in
 
 ```bash
 # development
-$ npm run start
+$ pnpm run start
 
 # watch mode
-$ npm run start:dev
+$ pnpm run start:dev
 
 # production mode
-$ npm run start:prod
+$ pnpm run start:prod
 ```
 
 ## Test
 
 ```bash
 # unit tests
-$ npm run test
+$ pnpm run test
 
 # e2e tests
-$ npm run test:e2e
+$ pnpm run test:e2e
 
 # test coverage
-$ npm run test:cov
+$ pnpm run test:cov
 ```
 
-## Support
+## Gates CI runs on every PR
 
-Nest is an MIT-licensed open source project. It can grow thanks to the sponsors and support by the amazing backers. If you'd like to join them, please [read more here](https://docs.nestjs.com/support).
-
-## Stay in touch
-
-- Author - [Kamil Myśliwiec](https://kamilmysliwiec.com)
-- Website - [https://nestjs.com](https://nestjs.com/)
-- Twitter - [@nestframework](https://twitter.com/nestframework)
-
-## License
-
-Nest is [MIT licensed](LICENSE).
+```bash
+$ pnpm run docs:check
+$ pnpm run modularity:check
+$ pnpm run lint
+$ pnpm run build
+```

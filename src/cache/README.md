@@ -57,13 +57,18 @@ import { CacheAbstractModule } from './abstract/cache-abstract.module';
 import { RedisCacheAdapterService } from './redis-adapter/redis-adapter.service';
 import { RedisCacheListExtension } from './redis-adapter/extensions/redis-cache-list.extension';
 import { RedisCacheKeysExtension } from './redis-adapter/extensions/redis-cache-keys.extension';
+import { redisScope, RedisScopeConfig } from '../redis.scope';
 
 CacheAbstractModule.forRootAsync({
   isGlobal: true,
-  inject: [redisConfig.KEY],
-  imports: [ConfigModule],
-  useFactory: (cfg: ConfigType<typeof redisConfig>): RedisCacheAdapterService => {
-    return new RedisCacheAdapterService(cfg);
+  inject: [redisScope.KEY],
+  useFactory: (redis: RedisScopeConfig): RedisCacheAdapterService => {
+    return new RedisCacheAdapterService({
+      protocol: 'redis',
+      host: redis.host,
+      port: redis.port,
+      password: redis.password || undefined,
+    });
   },
   extensions: {
     list: RedisCacheListExtension,

@@ -54,9 +54,14 @@ is fixed.
    Expo rate-limits large sends; do not loop over `sendPushNotification`, the
    single-send method.
 5. A device token is a credential. Never log it, never return it in a response.
-6. Failures throw `PushNotificationException`, which is an `HttpException` — this
-   module does not follow the plain-`Error` shape the other adapter modules use
-   (finding `N2`). Do not use it as the model for a new module's errors.
+6. Failures do **not** throw `PushNotificationException`. The class is defined
+   and type-checked against, but never constructed: `ExpoAdapterService`'s two
+   `catch` blocks re-throw the raw `expo-server-sdk` error or the adapter's own
+   `InternalServerErrorException` unchanged, so `PushNotificationController`'s
+   `instanceof PushNotificationException` check never fires and every failure
+   surfaces as `InternalServerErrorException`. This violates the root
+   `CLAUDE.md`'s `T3` — the module does not own its error type in practice,
+   whatever this guide used to claim. See `M15`.
 
 ## Adding an adapter
 
@@ -72,8 +77,9 @@ is fixed.
 ## Tests
 
 No test exists (finding `G1`). The Expo adapter is the place to start: mock
-`expo-server-sdk` at module level, assert chunking behaviour and the thrown
-`PushNotificationException`. No `abstract/mocks/` exists (finding `N5`).
+`expo-server-sdk` at module level, assert chunking behaviour and the re-thrown
+SDK/`InternalServerErrorException` failure — not `PushNotificationException`,
+which is never constructed (`M15`). No `abstract/mocks/` exists (finding `N5`).
 
 ## Reuse
 
@@ -86,12 +92,21 @@ plain-`Error` shape, and add `forRootAsync`.
 
 ## Known gaps
 
-See `docs/audit/2026-09-11-template-audit.md`.
+See `docs/audit/2026-09-11-template-audit.md` and `docs/audit/2026-09-18-modularity-audit.md`.
 
 - **`N1`** — `push-notification-abstract.module.ts.ts` has a doubled extension.
 - **`N2`** — `PUSH_NOTIFICATION_ERRORS` contains three entries whose codes are all
   `CLOUD_STORAGE_*` copy-paste leftovers, and they describe file upload, not push.
 - **`N3`** — no `forRootAsync`; the file ends with `// TODO: Add forRootAsync`.
   Also, `forRoot` mutates the caller's `controllers` array with `push`.
-- **`D4`** — `src/push-notification/README.md` teaches `@nestjs/config` and `npm`.
+- **`D4`** — ~~`src/push-notification/README.md` teaches `@nestjs/config` and
+  `npm`.~~ **Fixed (`@nestjs/config`):** every registration example now injects
+  `expoScope` via `@Inject(expoScope.KEY)` and types the factory parameter as
+  `ExpoScopeConfig`, matching `src/app.module.ts`. The `npm` half of this bullet
+  is `DOC9`'s installation-line defect
+  (`docs/audit/2026-09-18-modularity-audit.md`), not `D4`'s — fixed separately
+  in this same branch.
 - **`G1`**, **`N5`** — no tests, no mocks.
+- **`M15`** — `PushNotificationException` is defined but never constructed;
+  adapter failures escape as the raw SDK error or `InternalServerErrorException`
+  instead (Rule 6).

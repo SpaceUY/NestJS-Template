@@ -25,7 +25,7 @@ Before changing anything under `src/<module>/`, read `src/<module>/CLAUDE.md`.
 | `src/common/observability/analytics` | `src/common/observability/analytics/CLAUDE.md` | `src/common/observability/analytics/README.md` |
 | `src/common/observability/telemetry` | `src/common/observability/telemetry/CLAUDE.md` | `src/common/observability/telemetry/README.md` |
 | `src/database` | `src/database/CLAUDE.md` | — |
-| `src/auth` | `src/auth/CLAUDE.md` | — |
+| `src/auth` | `src/auth/CLAUDE.md` | `src/auth/README.md` |
 | `src/cache` | `src/cache/CLAUDE.md` | `src/cache/README.md` |
 | `src/cloud-storage` | `src/cloud-storage/CLAUDE.md` | `src/cloud-storage/README.md` |
 | `src/email` | `src/email/CLAUDE.md` | `src/email/README.md` |
@@ -39,7 +39,9 @@ Before changing anything under `src/<module>/`, read `src/<module>/CLAUDE.md`.
 empty `src/user/user.module.ts` that nothing imports (finding `R3`).
 
 Shared references: `docs/architecture/module-contract.md` (the adapter-module
-contract), `docs/audit/2026-09-11-template-audit.md` (known defects),
+contract), `docs/audit/2026-09-11-template-audit.md` (known defects, the
+`B`/`N`/`D`/`C`/`TS`/`L`/`R`/`G` series) and `docs/audit/2026-09-18-modularity-audit.md`
+(the `M`/`EXT`/`DOC` series, and its reconciliation of the older audit),
 `src/common/observability/logger/PRACTICES.md` (logging rules).
 
 ## Commands
@@ -129,8 +131,9 @@ migration file, never rely on `DB_SYNCHRONIZE` outside local development. See
   `forbidNonWhitelisted`.
 - **Entities:** extend `src/database/entities/base.entity.ts`. `id` (integer) is
   internal; `uuid` is the only identifier an API response may expose.
-- **Tests:** co-located, `*.unit.spec.ts` for isolated unit tests. The four
-  `*.spec.ts` files are legacy (finding `N4`); new tests use `*.unit.spec.ts`.
+- **Tests:** co-located, `*.unit.spec.ts` for isolated unit tests. The
+  remaining `*.spec.ts` files are legacy (finding `N4`); new tests use
+  `*.unit.spec.ts`.
 - **Git:** branches `feature/` `fix/` `chore/` `hotfix/`; conventional commits;
   PRs only, never a direct push to `master`.
 
@@ -147,8 +150,10 @@ migration file, never rely on `DB_SYNCHRONIZE` outside local development. See
 Recorded in `docs/audit/2026-09-11-template-audit.md`. The ones that will bite
 you first:
 
-**`pnpm run build` and `pnpm run lint` both fail on `master` right now.** That is
-still true there; both pass on `fix/build-and-lint`.
+**All four gates pass on `master`.** `build`, `eslint`, `test` and `docs:check`
+were measured green in `docs/audit/2026-09-18-modularity-audit.md`'s gate table;
+`pnpm run modularity:check` gates the module graph as of that audit. The
+`fix/build-and-lint` branch this section used to point at has landed.
 
 - **`B1`** — ~~`src/app.module.ts` does not compile: `emailConfig`, `awsConfig` and
   `ConfigType` are referenced but never imported. Six TypeScript errors.~~ **Fixed on `fix/build-and-lint`.**
@@ -158,11 +163,12 @@ still true there; both pass on `fix/build-and-lint`.
 - **`L3`** — ~~the `lint` script runs with `--fix`, so invoking it rewrites 20
   files with Prettier formatting. **Check `git status` after linting** and do not
   commit that reformat alongside unrelated work.~~ **Partially fixed:** the tree is Prettier-clean now, so linting no longer hands you a 20-file diff. Still open: `lint` keeps `--fix` and CI runs it, so CI cannot detect future drift.
-- **`B2`** — `package.json` declares `dotenv` twice.
+- **`B2`** — ~~`package.json` declares `dotenv` twice.~~ **Fixed** — declared
+  once; verified in `docs/audit/2026-09-18-modularity-audit.md` (`DOC5`).
 - **`B3`** — `Dockerfile` uses `apk` on a Debian image and runs `prisma generate`
   in a TypeORM project.
-- **`G2`** — CI runs lint and build only; `pnpm test` never runs in the pipeline,
-  even though all 120 tests pass.
+- **`G2`** — CI runs `docs:check`, `modularity:check`, `lint` and `build`;
+  `pnpm test` never runs in the pipeline.
 - **`TS1`** — `tsconfig.json` is not in strict mode, contrary to the SpaceDev
   standard.
 

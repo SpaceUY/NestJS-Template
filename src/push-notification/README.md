@@ -24,7 +24,7 @@ push-notification/
 │   ├── push-notification.exception.ts
 │   ├── push-notification.service.ts
 ├── expo-adapter/
-│   ├── expo-adapter-config.provider.const.ts
+│   ├── expo-adapter-config-provider.const.ts
 │   ├── expo-adapter-config.interface.ts
 │   ├── expo-adapter.module.ts
 │   ├── expo-adapter.service.ts
@@ -45,7 +45,7 @@ push-notification/
 Ensure you have the required dependencies:
 
 ```bash
-npm expo-server-sdk
+pnpm add expo-server-sdk
 ```
 
 ## Usage
@@ -56,17 +56,16 @@ npm expo-server-sdk
 
 ```typescript
 import { Module } from '@nestjs/common';
-import { ConfigType } from '@nestjs/config';
 import { PushNotificationAbstractModule } from './push-notification/abstract/push-notification-abstract.module.ts';
 import { ExpoAdapterModule } from './push-notification/expo-adapter/expo-adapter.module';
-import expoConfig from './config/expo.config'; // Your expo config
+import { expoScope, ExpoScopeConfig } from './push-notification/expo-adapter/config/expo.scope';
 
 @Module({
   imports: [
     PushNotificationAbstractModule.forRoot({
       adapter: ExpoAdapterModule.registerAsync({
-        inject: [expoConfig.KEY],
-        useFactory: (expo: ConfigType<typeof expoConfig>) => ({
+        inject: [expoScope.KEY],
+        useFactory: (expo: ExpoScopeConfig) => ({
           expoAccessToken: expo.accessToken,
         }),
       }),
@@ -134,15 +133,15 @@ There's also a `registerAsync` option which allows for dependency injection. For
 ```typescript
 PushNotificationAbstractModule.forRoot({
   adapter: ExpoAdapterModule.registerAsync({
-    inject: [expoConfig.KEY],
-    useFactory: (expo: ConfigType<typeof expoConfig>) => ({
+    inject: [expoScope.KEY],
+    useFactory: (expo: ExpoScopeConfig) => ({
       expoAccessToken: expo.accessToken,
     }),
   }),
 }),
 ```
 
-Assuming that a `expoConfig` is registered using `@nestjs/common`'s `registerAs` method. 
+Assuming that `expoScope` is defined with `defineConfigScope` (see `src/config-provider/README.md`).
 
 ## API Reference
 
@@ -168,15 +167,16 @@ To use the default controller, set `useDefaultController: true` when registering
 
 ```typescript
 import { Module } from '@nestjs/common';
-import { PushNotificationAbstractModule } from './push-notification/push-notification-abstract.module';
-import { ExpoAdapterModule } from './adapters/expo-adapter.module';
+import { PushNotificationAbstractModule } from './push-notification/abstract/push-notification-abstract.module.ts';
+import { ExpoAdapterModule } from './push-notification/expo-adapter/expo-adapter.module';
+import { expoScope, ExpoScopeConfig } from './push-notification/expo-adapter/config/expo.scope';
 
 @Module({
   imports: [
     PushNotificationAbstractModule.forRoot({
       adapter: ExpoAdapterModule.registerAsync({
-        inject: [expoConfig.KEY],
-        useFactory: (expo: ConfigType<typeof expoConfig>) => ({
+        inject: [expoScope.KEY],
+        useFactory: (expo: ExpoScopeConfig) => ({
           expoAccessToken: expo.accessToken,
         }),
       }),
@@ -194,21 +194,22 @@ To use a custom controller, set `useDefaultController: false` when registering t
 
 ```typescript
 import { Module } from '@nestjs/common';
-import { PushNotificationAbstractModule } from './push-notification/push-notification-abstract.module';
-import { ExpoAdapterModule } from './adapters/expo-adapter.module';
+import { PushNotificationAbstractModule } from './push-notification/abstract/push-notification-abstract.module.ts';
+import { ExpoAdapterModule } from './push-notification/expo-adapter/expo-adapter.module';
 import { CustomNotificationController } from './custom-notification.controller';
+import { expoScope, ExpoScopeConfig } from './push-notification/expo-adapter/config/expo.scope';
 
 @Module({
   imports: [
     PushNotificationAbstractModule.forRoot({
       adapter: ExpoAdapterModule.registerAsync({
-        inject: [expoConfig.KEY],
-        useFactory: (expo: ConfigType<typeof expoConfig>) => ({
+        inject: [expoScope.KEY],
+        useFactory: (expo: ExpoScopeConfig) => ({
           expoAccessToken: expo.accessToken,
         }),
       }),
       useDefaultController: false, // Disable the default controller
-      customController: [YourController], // Registers the custom controller
+      controllers: [CustomNotificationController], // Registers the custom controller
       isGlobal: true, // If you need, enables the module as global
     }),
   ], 
@@ -235,13 +236,15 @@ The `PushNotificationAbstractModule` is designed to be flexible and support mult
    ```typescript
    PushNotificationAbstractModule.forRoot({
      adapter: FirebaseAdapterModule.registerAsync({
-       inject: [firebaseConfig.KEY],
-       useFactory: (firebase: ConfigType<typeof firebaseConfig>) => ({
+       inject: [firebaseScope.KEY],
+       useFactory: (firebase: FirebaseScopeConfig) => ({
          token: firebase.token,
        }),
      }),
    }),
    ```
+
+   Assuming `firebaseScope` is defined the same way as `expoScope`, with `defineConfigScope`.
 4. **Implement Provider-Specific Logic**
   - Ensure the new adapter correctly implements methods such as sendPushNotification and sendPushNotificationByChunks.
   - Use the respective SDK (e.g., firebase-admin for Firebase).

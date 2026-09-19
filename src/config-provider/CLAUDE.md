@@ -109,8 +109,9 @@ template, which is what makes it the first thing to lift.
 
 See `docs/audit/2026-09-11-template-audit.md`.
 
-- **`D3`** — `src/config-provider/README.md` names a `config-provider-error-codes.ts`
-  that does not exist; the real file is `abstract/config-provider.error.ts`.
+- **`D3`** — ~~`src/config-provider/README.md` names a `config-provider-error-codes.ts`
+  that does not exist; the real file is `abstract/config-provider.error.ts`.~~
+  **Fixed:** the README now names the real `abstract/config-provider.error.ts`.
 - **`C1`** — `.env.example` is missing most keys the scopes read.
 - **`C2`** — `jwtScope` defaults its secret to a public literal.
 - **`TS2`** — `src/app.scope.ts` and `src/email/config/email.scope.ts` take an

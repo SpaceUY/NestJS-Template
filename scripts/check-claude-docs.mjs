@@ -22,12 +22,13 @@ const REQUIRED_SECTIONS = [
 // which is how a doc records drift in a neighbouring file without the validator
 // treating that citation as its own error.
 const PATH_LIKE =
-  /^!?(src|docs|scripts|test)\/[\w./-]+(\.(ts|mjs|js|json|md|pug|yml)|\/)$/;
+  /^!?(src|docs|scripts|test|@types)\/[\w./-]+(\.(ts|mjs|js|json|md|pug|yml)|\/)$/;
 
 /**
- * Recursively collects every CLAUDE.md path under `dir`, repo-relative.
+ * Recursively collects every CLAUDE.md and README.md path under `dir`,
+ * repo-relative.
  * @param {string} dir Absolute directory to walk.
- * @returns {Promise<string[]>} Repo-relative CLAUDE.md paths.
+ * @returns {Promise<string[]>} Repo-relative CLAUDE.md/README.md paths.
  */
 async function collectDocs(dir) {
   const found = [];
@@ -35,7 +36,9 @@ async function collectDocs(dir) {
     if (entry.name.startsWith('.') || SKIP_DIRS.has(entry.name)) continue;
     const full = join(dir, entry.name);
     if (entry.isDirectory()) found.push(...(await collectDocs(full)));
-    else if (entry.name === 'CLAUDE.md') found.push(relative(ROOT, full));
+    else if (entry.name === 'CLAUDE.md' || entry.name === 'README.md') {
+      found.push(relative(ROOT, full));
+    }
   }
   return found;
 }
@@ -53,7 +56,9 @@ function referencedPaths(text) {
 }
 
 /**
- * Runs every rule over every CLAUDE.md and reports violations.
+ * Runs every rule over every CLAUDE.md and README.md and reports violations.
+ * The six required sections and the module-map rule are CLAUDE.md-only; a
+ * README has no required shape and only gets the path-existence rule below.
  * @returns {Promise<string[]>} Human-readable violation lines.
  */
 async function check() {
@@ -62,8 +67,9 @@ async function check() {
 
   for (const doc of docs) {
     const text = await readFile(join(ROOT, doc), 'utf8');
+    const isModuleClaudeDoc = doc !== 'CLAUDE.md' && doc.endsWith('CLAUDE.md');
 
-    if (doc !== 'CLAUDE.md') {
+    if (isModuleClaudeDoc) {
       for (const section of REQUIRED_SECTIONS) {
         if (!text.includes(`\n${section}\n`)) {
           violations.push(`${doc}: missing required section "${section}"`);
@@ -88,7 +94,9 @@ async function check() {
   }
 
   const rootText = await readFile(join(ROOT, 'CLAUDE.md'), 'utf8');
-  for (const doc of docs.filter((d) => d !== 'CLAUDE.md')) {
+  for (const doc of docs.filter(
+    (d) => d !== 'CLAUDE.md' && d.endsWith('CLAUDE.md'),
+  )) {
     if (!rootText.includes(doc)) {
       violations.push(`CLAUDE.md: module map does not list "${doc}"`);
     }

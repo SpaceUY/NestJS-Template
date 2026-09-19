@@ -141,18 +141,12 @@ controller — do not extend it.
 
 ## Reuse
 
-Copy `src/auth/` whole. It depends on `src/config-provider/` (both scopes),
-`src/database/entities/user.entity.ts` (the `User` shape and `uuid`),
-`src/common/exception/` (`RequestException`, `Exceptions`) and
-`src/user/current-user.decorator.ts`. Port those four first.
-
-Peer dependencies: `@nestjs/jwt`, `@nestjs/passport`, `passport`, `passport-jwt`,
-`passport-google-oauth20`, `google-auth-library`, `ms`. `src/auth/auth0/` adds
-none — it calls Auth0's `/userinfo` with the runtime's built-in `fetch`.
-
-Drop `src/auth/google/` or `src/auth/auth0/` entirely for a project not using
-that provider; nothing else in the module references either one except the
-import in `src/auth/auth.module.ts`.
+Couples to `src/config-provider/`, `src/database/entities/user.entity.ts`,
+`src/common/exception/` and `src/user/current-user.decorator.ts` — port those
+first. `src/auth/google/` and `src/auth/auth0/` are independently droppable;
+`src/auth/email/` is an empty scaffold (finding `R3`), not a provider to port.
+See `src/auth/README.md`'s `## Reuse` for the peer-dependency list and the
+step order.
 
 ## Known gaps
 

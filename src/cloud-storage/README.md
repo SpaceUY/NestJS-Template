@@ -22,19 +22,19 @@ The public service is [`CloudStorageService`](./abstract/cloud-storage.service.t
 ## Directory Structure
 
 ```text
-src/modules/infrastructure/cloud-storage/
-├── cloud-storage.config.ts
-├── cloud-storage.module.ts
-├── cloud-storage-orchestrator.service.ts
-├── cloud-storage.targets.ts
-├── cloud-storage.tokens.ts
+src/cloud-storage/
 ├── abstract/
 │   ├── dto/
+│   │   ├── file-response.dto.ts
+│   │   └── upload-file.dto.ts
 │   ├── cloud-storage-abstract.module.ts
+│   ├── cloud-storage.controller.ts
 │   ├── cloud-storage.error.ts
-│   ├── cloud-storage.exception.ts
+│   ├── cloud-storage.interfaces.ts
 │   └── cloud-storage.service.ts
 ├── s3-adapter/
+│   ├── config/
+│   │   └── s3.scope.ts
 │   ├── s3-adapter-config.interface.ts
 │   └── s3-adapter.service.ts
 ├── local-adapter/
@@ -46,8 +46,8 @@ src/modules/infrastructure/cloud-storage/
 
 ## Registration Options
 
-> The abstract registration options below are still available.  
-> The runtime app should typically consume [`CloudStorageModule`](./cloud-storage.module.ts), which composes adapters and exposes orchestration.
+The app composes this module directly through `CloudStorageAbstractModule`;
+there is no separate composed `CloudStorageModule` file.
 
 ### 1) `CloudStorageAbstractModule.forRoot(...)`
 
@@ -65,7 +65,8 @@ Example (local adapter):
 import { CloudStorageAbstractModule } from "./abstract/cloud-storage-abstract.module";
 import { LocalAdapterService } from "./local-adapter/local-adapter.service";
 
-export const CloudStorageModule = CloudStorageAbstractModule.forRoot({
+// in the `imports` array of the module that wires it up
+CloudStorageAbstractModule.forRoot({
   adapter: LocalAdapterService,
   isGlobal: true,
   useDefaultController: true,
@@ -86,41 +87,28 @@ Use this when adapter construction depends on runtime config (recommended for pr
 
 This means the factory returns the concrete service instance (i.e. `S3AdapterService`).
 
-Current recommended composition with S3:
+Current recommended composition with S3, as wired in `src/app.module.ts`:
 
 ```ts
-import type { ConfigType } from "@nestjs/config";
 import { CloudStorageAbstractModule } from "./abstract/cloud-storage-abstract.module";
 import { S3AdapterService } from "./s3-adapter/s3-adapter.service";
-import { awsConfig } from "@/modules/infrastructure/aws/aws.config";
+import { s3Scope, S3ScopeConfig } from "./s3-adapter/config/s3.scope";
 
-export const CloudStorageModule = CloudStorageAbstractModule.forRootAsync({
+// in the `imports` array of the module that wires it up
+CloudStorageAbstractModule.forRootAsync({
   isGlobal: true,
   useDefaultController: true,
-  inject: [awsConfig.KEY],
-  useFactory: (aws: ConfigType<typeof awsConfig>) =>
+  inject: [s3Scope.KEY],
+  useFactory: (s3: S3ScopeConfig) =>
     new S3AdapterService({
-      bucket: aws.rawDataBucket,
-      region: aws.region,
-      accessKeyId: aws.accessKeyId,
-      secretAccessKey: aws.secretAccessKey,
-      expiresInSeconds: 3600,
+      bucket: s3.bucket,
+      region: s3.region,
+      accessKeyId: s3.accessKeyId,
+      secretAccessKey: s3.secretAccessKey,
+      expiresInSeconds: s3.expiresInSeconds,
     }),
 });
 ```
-
----
-
-## Runtime Composition (`CloudStorageModule`)
-
-`CloudStorageModule` wires two lanes:
-
-- **S3 lane** (`CloudStorageService`) using either:
-  - `LocalAdapterService` when `CLOUD_STORAGE_S3_BACKEND=LOCAL`
-  - `S3AdapterService` when `CLOUD_STORAGE_S3_BACKEND=AWS_S3`
-- **IPFS lane** using `IPFSAdapterService` (coming soon)
-
-and exports [`CloudStorageOrchestratorService`](./cloud-storage-orchestrator.service.ts) for developer-level target selection via [`CLOUD_STORAGE_TARGET`](./cloud-storage.targets.ts).
 
 ---
 
@@ -172,61 +160,16 @@ By default, it is **disabled** and only registered when explicitly enabled via `
 
 ---
 
-## Orchestration Service
-
-[`CloudStorageOrchestratorService`](./cloud-storage-orchestrator.service.ts) provides:
-
-- `uploadFile(target, file)`
-- `getFile(target, fileKey)`
-- `deleteFile(target, fileKey)`
-
-Where `target` is one of:
-
-```ts
-CLOUD_STORAGE_TARGET.S3
-CLOUD_STORAGE_TARGET.IPFS
-```
-
-Example usage:
-
-```ts
-import { CLOUD_STORAGE_TARGET } from "@/modules/infrastructure/cloud-storage/cloud-storage.targets";
-
-await cloudStorageOrchestratorService.uploadFile(
-  CLOUD_STORAGE_TARGET.S3,
-  file,
-);
-```
-
----
-
 ## Config
 
-S3 composition typically reads from [`aws.config.ts`](../aws/aws.config.ts) in `useFactory`.
+S3 composition reads from [`s3.scope.ts`](./s3-adapter/config/s3.scope.ts), which
+defines `S3ScopeConfig` and is registered in `src/app.module.ts` (invariant `T2`):
 
-Cloud storage runtime selection uses [`cloud-storage.config.ts`](./cloud-storage.config.ts):
-
-- `CLOUD_STORAGE_S3_BACKEND` (`LOCAL` | `AWS_S3`)
-- `IPFS_STORAGE_KEY`
-- `IPFS_STORAGE_PROOF`
-- default: `LOCAL` when `NODE_ENV=local`, otherwise `AWS_S3`
-
-S3 adapter constructor values (from [`aws.config.ts`](../aws/aws.config.ts)):
-
-- `bucket`
-- `region`
-- `accessKeyId?`
-- `secretAccessKey?`
-- `expiresInSeconds`
-
-IPFS composition should consume validated values from [`cloud-storage.config.ts`](./cloud-storage.config.ts) in `useFactory`.
-IPFS configuration validation should happen at module/app composition level, not inside the adapter/client.
-
-Expected values:
-
-- `ipfsStorageKey`
-- `ipfsStorageProof`
-- `gatewayPrefix?`
+- `bucket` — `AWS_S3_BUCKET_NAME`
+- `region` — `AWS_REGION`
+- `accessKeyId?` — `AWS_ACCESS_KEY`
+- `secretAccessKey?` — `AWS_SECRET_ACCESS_KEY`
+- `expiresInSeconds` — `AWS_S3_EXPIRES_IN_SECONDS` (default `3600`)
 
 ---
 
@@ -234,4 +177,4 @@ Expected values:
 
 - `forRoot` is useful for simple/no-config adapters (for example `LocalAdapterService`).
 - `forRootAsync` makes config-driven adapter selection and instantiation explicit.
-- For real cloud providers like S3 and IPFS, `forRootAsync` is the standard path.
+- For a real cloud provider like S3, `forRootAsync` is the standard path.

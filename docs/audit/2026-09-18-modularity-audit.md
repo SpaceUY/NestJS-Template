@@ -18,7 +18,7 @@ directory under `src/` lifts into another repo on its own. No numeric score:
 a reader deciding what to fix next is better served by three ordered groups
 than by a count. Fix bucket 1 first.
 
-### Breaks the promise (8)
+### Breaks the promise (8 as measured; 5 still open as of `fix/documentation-remediation` — `DOC2`, `DOC5` and `DOC7` fixed, struck below)
 
 A module provably cannot be lifted, or a guide states something false enough
 that trusting it would send a reader straight at that same failure.
@@ -29,12 +29,15 @@ that trusting it would send a reader straight at that same failure.
   application itself into the dependency, not just a sibling module. This is
   qualitatively worse than a two-module pair that still lifts together
   (`M6`, `M7`, below) because one of the three nodes is the app root itself.
+  **Still open** — `M2`, `M3`, `M5` (and their extraction proof, `EXT3`/`EXT4`
+  below) are the `queues`-decoupling design change this plan explicitly
+  excludes from its scope (see Ruling P3, `progress.md`); no code changed.
 - **EXT3**, **EXT4** — the measured proof of the same defect: copying
   `queues` alone leaves 29 unresolved imports, and the only closure that
   compiles needs 11 of the template's 13 top-level directories plus the
   app-root file `src/redis.scope.ts` — `EXT4`'s own verdict is "does not
-  lift."
-- **DOC2**, **DOC5**, **DOC7** — guides that would send a reader straight
+  lift." **Still open**, same reason as `M2`/`M3`/`M5` above.
+- ~~**DOC2**~~, ~~**DOC5**~~, ~~**DOC7**~~ — guides that would send a reader straight
   into the `M2`/`M3`/`M5` trap instead of warning them off it: `queues`'s
   `CLAUDE.md` Reuse section claims `abstract/` "depends only on
   `@nestjs/common`" and never names `queues.module.ts`'s app-root/`spaceship`
@@ -44,8 +47,12 @@ that trusting it would send a reader straight at that same failure.
   agent starting a session that build and lint are red and that `dotenv` is
   still duplicated, both false (`DOC5`). Each is a guide asserting the
   opposite of what this audit measured, not merely omitting detail.
+  **All three fixed by `fix/documentation-remediation`** (see the `DOC2`,
+  `DOC5` and `DOC7` entries below for verification detail) — the code
+  defects (`M2`, `M3`, `M5`, `EXT3`, `EXT4`) remain open and are the only
+  reason this bucket is not empty.
 
-### Erodes the promise (19)
+### Erodes the promise (19 as measured; 13 still open as of `fix/documentation-remediation` — `DOC1`, `DOC3`, `DOC4`, `DOC8`, `DOC9` and `DOC10` fixed, struck below)
 
 The module still lifts — alone or with a bounded, real set of companions —
 but a developer or agent copying it is misled about the cost, or hits
@@ -70,16 +77,19 @@ deliver.
   at all (an ambient `@types/express` augmentation `common` needs in order
   to compile once extracted) and the resulting meta-finding that a green
   `pnpm run modularity:check` is not proof a module has no hidden cost.
-- **DOC1**, **DOC3**, **DOC4**, **DOC8**, **DOC9**, **DOC10** — guides whose
+- ~~**DOC1**~~, ~~**DOC3**~~, ~~**DOC4**~~, ~~**DOC8**~~, ~~**DOC9**~~, ~~**DOC10**~~ — guides whose
   worked examples do not compile or run as written: `push-notification`'s
   dead exception class taught as live (`DOC1`), `common`'s missing
   `typeRoots` note (`DOC3`), `logger`'s undercounted dependency and broken
   `@/` import alias (`DOC4`, `DOC8`), five independent drifts in
   `push-notification/README.md` (`DOC9`), and the root `README.md`'s
   license/package-manager contradictions plus its silence on both of the
-  template's two workflows (`DOC10`).
+  template's two workflows (`DOC10`). **All six fixed by
+  `fix/documentation-remediation`** (see each entry below for verification
+  detail); the underlying code defects these guides described (`M15`, `N1`,
+  etc.) were deliberately left untouched, per this plan's scope.
 
-### Cosmetic (10)
+### Cosmetic (10 as measured; 9 still open as of `fix/documentation-remediation` — `DOC6` fixed, struck below)
 
 Naming, ordering, dead files, or a finding that documents a working, bounded
 extraction cost rather than a defect.
@@ -93,8 +103,9 @@ extraction cost rather than a defect.
   measurements: `cache` lifts alone (`EXT1`/`EXT6`), `email` lifts with 2
   named companions confirmed by closure (`EXT2`/`EXT5`), and the per-module
   npm-package list (`EXT8`) — reference data, not defects.
-- **DOC6** — `spaceship`'s `CLAUDE.md` test-naming note omits one of two
+- ~~**DOC6**~~ — `spaceship`'s `CLAUDE.md` test-naming note omits one of two
   legacy-named spec files; an incomplete inventory, not a false claim.
+  **Fixed by `fix/documentation-remediation`** — see the `DOC6` entry below.
 
 ## What this audit asks
 
@@ -307,12 +318,12 @@ is accurate, and the one guide in this audit that gets to say so.
 
 | ID | Finding |
 |----|---------|
-| **DOC1** | **`src/push-notification/CLAUDE.md` asserts behaviour the code does not have.** Rule 6 (`:57`) reads "Failures throw `PushNotificationException`, which is an `HttpException`..." and the `## Tests` section (`:74-76`) repeats it: "assert chunking behaviour and the thrown `PushNotificationException`." `M15` established `grep -rn "new PushNotificationException" src` returns nothing — the class is defined and type-checked against but never constructed; `ExpoAdapterService`'s two `catch` blocks (`src/push-notification/expo-adapter/expo-adapter.service.ts:76-82,111-116`) re-throw the raw SDK error or the adapter's own `InternalServerErrorException` instead. The guide's own `## Known gaps` never lists this (it cites `N1`, `N2`, `N3`, `D4`, `G1`, `N5` — not `M15`), so an agent reading only the module guide has no way to learn the rule it just read is fiction. |
-| **DOC2** | **`src/queues/CLAUDE.md`'s `## Reuse` section (`:93-100`) understates the module's extraction cost on two independent axes — the most damaging kind of documentation defect, because an agent will act on it.** (a) Line 95 claims "`abstract/` depends only on `@nestjs/common`" — false: `abstract/producer/queue-producer.service.ts:2-3`, `abstract/producer/queue-producer.module.ts:7`, `abstract/consumer/queue-consumer.adapter.ts:2-3` and `abstract/consumer/queue-consumer.module.ts:18` all import `LoggerService`/`NestLoggerAdapter` from `src/common/observability/logger/` — a real intra-repo module dependency the section never names. (b) The section never mentions `queues.module.ts` at all, even though the module's own `## Scope` calls it "the wired default." That file imports `redisScope`/`RedisScopeConfig` from the app-root `../redis.scope` (`:7`) and five symbols from `spaceship` (`:8-15` — `SPACESHIP_NOTIFICATION_QUEUE`, `SpaceshipNotificationProcessor`, `NotificationRecipientsAbstractModule`, `ConfigNotificationRecipientsProvider`, `notificationRecipientsScope`). `M2`/`M3` and `EXT3`/`EXT4` already established this is not a trimmable detail: the module's real closure is 11 of the template's 13 top-level `src/` directories plus `src/redis.scope.ts`, and `EXT4` calls it "does not lift." An agent following the Reuse section's literal instructions — "Copy `abstract/` plus the adapter directories you want" — comes away believing queues costs at most a Redis scope file, never learning that the wired module `## Scope` just described cannot be extracted at all without carrying the app root and a demo feature module along with it. (`## Known gaps` does disclose the `spaceship` coupling in general terms — "imports a domain-specific recipients module" — but `## Reuse` is the section a lifting agent actually reads, and it is silent.) |
-| **DOC3** | **`src/common/CLAUDE.md`'s `## Reuse` section (`:77-79`) omits `common`'s only real extraction dependency.** It says the interceptor needs "`rxjs` and `express` types," which reads as, and is satisfied by, the ordinary `@types/express` npm package. `EXT7` found the actual dependency is a global ambient-type augmentation the template ships at the repo root, `@types/express/index.d.ts` (`declare namespace Express { interface User { id: string } }`), loaded only because `tsconfig.json:21` sets `"typeRoots": ["@types", "./node_modules/@types"]`; without copying that file and that `tsconfig.json` setting, `src/common/middleware/response.interceptor.ts:40` (`user.id`) does not type-check in a fresh project. Confirmed by grep: neither `src/common/CLAUDE.md` nor `src/common/README.md` contains the strings `@types/express`, `typeRoots` or "augmentation." |
-| **DOC4** | **`src/common/observability/logger/CLAUDE.md:86` undercounts what `abstract/` needs to lift.** It claims "`abstract/` and `nest-adapter/` need only `@nestjs/common`," but `abstract/logger-abstract.module.ts:8` imports `ClassConstructor` from the npm package `class-transformer` (a real dependency, `package.json:59`). Smaller and same-shape as `DOC3`: the Reuse section undercounts what a lift actually needs. |
-| **DOC5** | **The root `CLAUDE.md`'s "Known template-wide gaps" section (`:145-167`) contains defects that are themselves stale.** (a) `:150-151` — "`pnpm run build` and `pnpm run lint` both fail on `master` right now" is false: this audit's own gate table (measured at `ea4d7e1`, the branch point, on `master`) shows `pnpm run build` PASSES exit 0 and `pnpm exec eslint` returns 0 errors — every agent that starts a session in this repo is told the build is red when it is green. (b) `:161` — "**`B2`** — `package.json` declares `dotenv` twice" is false: `package.json` declares `dotenv` exactly once, both here (`:61`) and on `master` (`:60`); the 2026-09-11 audit's `B2` (a duplicate at lines 38/49 there) has been fixed without anyone striking it through anywhere it is cited. (c) `:164-165` — "even though all 120 tests pass" is stale: this audit's own gate table records 36 suites / 295 tests passing at the branch point, and 120 appears nowhere in the source `G2` finding either. (d) `B3` (`:162-163`, `apk`/`prisma` in the `Dockerfile`) and `TS1` (`:166-167`, no `"strict": true`) were re-verified and remain accurate and current — not every line in this section is wrong, only three of the eight. The Commands block (`:47-58`) was checked key-for-key against `package.json`'s `scripts` and matches exactly, `modularity:check` included. The module map lists every `CLAUDE.md` that exists and no guide that does not (`diff` against `find src -name CLAUDE.md`: clean). `T5`'s "four files still violate this" matches `M1`'s count exactly. (e) A fifth stale claim, outside the "Known template-wide gaps" section this finding otherwise scopes to: the `## Conventions` section's `Tests` bullet (`CLAUDE.md:132-133`) reads "The four `*.spec.ts` files are legacy (finding `N4`)" — there are five, not four. `find src -name "*.spec.ts" ! -name "*.unit.spec.ts"` returns `src/app.controller.spec.ts`, `src/auth/email/email.controller.spec.ts`, `src/spaceship/spaceship.controller.spec.ts`, `src/spaceship/spaceship.service.spec.ts` and `src/queues/abstract/tests/queues.module.di.spec.ts` — five files, matching this audit's own `N4` reconciliation row (`### Prior-audit reconciliation`, below), which already records the fifth file added since 2026-09-11. `DOC5` otherwise scoped its pass to the module map, Commands block and Known-gaps section (per this section's evidence line), so the Conventions section escaped that pass; recorded here rather than opening a new ID for the same defect shape. |
-| **DOC6** | **`src/spaceship/CLAUDE.md`'s `N4` note is incomplete.** `:135-136` (and `## Tests`, `:83-84`) say `spaceship.repository.unit.spec.ts` "has been renamed" and that `spaceship.service.spec.ts` "is still legacy-named," but never mention `src/spaceship/spaceship.controller.spec.ts`, which the source `N4` finding also names and which still carries the legacy `*.spec.ts` name unchanged (`ls src/spaceship/*.spec.ts` shows both `.controller.spec.ts` and `.service.spec.ts` still present). The guide presents its own test suite as one file away from clean when a second legacy-named file sits in the same directory. |
+| **DOC1** | ~~**`src/push-notification/CLAUDE.md` asserts behaviour the code does not have.** Rule 6 (`:57`) reads "Failures throw `PushNotificationException`, which is an `HttpException`..." and the `## Tests` section (`:74-76`) repeats it: "assert chunking behaviour and the thrown `PushNotificationException`." `M15` established `grep -rn "new PushNotificationException" src` returns nothing — the class is defined and type-checked against but never constructed; `ExpoAdapterService`'s two `catch` blocks (`src/push-notification/expo-adapter/expo-adapter.service.ts:76-82,111-116`) re-throw the raw SDK error or the adapter's own `InternalServerErrorException` instead. The guide's own `## Known gaps` never lists this (it cites `N1`, `N2`, `N3`, `D4`, `G1`, `N5` — not `M15`), so an agent reading only the module guide has no way to learn the rule it just read is fiction.~~ **Fixed by `fix/documentation-remediation` (commit `d9f7def`):** rule 6 now reads "Failures do **not** throw `PushNotificationException`... See `M15`," and `## Known gaps` cites `M15` directly. Re-tested: `grep -rn "new PushNotificationException" src` still returns nothing — the code defect (`M15`) is unchanged and out of this plan's scope; only the guide's false claim was corrected. |
+| **DOC2** | ~~**`src/queues/CLAUDE.md`'s `## Reuse` section (`:93-100`) understates the module's extraction cost on two independent axes — the most damaging kind of documentation defect, because an agent will act on it.** (a) Line 95 claims "`abstract/` depends only on `@nestjs/common`" — false: `abstract/producer/queue-producer.service.ts:2-3`, `abstract/producer/queue-producer.module.ts:7`, `abstract/consumer/queue-consumer.adapter.ts:2-3` and `abstract/consumer/queue-consumer.module.ts:18` all import `LoggerService`/`NestLoggerAdapter` from `src/common/observability/logger/` — a real intra-repo module dependency the section never names. (b) The section never mentions `queues.module.ts` at all, even though the module's own `## Scope` calls it "the wired default." That file imports `redisScope`/`RedisScopeConfig` from the app-root `../redis.scope` (`:7`) and five symbols from `spaceship` (`:8-15` — `SPACESHIP_NOTIFICATION_QUEUE`, `SpaceshipNotificationProcessor`, `NotificationRecipientsAbstractModule`, `ConfigNotificationRecipientsProvider`, `notificationRecipientsScope`). `M2`/`M3` and `EXT3`/`EXT4` already established this is not a trimmable detail: the module's real closure is 11 of the template's 13 top-level `src/` directories plus `src/redis.scope.ts`, and `EXT4` calls it "does not lift." An agent following the Reuse section's literal instructions — "Copy `abstract/` plus the adapter directories you want" — comes away believing queues costs at most a Redis scope file, never learning that the wired module `## Scope` just described cannot be extracted at all without carrying the app root and a demo feature module along with it. (`## Known gaps` does disclose the `spaceship` coupling in general terms — "imports a domain-specific recipients module" — but `## Reuse` is the section a lifting agent actually reads, and it is silent.)~~ **Fixed by `fix/documentation-remediation` (commit `d9f1c97`):** `## Reuse` now states plainly that `abstract/` needs `src/common/observability/logger/` and names the four importing files, and adds a dedicated paragraph stating `queues.module.ts` "does **not** lift," naming the `redis.scope`/`spaceship` imports and citing `M2`/`M3`/`EXT3`/`EXT4` directly. Re-tested by reading the current section: both axes are now covered. |
+| **DOC3** | ~~**`src/common/CLAUDE.md`'s `## Reuse` section (`:77-79`) omits `common`'s only real extraction dependency.** It says the interceptor needs "`rxjs` and `express` types," which reads as, and is satisfied by, the ordinary `@types/express` npm package. `EXT7` found the actual dependency is a global ambient-type augmentation the template ships at the repo root, `@types/express/index.d.ts` (`declare namespace Express { interface User { id: string } }`), loaded only because `tsconfig.json:21` sets `"typeRoots": ["@types", "./node_modules/@types"]`; without copying that file and that `tsconfig.json` setting, `src/common/middleware/response.interceptor.ts:40` (`user.id`) does not type-check in a fresh project. Confirmed by grep: neither `src/common/CLAUDE.md` nor `src/common/README.md` contains the strings `@types/express`, `typeRoots` or "augmentation."~~ **Fixed by `fix/documentation-remediation` (commit `d9f1c97`):** the section now names the ambient augmentation, `@types/express/index.d.ts`, the exact `tsconfig.json` `typeRoots` setting that loads it, and cites `EXT7`. Re-tested: `grep -n "typeRoots\|@types/express\|augmentation" src/common/CLAUDE.md` now matches. |
+| **DOC4** | ~~**`src/common/observability/logger/CLAUDE.md:86` undercounts what `abstract/` needs to lift.** It claims "`abstract/` and `nest-adapter/` need only `@nestjs/common`," but `abstract/logger-abstract.module.ts:8` imports `ClassConstructor` from the npm package `class-transformer` (a real dependency, `package.json:59`). Smaller and same-shape as `DOC3`: the Reuse section undercounts what a lift actually needs.~~ **Fixed by `fix/documentation-remediation` (commit `d9f1c97`):** `:86-87` now reads "`abstract/` needs `@nestjs/common` and `class-transformer` (`logger-abstract.module.ts` imports `ClassConstructor` from it); `nest-adapter/` needs only `@nestjs/common`" — more precise than the finding's own wording, since only `abstract/` (not `nest-adapter/`) needs `class-transformer`. Re-tested by reading the current line. |
+| **DOC5** | ~~**The root `CLAUDE.md`'s "Known template-wide gaps" section (`:145-167`) contains defects that are themselves stale.** (a) `:150-151` — "`pnpm run build` and `pnpm run lint` both fail on `master` right now" is false: this audit's own gate table (measured at `ea4d7e1`, the branch point, on `master`) shows `pnpm run build` PASSES exit 0 and `pnpm exec eslint` returns 0 errors — every agent that starts a session in this repo is told the build is red when it is green. (b) `:161` — "**`B2`** — `package.json` declares `dotenv` twice" is false: `package.json` declares `dotenv` exactly once, both here (`:61`) and on `master` (`:60`); the 2026-09-11 audit's `B2` (a duplicate at lines 38/49 there) has been fixed without anyone striking it through anywhere it is cited. (c) `:164-165` — "even though all 120 tests pass" is stale: this audit's own gate table records 36 suites / 295 tests passing at the branch point, and 120 appears nowhere in the source `G2` finding either. (d) `B3` (`:162-163`, `apk`/`prisma` in the `Dockerfile`) and `TS1` (`:166-167`, no `"strict": true`) were re-verified and remain accurate and current — not every line in this section is wrong, only three of the eight. The Commands block (`:47-58`) was checked key-for-key against `package.json`'s `scripts` and matches exactly, `modularity:check` included. The module map lists every `CLAUDE.md` that exists and no guide that does not (`diff` against `find src -name CLAUDE.md`: clean). `T5`'s "four files still violate this" matches `M1`'s count exactly. (e) A fifth stale claim, outside the "Known template-wide gaps" section this finding otherwise scopes to: the `## Conventions` section's `Tests` bullet (`CLAUDE.md:132-133`) reads "The four `*.spec.ts` files are legacy (finding `N4`)" — there are five, not four. `find src -name "*.spec.ts" ! -name "*.unit.spec.ts"` returns `src/app.controller.spec.ts`, `src/auth/email/email.controller.spec.ts`, `src/spaceship/spaceship.controller.spec.ts`, `src/spaceship/spaceship.service.spec.ts` and `src/queues/abstract/tests/queues.module.di.spec.ts` — five files, matching this audit's own `N4` reconciliation row (`### Prior-audit reconciliation`, below), which already records the fifth file added since 2026-09-11. `DOC5` otherwise scoped its pass to the module map, Commands block and Known-gaps section (per this section's evidence line), so the Conventions section escaped that pass; recorded here rather than opening a new ID for the same defect shape.~~ **Fixed by `fix/documentation-remediation` (commit `13140ef`):** all five parts corrected — (a) the gaps section now opens "All four gates pass on `master`," citing this audit's gate table; (b) `B2` is struck as fixed, citing `DOC5`; (c) the "120 tests" claim is gone; (d) `B3`/`TS1` were left intact, correctly, since they remain open; (e) the Conventions `Tests` bullet now reads "The remaining `*.spec.ts` files are legacy," no longer citing a wrong count. Re-tested: `grep -n "120\|dotenv twice\|fail on \`master\`\|both fail" CLAUDE.md` returns nothing. |
+| **DOC6** | ~~**`src/spaceship/CLAUDE.md`'s `N4` note is incomplete.** `:135-136` (and `## Tests`, `:83-84`) say `spaceship.repository.unit.spec.ts` "has been renamed" and that `spaceship.service.spec.ts` "is still legacy-named," but never mention `src/spaceship/spaceship.controller.spec.ts`, which the source `N4` finding also names and which still carries the legacy `*.spec.ts` name unchanged (`ls src/spaceship/*.spec.ts` shows both `.controller.spec.ts` and `.service.spec.ts` still present). The guide presents its own test suite as one file away from clean when a second legacy-named file sits in the same directory.~~ **Fixed by `fix/documentation-remediation` (commit `d9f7def`):** the `N4` note (`:135-137`) now names both `spaceship.controller.spec.ts` and `spaceship.service.spec.ts` as still legacy-named. Re-tested: `grep -n "controller.spec.ts\|service.spec.ts" src/spaceship/CLAUDE.md` shows both files named together at `:84-85` and in the `## Known gaps` entry. |
 
 12 of the 16 `CLAUDE.md` files were read in full for this section (all four
 Step-5 targets, the root file, `cache` and `email` as reference points,
@@ -338,9 +349,10 @@ opening the source file in each case rather than trusting the guide's prose.
 Findings continue the documentation series at **DOC7**.
 
 **Prior findings `D1`–`D4`, re-verified against `964eb88`: all four still
-open, unfixed since 2026-09-11.**
+open, unfixed since 2026-09-11 — and all four subsequently fixed by
+`fix/documentation-remediation` (re-tested by Task 12, see each entry).**
 
-- **`D1`** — `src/cloud-storage/README.md` still documents a
+- ~~**`D1`** — `src/cloud-storage/README.md` still documents a
   `src/modules/infrastructure/cloud-storage/` tree with
   `cloud-storage.module.ts`, `cloud-storage-orchestrator.service.ts`,
   `cloud-storage.targets.ts`, `cloud-storage.tokens.ts`,
@@ -349,18 +361,31 @@ open, unfixed since 2026-09-11.**
   these exist; the real tree is `src/cloud-storage/abstract/`,
   `s3-adapter/`, `local-adapter/` with no orchestrator, targets enum, tokens
   file or IPFS adapter anywhere. `src/cloud-storage/CLAUDE.md`'s own "Known
-  gaps" already carries this finding verbatim.
-- **`D2`** — `src/email/README.md` still documents `utils/email-logger.adapter.ts`
+  gaps" already carries this finding verbatim.~~ **Fixed (commit `244afc7`):**
+  the never-built orchestrator/targets/tokens/IPFS sections were deleted
+  outright (nothing to correct — they described code that was never
+  written), and the directory tree plus the `forRootAsync` example were
+  corrected to the real `abstract/`/`s3-adapter/`/`local-adapter/` shape.
+  Re-tested: `grep -n "src/modules/infrastructure\|cloud-storage-orchestrator\|cloud-storage.targets\|cloud-storage.tokens\|cloud-storage.config.ts\|IPFSAdapterService" src/cloud-storage/README.md` returns nothing.
+- ~~**`D2`** — `src/email/README.md` still documents `utils/email-logger.adapter.ts`
   (`:38`, `:88`), `abstract/email-logger.interface.ts` (`:24`) and
   `src/config/email.config.ts` (`:90`, `:145`). None exist (confirmed both by
   the Step 1 mechanical grep, which flags `src/config/email.config.ts` as
   the one `MISSING:` path across all 12 READMEs, and by `find src/email
-  -type f`). The real config file is `src/email/config/email.scope.ts`.
-- **`D3`** — `src/config-provider/README.md:25` still names
+  -type f`). The real config file is `src/email/config/email.scope.ts`.~~
+  **Fixed (commit `244afc7`):** the two nonexistent logger files were
+  deleted (never built), the config path was corrected to
+  `src/email/config/email.scope.ts`, and the previously-undocumented
+  `src/email/utils/execute-html-email-send.ts` was documented in their
+  place. Re-tested: `grep -n "email-logger.adapter.ts\|email-logger.interface.ts\|src/config/email.config.ts" src/email/README.md` returns nothing.
+- ~~**`D3`** — `src/config-provider/README.md:25` still names
   `config-provider-error-codes.ts`; the real file is
   `src/config-provider/abstract/config-provider.error.ts`
-  (`find src/config-provider -type f`).
-- **`D4`** — `@nestjs/config`'s `ConfigType<...>` is still taught, unfixed, in
+  (`find src/config-provider -type f`).~~ **Fixed (commit `244afc7`):**
+  renamed to the real file, `src/config-provider/abstract/config-provider.error.ts`.
+  Re-tested: `grep -n "config-provider-error-codes.ts" src/config-provider/README.md`
+  returns nothing; the real file still exists at that path.
+- ~~**`D4`** — `@nestjs/config`'s `ConfigType<...>` is still taught, unfixed, in
   four READMEs: `src/cache/README.md:65`, `src/cloud-storage/README.md:92,101`,
   `src/email/README.md:82,97-98` and `src/push-notification/README.md:59,69` (plus
   every `registerAsync` example in the last one). `src/common/observability/logger/README.md:82`
@@ -368,15 +393,23 @@ open, unfixed since 2026-09-11.**
   original `D4` did not name, first surfaced by this task's grep.
   `grep '"@nestjs/config"' package.json` returns nothing — the package is not
   installed, so every one of these examples fails to compile if followed
-  literally.
+  literally.~~ **Fixed (commit `1dc5870`):** every `ConfigType<...>` example
+  across all five READMEs was replaced with the real `config-provider`
+  registration pattern (`defineConfigScope` / `@Inject(xScope.KEY)`).
+  Re-tested: `grep -rln "ConfigType<" src/cache/README.md
+  src/cloud-storage/README.md src/email/README.md
+  src/push-notification/README.md
+  src/common/observability/logger/README.md` returns nothing, and
+  `grep -c '"@nestjs/config"' package.json` is still `0` (correctly never
+  installed).
 
 **New findings.**
 
 | ID | Finding |
 |----|---------|
-| **DOC7** | **`src/queues/README.md` is completely silent about the module's real extraction cost — worse than its own `CLAUDE.md` (`DOC2`), which at least mentions the coupling in passing.** `grep -n "spaceship\|redis.scope\|Reuse\|lift\|extract\|companion\|copy" src/queues/README.md` returns three hits, none relevant (`companion` inside "the cross-broker read-side companion to retries"; `lift`/`lifted` describing SQS header handling). The README has no `## Reuse` section at all, unlike `cache`, `cloud-storage`, `config-provider`, `email` and `templating`'s guides. It documents the producer/consumer contracts, all three adapters (BullMQ, RabbitMQ, SQS) and their broker-specific behavior in real depth and with real accuracy (every registration example checked against `queue-producer.interfaces.ts` / `queue-consumer.interfaces.ts` matches exactly), but a reader deciding whether to lift `queues` — the one document a non-agent reader would consult — gets zero indication that `queues.module.ts` (the module's own "wired default", per its `CLAUDE.md` Scope) imports the demo module `spaceship` and the app-root `src/redis.scope.ts`, or that the module's real closure is 11 of 13 top-level `src/` directories (`M2`, `M3`, `EXT3`, `EXT4` — `EXT4`: "does not lift"). This is a stronger silence than `DOC2` found in the agent guide, whose "Known gaps" section at least names the `spaceship` coupling "in general terms." |
-| **DOC8** | **`src/common/observability/logger/README.md`'s two `Registration` examples import from a path alias that does not exist in this project.** Lines 64-65 and 76-77: `import { LoggerAbstractModule } from '@/common/observability/logger/abstract/logger-abstract.module';` (and the `NestLoggerAdapter`/`PinoLoggerAdapter` siblings). `cat tsconfig.json` has no `"paths"` key at all — only `baseUrl: "./"` — so `@/...` resolves to nothing; confirmed by `grep -rn "from '@/" src --include='*.ts'`, which returns zero hits anywhere in the real source tree, and by checking `package.json`/no `nest-cli.json` alias config. A developer copying either example verbatim gets an unresolvable import. (`src/cloud-storage/README.md` uses the same `@/modules/infrastructure/...` alias twice, but that is already covered by `D1`'s fictional-path finding; this is the first time the `@/` alias itself, independent of `D1`'s fictional directory, is named as the defect.) |
-| **DOC9** | **`src/push-notification/README.md` carries five independent internal drifts, in addition to the already-known `D4`.** (a) Two import statements (`:171`, `:197`) read `import { PushNotificationAbstractModule } from './push-notification/push-notification-abstract.module';` — wrong on two counts: missing the `/abstract/` path segment, and missing the `.ts` suffix the doubled-extension file (`push-notification-abstract.module.ts.ts`, finding `N1`) requires in the import specifier. The README gets this right once, at `:60` (`'./push-notification/abstract/push-notification-abstract.module.ts'`, matching what `src/app.module.ts` actually does), then wrong twice later. (b) `import { ExpoAdapterModule } from './adapters/expo-adapter.module';` (`:172`, `:198`) — the real path is `./push-notification/expo-adapter/expo-adapter.module`; no `adapters/` directory exists anywhere in `src/`. (c) `:211` — `customController: [YourController], // Registers the custom controller` names an option the module does not have. `src/push-notification/abstract/push-notification-abstract.module.ts.ts:16` shows the real `forRoot` option is `controllers?: Type<any>[]`, not `customController`; this is drift in the option name itself, not merely the path around it, and is not covered by any `M`-series finding since the module *does* have the feature — the README just names it wrong. (d) The directory tree (`:27`) lists `expo-adapter-config.provider.const.ts`; the real file (`find src/push-notification -type f`) is `expo-adapter-config-provider.const.ts` (hyphen, not dot, before `provider`). (e) `## Installation` (`:48`) reads literally `npm expo-server-sdk` — not valid syntax for any package manager (missing `install`/`add`), and if corrected would still be `npm`, not `pnpm`; every other README's install instructions correctly use `pnpm add` (`src/common/observability/logger/README.md:159-160,296,324,332`, `src/config-provider/README.md:274`). This line is why the brief's own Step 2 grep (`npm install\|npm run\|yarn `) is not sufficient by itself — it does not match `npm expo-server-sdk` because the line has no `install`/`run` keyword, so this hit surfaced only by reading the file. Checked separately per brief item 4: this README does **not** repeat `DOC1`'s/`M15`'s false claim that `PushNotificationException` is thrown — the string never appears in the file at all, so the human guide does not carry that particular falsehood, only these five. |
+| **DOC7** | ~~**`src/queues/README.md` is completely silent about the module's real extraction cost — worse than its own `CLAUDE.md` (`DOC2`), which at least mentions the coupling in passing.** `grep -n "spaceship\|redis.scope\|Reuse\|lift\|extract\|companion\|copy" src/queues/README.md` returns three hits, none relevant (`companion` inside "the cross-broker read-side companion to retries"; `lift`/`lifted` describing SQS header handling). The README has no `## Reuse` section at all, unlike `cache`, `cloud-storage`, `config-provider`, `email` and `templating`'s guides. It documents the producer/consumer contracts, all three adapters (BullMQ, RabbitMQ, SQS) and their broker-specific behavior in real depth and with real accuracy (every registration example checked against `queue-producer.interfaces.ts` / `queue-consumer.interfaces.ts` matches exactly), but a reader deciding whether to lift `queues` — the one document a non-agent reader would consult — gets zero indication that `queues.module.ts` (the module's own "wired default", per its `CLAUDE.md` Scope) imports the demo module `spaceship` and the app-root `src/redis.scope.ts`, or that the module's real closure is 11 of 13 top-level `src/` directories (`M2`, `M3`, `EXT3`, `EXT4` — `EXT4`: "does not lift"). This is a stronger silence than `DOC2` found in the agent guide, whose "Known gaps" section at least names the `spaceship` coupling "in general terms."~~ **Fixed by `fix/documentation-remediation` (commits `cd29e72`, `c0ad1ef`):** the README now opens with a forward pointer ("Before you lift this...") and carries a full `## Reuse` section stating what lifts (`abstract/` and its non-DI-coupled tests) and what does not (`queues.module.ts`, naming the `redis.scope`/`spaceship` imports and the 11-of-13-directory closure). Re-tested: `grep -n "spaceship\|redis.scope\|Reuse\|lift\|extract\|companion\|copy" src/queues/README.md` now returns 15+ substantive hits including a dedicated `## Reuse` section. |
+| **DOC8** | ~~**`src/common/observability/logger/README.md`'s two `Registration` examples import from a path alias that does not exist in this project.** Lines 64-65 and 76-77: `import { LoggerAbstractModule } from '@/common/observability/logger/abstract/logger-abstract.module';` (and the `NestLoggerAdapter`/`PinoLoggerAdapter` siblings). `cat tsconfig.json` has no `"paths"` key at all — only `baseUrl: "./"` — so `@/...` resolves to nothing; confirmed by `grep -rn "from '@/" src --include='*.ts'`, which returns zero hits anywhere in the real source tree, and by checking `package.json`/no `nest-cli.json` alias config. A developer copying either example verbatim gets an unresolvable import. (`src/cloud-storage/README.md` uses the same `@/modules/infrastructure/...` alias twice, but that is already covered by `D1`'s fictional-path finding; this is the first time the `@/` alias itself, independent of `D1`'s fictional directory, is named as the defect.)~~ **Fixed by `fix/documentation-remediation` (commit `1dc5870`):** both examples now import via relative paths (`./common/observability/logger/abstract/logger-abstract.module`, etc.), matching the project's real `baseUrl`-only resolution. Re-tested: `grep -n "@/" src/common/observability/logger/README.md` returns nothing, and `grep -rn "from '@/" src --include='*.ts'` still confirms the alias is used nowhere in real source either. |
+| **DOC9** | ~~**`src/push-notification/README.md` carries five independent internal drifts, in addition to the already-known `D4`.** (a) Two import statements (`:171`, `:197`) read `import { PushNotificationAbstractModule } from './push-notification/push-notification-abstract.module';` — wrong on two counts: missing the `/abstract/` path segment, and missing the `.ts` suffix the doubled-extension file (`push-notification-abstract.module.ts.ts`, finding `N1`) requires in the import specifier. The README gets this right once, at `:60` (`'./push-notification/abstract/push-notification-abstract.module.ts'`, matching what `src/app.module.ts` actually does), then wrong twice later. (b) `import { ExpoAdapterModule } from './adapters/expo-adapter.module';` (`:172`, `:198`) — the real path is `./push-notification/expo-adapter/expo-adapter.module`; no `adapters/` directory exists anywhere in `src/`. (c) `:211` — `customController: [YourController], // Registers the custom controller` names an option the module does not have. `src/push-notification/abstract/push-notification-abstract.module.ts.ts:16` shows the real `forRoot` option is `controllers?: Type<any>[]`, not `customController`; this is drift in the option name itself, not merely the path around it, and is not covered by any `M`-series finding since the module *does* have the feature — the README just names it wrong. (d) The directory tree (`:27`) lists `expo-adapter-config.provider.const.ts`; the real file (`find src/push-notification -type f`) is `expo-adapter-config-provider.const.ts` (hyphen, not dot, before `provider`). (e) `## Installation` (`:48`) reads literally `npm expo-server-sdk` — not valid syntax for any package manager (missing `install`/`add`), and if corrected would still be `npm`, not `pnpm`; every other README's install instructions correctly use `pnpm add` (`src/common/observability/logger/README.md:159-160,296,324,332`, `src/config-provider/README.md:274`). This line is why the brief's own Step 2 grep (`npm install\|npm run\|yarn `) is not sufficient by itself — it does not match `npm expo-server-sdk` because the line has no `install`/`run` keyword, so this hit surfaced only by reading the file. Checked separately per brief item 4: this README does **not** repeat `DOC1`'s/`M15`'s false claim that `PushNotificationException` is thrown — the string never appears in the file at all, so the human guide does not carry that particular falsehood, only these five.~~ **Fixed by `fix/documentation-remediation` (commit `210e890`, plus a sixth drift found during remediation and fixed in commit `79d9fbf`):** (a)-(e) all corrected — imports now include `/abstract/` and the `.ts` suffix; `ExpoAdapterModule`'s import path is the real one; the option is now `controllers: [CustomNotificationController]`, matching `controllers?: Type<any>[]`; the directory tree lists the real hyphenated filename; and `## Installation` now reads `pnpm add expo-server-sdk`. **A sixth drift, not part of the original five, was found while fixing this file and is recorded here for an honest count and history:** the "Enabling a Custom Controller" example imported `CustomNotificationController` (`:199`) but its `forRoot` call referenced an undefined `YourController` (`:212`) — a self-inconsistent example the original five-drift review did not catch because it checked paths and option names, not identifier agreement within one example. Fixed in commit `79d9fbf` by making both identifiers agree on `CustomNotificationController`. Re-tested: `grep -n "push-notification-abstract.module\|ExpoAdapterModule\|customController\|expo-adapter-config\|npm \|pnpm add\|YourController" src/push-notification/README.md` shows all paths correct, no `customController` or `YourController` remaining, and `pnpm add` in place of `npm`. |
 
 **Modules with no finding above, checked in full.** `src/cache/README.md`
 (registration examples for `forRoot`/`forRootAsync` and the `RedisAdapterConfig`
@@ -436,7 +469,7 @@ Judged module by module:
   never says so explicitly.** `src/spaceship/CLAUDE.md:6` opens "**This module
   exists to be copied**" as a worked *example*, and its own `## Reuse` section
   (`:90`) is explicit: "Do not copy this module into a project. Delete it, and
-  copy its *shape*." A module whose own guide tells a reader not to lift it as
+  copy its *shape*:" A module whose own guide tells a reader not to lift it as
   a unit has a coherent reason to skip a human-facing "how to lift this"
   guide — the inconsistency `DOC7` flags for `queues` (silence where the
   module actually is meant to be lifted) does not apply here.
@@ -452,12 +485,21 @@ Judged module by module:
   `src/auth/CLAUDE.md:142-155` likewise ships a full `## Reuse` section (what
   four things to port first, the peer-dependency list, how to drop
   `google`/`auth0` cleanly) — again, the same kind of content every
-  README-bearing module puts in its human guide. `src/auth` now fronts three
-  independent login methods (email, Google, Auth0, per its own `## Scope`),
-  making it one of the larger, more consequential modules in the template by
-  surface area — and a developer deciding *whether to adopt this module's auth
-  strategy at all*, as opposed to an agent already committed to editing it,
-  has no human-facing document to read. Given both `auth` and `database`
+  README-bearing module puts in its human guide. `src/auth`'s own `## Scope`
+  names three login methods (email, Google, Auth0), but only two are actually
+  implemented: `src/auth/email/email.controller.ts` and `src/auth/auth.service.ts`
+  are both empty scaffolds (finding `R3`), confirmed by reading both files.
+  **Correction (Task 12):** this section's original phrasing here, "now
+  fronts three independent login methods," overstated that by one — Google
+  and Auth0 are the two working, independently-droppable providers. No guide
+  was ever wrong about this: `src/auth/CLAUDE.md:147` already stated the
+  email scaffold's status plainly, predating this audit. The looseness was
+  this audit's own prose, corrected in place rather than struck, since
+  nothing was ever fixed. Either way, `src/auth` is one of the larger, more
+  consequential modules in the template by surface area — and a developer
+  deciding *whether to adopt this module's auth strategy at all*, as opposed
+  to an agent already committed to editing it, has no human-facing document
+  to read. Given both `auth` and `database`
   document their extraction cost in agent-only form with no stated reason,
   this reads as a documentation gap the template should either close (write
   the READMEs) or own explicitly (state in each `CLAUDE.md`, as `spaceship`'s
@@ -519,11 +561,21 @@ confirmed present for every module carrying a guide, per the root
 `pnpm run docs:check` instruction is itself correct against
 `bitbucket-pipelines.yml:15` and `package.json`.
 
-**`DOC10` — the root README serves neither of the two workflows the template
+~~**`DOC10` — the root README serves neither of the two workflows the template
 exists for, misattributes the work in its closing sections, and contradicts
-itself on package manager. Three parts, one finding.**
+itself on package manager. Three parts, one finding.**~~
 
-*(a) Misattribution and a false legal claim.* `README.md:86-88` ("Nest is an
+**Fixed by `fix/documentation-remediation` (commits `0f07a8c`, `019e165`,
+`2bbbfa9`):** part (a)'s boilerplate was deleted (lines 1-27 and 86-98,
+including the false `LICENSE` link and the `nestjs/nest` misattribution;
+README 98 → 70 lines), keeping and extending only the accurate 12-line
+"SpaceDev template documentation" section; part (b)'s `npm` commands were
+all converted to `pnpm`, removing the self-contradiction; part (c)'s two
+missing workflows were both written, growing the README from 71 to 145
+lines. Re-tested below, part by part; the detailed evidence in (a)-(c) is
+left as the historical record of what was found.
+
+*(a) Misattribution and a false legal claim.* ~~`README.md:86-88` ("Nest is an
 MIT-licensed open source project... If you'd like to join them, please read
 more here", linking `docs.nestjs.com/support`), `:90-94` ("Author - [Kamil
 Myśliwiec]", "Twitter - @nestframework") and `:96-98` ("Nest is
@@ -539,10 +591,15 @@ such file or directory" — there is no LICENSE file in the repo at all. Note
 for scope: this audit does not take a position on what license (if any) this
 internal template should carry, or draft replacement text — only that the
 document currently asserts an unverifiable/false legal fact and misattributes
-the work; that determination is not the auditor's to make.
+the work; that determination is not the auditor's to make.~~ **Fixed:** all
+three sections (`:86-88`, `:90-94`, `:96-98`) were deleted along with the
+rest of the unmodified boilerplate; the license question was correctly left
+open for the repo owner rather than answered unilaterally. Re-tested:
+`grep -n -i "license" README.md` returns nothing, and `grep -n "Kamil\|Nest is"
+README.md` returns nothing.
 
 *(b) The pnpm/npm contradiction, including a same-file self-contradiction.*
-`README.md:44-46` ("## Installation", `$ npm install`), `:62-71` ("## Running
+~~`README.md:44-46` ("## Installation", `$ npm install`), `:62-71` ("## Running
 the app", `$ npm run start` / `start:dev` / `start:prod`) and `:75-84`
 ("## Test", `$ npm run test` / `test:e2e` / `test:cov`) all use `npm`. Every
 other authority disagrees: `CLAUDE.md:48` states "pnpm 10.15.1, Node
@@ -558,18 +615,30 @@ section's own accurate content, already tells the reader to run `pnpm run
 docs:check` — so the same file instructs the same reader to install with
 `npm` at line 45 and to run a script with `pnpm` at line 40. This is `D5`'s
 pnpm/npm observation, still open and now cited with exact line numbers on
-both sides plus the same-file self-contradiction `D5` did not note.
+both sides plus the same-file self-contradiction `D5` did not note.~~
+**Fixed:** every command in the README now uses `pnpm`. Re-tested:
+`grep -nE '(^|[^p])npm (install|run)|\$ npm' README.md` returns nothing
+(exit 1); `grep -n "pnpm" README.md` shows the install, run and test
+sections all converted.
 
 *(c) Neither of the two workflows the template exists to serve is
 documented, and this audit's own measurements are what would make both
-recipes writable.* The file has no section addressing either "pull one
+recipes writable.* ~~The file has no section addressing either "pull one
 module into another Nest project" or "clone this repo and delete what you
 don't need" — confirmed by reading all 98 lines; the only content about the
 template's structure is the 12-line "SpaceDev template documentation"
 section, which points a reader at the per-module guides but supplies no
-catalogue, no extraction-cost data and no deletion order itself.
+catalogue, no extraction-cost data and no deletion order itself.~~ **Fixed:**
+both recipes below (`Workflow 1`/`Workflow 2`) are now written into the
+README as `## Use a module in another project` and `## Clone the template
+and strip what you don't need`. Re-tested: `grep -n "^## " README.md` shows
+both headings present. **Correction (Task 12, fix round 1):** the
+`Workflow 1`/`Workflow 2` bullets below assert, sentence by sentence, that
+this data is absent from the README — that is no longer true of any of it,
+so they are struck through in full below, the same as (a)-(c) above, rather
+than left standing as if still live.
 
-- **Workflow 1 — lift a module into an existing project.** The README names
+- **Workflow 1 — lift a module into an existing project.** ~~The README names
   no per-module extraction cost anywhere, even though this audit's Task 4
   extraction probes already produced exactly that data in reproducible form:
   `EXT1` shows `cache` lifts with **zero** companion directories (`cp -r
@@ -590,17 +659,22 @@ catalogue, no extraction-cost data and no deletion order itself.
   task's Step 4). None of this — which modules are cheap to lift, which are
   not, and the one non-import dependency extraction can hit — appears in the
   root README, and every number above is already measured and citable by ID;
-  the recipe the README is missing does not need new investigation to write.
+  the recipe the README is missing does not need new investigation to write.~~
+  **Fixed (Task 9, commit `2bbbfa9`):** `README.md`'s `## Use a module in
+  another project` now states the `@types`/`typeRoots` step explicitly and
+  gives the `cache`/`email`/`queues` numbers (`EXT1`, `EXT5`, `EXT3`/`EXT4`)
+  by name. Re-tested by reading that section in full against the numbers
+  above — they match.
 
-- **Workflow 2 — clone and strip.** Nobody has documented this workflow
+- **Workflow 2 — clone and strip.** ~~Nobody has documented this workflow
   anywhere in the repo (confirmed: `grep -rn "strip\|delete.*module\|remove
   this module" README.md CLAUDE.md` returns nothing relevant). This audit's
-  own findings answer every question such a recipe would need to raise:
-  - *Which directories are demo/reference, not template infrastructure.*
+  own findings answer every question such a recipe would need to raise:~~
+  - ~~*Which directories are demo/reference, not template infrastructure.*
     `src/spaceship/CLAUDE.md:1` is literally titled "Spaceship — reference
     domain module," and `:90` gives the workflow its own named first step in
     words the root README never repeats: "Do not copy this module into a
-    project. Delete it, and copy its *shape*." `src/templates/` is partially
+    project. Delete it, and copy its *shape*:" `src/templates/` is partially
     demo content, not wholly: `src/templates/template.const.ts` registers
     three templates, `WELCOME` and `VERIFICATION` (generic onboarding/auth,
     used regardless of `spaceship`) alongside `SPACESHIP_CREATED`, whose
@@ -614,8 +688,12 @@ catalogue, no extraction-cost data and no deletion order itself.
     `current-user.decorator.ts` plus "an empty `src/user/user.module.ts`
     that nothing imports," citing prior finding `R3`
     (`docs/audit/2026-09-11-template-audit.md:81`) — dead scaffolding a
-    stripped-down clone would otherwise inherit unexamined.
-  - *What `src/app.module.ts` and `.env.example` need edited after each
+    stripped-down clone would otherwise inherit unexamined.~~ **Fixed** —
+    `README.md`'s clone-and-strip section now names `spaceship` as the
+    demo module to delete (quoting `src/spaceship/CLAUDE.md:90` directly)
+    and correctly scopes the `src/templates/` deletion to
+    `src/templates/spaceship/` rather than the whole directory.
+  - ~~*What `src/app.module.ts` and `.env.example` need edited after each
     deletion.* Concretely, for `spaceship` alone: `src/app.module.ts:32`
     (`import { SpaceshipModule } from './spaceship/spaceship.module'`),
     `:55` (`notificationRecipientsScope` import), `:56`
@@ -625,22 +703,35 @@ catalogue, no extraction-cost data and no deletion order itself.
     (`NOTIFICATION_EMPLOYEE_EMAILS`, `SPACESHIP_LIST_CACHE_TTL_SECONDS`) are
     both `spaceship`-only env vars that would become dead configuration if
     left behind. None of this is in the README or in `spaceship`'s own
-    guide (which describes what to keep, not what else references it).
-  - *What breaks if you delete a module something else imports.* This is
+    guide (which describes what to keep, not what else references it).~~
+    **Fixed** — the README now lists all six `src/app.module.ts` reference
+    points (lines 32, 55-56, 80-81, 98) and both `.env.example` variables
+    to remove.
+  - ~~*What breaks if you delete a module something else imports.* This is
     exactly what Task 3's import graph and `M5` already answer: `(app)`,
     `queues` and `spaceship` form one mutually-dependent cycle (`M5`), so
     deleting any one of the three without also removing the other two leaves
     an unresolvable import — a fact a stripping developer needs *before*
     deleting `spaceship` on `src/spaceship/CLAUDE.md:90`'s advice, not after
-    hitting a build error.
+    hitting a build error.~~ **Fixed** — the README now states the
+    `(app)`/`queues`/`spaceship` cycle (`M2`, `M3`, `M5`) explicitly before
+    the deletion steps, and tells the reader to re-run
+    `pnpm run modularity:check -- --report` rather than trust a stale copy
+    of the graph.
 
-  The point of citing `EXT1`, `EXT3`, `EXT4`, `EXT7`, `M5`, `R3` and
+  ~~The point of citing `EXT1`, `EXT3`, `EXT4`, `EXT7`, `M5`, `R3` and
   `src/spaceship/CLAUDE.md:90` together is that a "clone and strip" recipe
   and a "lift one module" catalogue are both writable today from data this
   audit already produced — the gap is that nobody has written them into the
   one document a new consumer of this template would actually open first.
   This finding does not draft that content; establishing that it is missing,
-  and that the material to write it exists, is the deliverable.
+  and that the material to write it exists, is the deliverable.~~ **Fixed by
+  `fix/documentation-remediation` (commit `2bbbfa9`):** both recipes this
+  finding said were writable-but-missing are now written, using the exact
+  IDs and data cited throughout this finding. Re-tested by reading
+  `README.md`'s `## Use a module in another project` and `## Clone the
+  template and strip what you don't need` sections in full against every
+  claim above.
 
 ### Prior-audit reconciliation
 
@@ -671,11 +762,11 @@ it; its own strike-throughs are the prior author's record, not this one's.
 | **N5** | Still open | Re-verified by Task 5: `find src -type d -name mocks` still returns only `src/cache/abstract/mocks`. |
 | **N6** | Still open, now tracked as `M1` | Absolute `src/...` imports — this audit re-scoped and re-verified the same defect as `M1` (Task 3): four files, six specifiers, unchanged count from 2026-09-11. |
 | **N7** | Still open | `EmailTemplateService` (`src/email/abstract/templates.abstract.ts`) and `TemplateRenderer`/`TEMPLATE_RENDERER` (`src/templates/template-renderer.interface.ts`) both still exist; `grep -rn "EmailTemplateService\|TemplateRenderer\b\|TEMPLATE_RENDERER" src --include='*.ts'` matches only their own definitions, no callers. Not re-verified elsewhere; first checked here. |
-| **D1** | Still open | Re-verified by Task 7 under `### Human guides (README.md)`: `src/cloud-storage/README.md` still documents a `src/modules/infrastructure/cloud-storage/` tree that does not exist. |
-| **D2** | Still open | Re-verified by Task 7: `src/email/README.md` still documents `utils/email-logger.adapter.ts`, `abstract/email-logger.interface.ts` and `src/config/email.config.ts`, none of which exist. |
-| **D3** | Still open | Re-verified by Task 7: `src/config-provider/README.md:25` still names `config-provider-error-codes.ts`; the real file is `abstract/config-provider.error.ts`. |
-| **D4** | Still open, gained a fifth file | Re-verified by Task 7: four READMEs still teach `@nestjs/config`'s `ConfigType<...>`, plus a fifth this task's own grep surfaced, `src/common/observability/logger/README.md:82`. `@nestjs/config` is confirmed still not a dependency. |
-| **D5** | Still open, detailed further | The `### Root README` subsection (Task 8, finding `DOC10`) re-verified both halves: lines 1-27 and 86-98 of `README.md` remain unmodified `nestjs/nest` boilerplate, and the `npm install`/`pnpm` contradiction is still live — now cited with exact line numbers on both sides plus a same-file self-contradiction (`README.md:40` runs a `pnpm` command four lines below the `npm install` instruction) that `D5` itself did not note. |
+| **D1** | ~~Still open~~ **Fixed** (`fix/documentation-remediation`, commit `244afc7`) | Re-verified by Task 7 under `### Human guides (README.md)`: `src/cloud-storage/README.md` still documents a `src/modules/infrastructure/cloud-storage/` tree that does not exist. **Task 12 re-test:** the fictional tree was deleted and the real one documented; `grep -n "src/modules/infrastructure\|IPFSAdapterService" src/cloud-storage/README.md` now returns nothing. |
+| **D2** | ~~Still open~~ **Fixed** (`fix/documentation-remediation`, commit `244afc7`) | Re-verified by Task 7: `src/email/README.md` still documents `utils/email-logger.adapter.ts`, `abstract/email-logger.interface.ts` and `src/config/email.config.ts`, none of which exist. **Task 12 re-test:** all three nonexistent paths removed; `grep -n "email-logger.adapter.ts\|email-logger.interface.ts\|src/config/email.config.ts" src/email/README.md` now returns nothing. |
+| **D3** | ~~Still open~~ **Fixed** (`fix/documentation-remediation`, commit `244afc7`) | Re-verified by Task 7: `src/config-provider/README.md:25` still names `config-provider-error-codes.ts`; the real file is `abstract/config-provider.error.ts`. **Task 12 re-test:** renamed; `grep -n "config-provider-error-codes.ts" src/config-provider/README.md` now returns nothing. |
+| **D4** | ~~Still open, gained a fifth file~~ **Fixed** (`fix/documentation-remediation`, commit `1dc5870`) | Re-verified by Task 7: four READMEs still teach `@nestjs/config`'s `ConfigType<...>`, plus a fifth this task's own grep surfaced, `src/common/observability/logger/README.md:82`. `@nestjs/config` is confirmed still not a dependency. **Task 12 re-test:** all five READMEs rewritten to the real `config-provider` pattern; `grep -rln "ConfigType<" src/cache/README.md src/cloud-storage/README.md src/email/README.md src/push-notification/README.md src/common/observability/logger/README.md` now returns nothing. |
+| **D5** | ~~Still open, detailed further~~ **Fixed** (`fix/documentation-remediation`, commits `0f07a8c`, `019e165`) | The `### Root README` subsection (Task 8, finding `DOC10`) re-verified both halves: lines 1-27 and 86-98 of `README.md` remain unmodified `nestjs/nest` boilerplate, and the `npm install`/`pnpm` contradiction is still live — now cited with exact line numbers on both sides plus a same-file self-contradiction (`README.md:40` runs a `pnpm` command four lines below the `npm install` instruction) that `D5` itself did not note. **Task 12 re-test:** the boilerplate (including the false `LICENSE` link) was deleted and every command converted to `pnpm`; `grep -n -i "license" README.md` and `grep -nE '(^|[^p])npm (install|run)|\$ npm' README.md` both return nothing. |
 | **C1** | Still open | `.env.example` (30 lines, read in full) still omits `NODE_ENV`, `PORT`, `SELF_URL`, `JWT_SECRET`, `JWT_EXPIRES_IN`, `JWT_IGNORE_EXPIRATION`, `DB_HOST`, `DB_PORT`, `DB_USER`, `DB_PASS`, `DB_NAME`, `DB_SYNCHRONIZE`, `DB_LOGGING`, `EMAIL_ADAPTER`, `RESEND_API_KEY`, `RESEND_EMAIL_FROM`, `AWS_SES_REGION`, `AWS_S3_EXPIRES_IN_SECONDS`, `EXPO_ACCESS_TOKEN` and `GOOGLE_OAUTH_CALLBACK_URL`. Of the original list, only `AWS_REGION` has since been added. |
 | **C2** | Still open | `src/auth/config/jwt.scope.ts:12` — `secret: Joi.string().default('Not A Safe Secret')`, unchanged. |
 | **C3** | Still open | `grep -n origin src/main.ts` → `:12` `origin: '*'`, unchanged, no environment control. |
@@ -694,8 +785,15 @@ it; its own strike-throughs are the prior author's record, not this one's.
 | **G1** | Partially fixed | New unit tests exist since 2026-09-11: `src/auth/auth0/auth0.service.unit.spec.ts` and `src/email/abstract/email-abstract.module.unit.spec.ts`. Still no tests for the jwt strategy, the google service, the auth-token service, the `database` module factory, any concrete email adapter (`aws-ses`/`resend`/`sendgrid`), `push-notification`, `templating`, any `cache` adapter, or `common/middleware`. |
 | **G2** | Partially fixed | `grep -n 'pnpm test' bitbucket-pipelines.yml` returns nothing — `pnpm test` still never runs in CI, unchanged. But the finding's own premise is now half-stale: `bitbucket-pipelines.yml:15` already runs `pnpm run docs:check` before `lint`/`build`, and Step 3 of this task adds `pnpm run modularity:check` at `:16` — a third non-test gate sits in the pipeline today, while the test gate this finding named is still off. Turning it on is a scoped decision of its own, not made on this audit branch. |
 
-**Tally: 7 fixed (`B1`, `B2`, `L1`, `L2`, `R1`, `R2`, `R4`), 22 still open
+~~**Tally: 7 fixed (`B1`, `B2`, `L1`, `L2`, `R1`, `R2`, `R4`), 22 still open
 (`B3`, `N1`-`N7`, `D1`-`D5`, `C1`-`C5`, `TS1`-`TS3`, `R3`), 3 partially fixed
-(`L3`, `G1`, `G2`), 0 superseded** — `N6` is carried forward under a new ID
+(`L3`, `G1`, `G2`), 0 superseded**~~ — `N6` is carried forward under a new ID
 (`M1`) rather than replaced by a different verdict, so it is recorded as
 "still open," not "superseded."
+
+**Updated tally (Task 12, `fix/documentation-remediation`):** `D1`-`D5` are
+now fixed (see the rows above), so as of this branch the count is **12
+fixed** (`B1`, `B2`, `D1`-`D5`, `L1`, `L2`, `R1`, `R2`, `R4`), **17 still
+open** (`B3`, `N1`-`N7`, `C1`-`C5`, `TS1`-`TS3`, `R3`), 3 partially fixed
+(`L3`, `G1`, `G2`), 0 superseded. The original tally above is left struck
+rather than deleted, per this document's own citation rule.

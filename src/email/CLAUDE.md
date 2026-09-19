@@ -113,8 +113,11 @@ See `docs/audit/2026-09-11-template-audit.md`.
   `awsConfig` and `ConfigType`, none of which is imported; the app does not
   compile. It should use the already-imported `emailScope`.~~ **Fixed by
   switching the factory to the already-registered `emailScope`.**
-- **`D2`** — `src/email/README.md` documents `utils/email-logger.adapter.ts`,
+- **`D2`** — ~~`src/email/README.md` documents `utils/email-logger.adapter.ts`,
   `abstract/email-logger.interface.ts` and `!src/config/email.config.ts`, none of
-  which exist, and still teaches `@nestjs/config`.
+  which exist, and still teaches `@nestjs/config`.~~ **Fixed:** the README now
+  points at the real `src/email/config/email.scope.ts`, drops the fictional
+  logger-adapter/interface and the `@nestjs/config` example, and documents
+  `src/email/utils/execute-html-email-send.ts`.
 - **`N7`** — `abstract/templates.abstract.ts` is dead code.
 - **`N5`**, **`G1`** — no mocks, no tests.

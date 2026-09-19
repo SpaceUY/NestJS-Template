@@ -81,9 +81,9 @@ a `Test.createTestingModule` with the repository replaced through
 method, `jest.clearAllMocks()` in `afterEach`. Every branch gets a case —
 including the `null` return.
 
-`spaceship.service.spec.ts` is still named `*.spec.ts`, the legacy convention
-(finding `N4`); `spaceship.repository.unit.spec.ts` has been renamed to the
-current one. New tests are `*.unit.spec.ts`.
+`spaceship.controller.spec.ts` and `spaceship.service.spec.ts` are still named
+`*.spec.ts`, the legacy convention (finding `N4`); `spaceship.repository.unit.spec.ts`
+has been renamed to the current one. New tests are `*.unit.spec.ts`.
 
 ## Reuse
 
@@ -133,8 +133,8 @@ See `docs/audit/2026-09-11-template-audit.md`.
   `404`~~. **Fixed:** `findByUuidOrFail` now throws `RequestException` via
   `Exceptions.spaceship.notFound`.
 - **`N4`** — ~~both test files use the legacy `*.spec.ts` name~~. **Partially
-  fixed:** `spaceship.repository.unit.spec.ts` was renamed; `spaceship.service.spec.ts`
-  is still legacy-named.
+  fixed:** `spaceship.repository.unit.spec.ts` was renamed; `spaceship.controller.spec.ts`
+  and `spaceship.service.spec.ts` are still legacy-named.
 - **`N6`** — `spaceship.module.ts` imports `AuthModule` by absolute path.
 - **`R3`** — `src/user/user.module.ts` is an empty module nothing imports, yet it
   is where `current-user.decorator.ts` lives, so this module depends on that

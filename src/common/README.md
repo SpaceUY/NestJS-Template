@@ -69,6 +69,12 @@ Behavior on invalid input:
 
 ---
 
+## Reuse note
+
+`src/common/middleware/response.interceptor.ts` only type-checks because of the ambient `Express.User` augmentation the repo root ships in `@types/express/index.d.ts`, loaded via `tsconfig.json`'s `typeRoots` setting. Copy that `@types/` directory and `typeRoots` entry along with `common`, or the interceptor fails to compile.
+
+---
+
 ## Decorators
 
 ### Html
