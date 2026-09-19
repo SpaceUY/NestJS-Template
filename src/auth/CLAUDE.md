@@ -52,10 +52,10 @@ All three are registered in the `scopes` array in `src/app.module.ts`.
    ```ts
    @UseGuards(AuthGuard('jwt'))
    @ApiBearerAuth()
-   @Controller('spaceships')
-   export class SpaceshipController {
+   @Controller('me')
+   export class ProfileController {
      @Get()
-     async list(@CurrentUser() user: User): Promise<Spaceship[]> { /* … */ }
+     async profile(@CurrentUser() user: User): Promise<User> { /* … */ }
    }
    ```
    `@ApiBearerAuth()` is not optional — without it the Swagger document lies.
@@ -158,7 +158,10 @@ See `docs/audit/2026-09-11-template-audit.md`.
 - **`C5`** — raw provider errors logged on the Google token path.
 - **`R3`** — `src/auth/auth.service.ts` is an empty `@Injectable()` that
   `AuthModule` still exports; `src/auth/email/` is an empty controller and module.
-- **`N6`** — `src/auth/jwt.strategy.ts`, `src/auth/google/google.controller.ts`
+- **`N6`** — ~~`src/auth/jwt.strategy.ts`, `src/auth/google/google.controller.ts`
   and `src/auth/google/google.service.ts` use absolute `src/...` imports, against
-  invariant `T5`.
+  invariant `T5`.~~ **Fixed on `feature/queues-decoupling`** (also tracked as
+  `M1`): every specifier in those files is relative now, and
+  `docs/audit/module-independence-baseline.json` records no `abs-import`
+  entry at all, so `pnpm run modularity:check` fails on the next one.
 - **`G1`** — no tests.

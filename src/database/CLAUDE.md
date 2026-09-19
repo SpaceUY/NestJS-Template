@@ -63,7 +63,8 @@ change a key.
 8. Select the columns you need. No `SELECT *` through `find()` on wide entities
    when a `select` clause will do.
 9. Declare an explicit FK column next to a relation when the ID is read without
-   loading the relation — `Spaceship.captainId` is the pattern.
+   loading the relation: the `@ManyToOne` property plus a `@Column()` holding
+   the raw id, so a caller that only needs the id never pays for a join.
 
 ## Tests
 

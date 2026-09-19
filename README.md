@@ -31,25 +31,88 @@ The general recipe:
    destination's `tsconfig.json`. `common` depends on the ambient `Express.User`
    type declared there — see `src/common/CLAUDE.md`'s `## Reuse` section for
    the details, since this is the dependency with no import statement, so no
-   amount of reading the source will surface it.
+   amount of reading the source will surface it. (The
+   `src/common/observability/logger/` subtree on its own does not need it: the
+   queues measurement below compiled clean without `typeRoots`.)
 4. Install the module's npm packages (below).
 5. Register the module in the destination's `src/app.module.ts`, the way this
    template's own `src/app.module.ts` does.
 
+**Prerequisite — the destination's module system.** A project scaffolded today
+by `@nestjs/cli@latest` (measured 2026-09-19 against `@nestjs/cli` 12.0.3 and
+TypeScript 6.0.3) is ESM: `"type": "module"` in `package.json` and
+`"module"`/`"moduleResolution": "nodenext"` in `tsconfig.json`. That resolution
+mode requires an explicit `.js` extension on every relative import. This
+template is CommonJS — `tsconfig.json` sets `"module": "commonjs"` and
+`package.json` has no `"type"` field — and none of its source writes
+extensioned relative imports, so **no module from this template compiles in a
+default modern scaffold** until the destination either sets
+`"module": "commonjs"` or every relative import in the copied code gains a
+`.js` extension. This affects every module, not just the ones below. Evidence:
+`docs/audit/evidence/extract-queues-2026-09-19.txt`.
+
 What that costs, measured by copying each module alone into a fresh `nest new`
-project and running `tsc --noEmit` (`docs/audit/2026-09-18-modularity-audit.md`,
-`### Extraction`):
+project and running `tsc --noEmit`:
 
 - **`cache`** lifts with **zero** companion directories — `tsc --noEmit` exits
-  0 (`EXT1`). Needs the npm package `ioredis`.
+  0 (`EXT1`). Needs the npm package `ioredis`. Measured 2026-09-18
+  (`docs/audit/2026-09-18-modularity-audit.md`, `### Extraction`).
 - **`email`** lifts with **two** companions, `common` and `config-provider`
   (`EXT5`). Needs `resend`, `@sendgrid/mail`, `@aws-sdk/client-ses`, `joi`.
+  Measured 2026-09-18, same source.
+- **`queues`** lifts with **two** companions,
+  `src/common/observability/logger/` and `src/config-provider/`. Copying
+  `src/queues/` alone leaves **19** unresolved imports; with both companions
+  `tsc --noEmit` exits 0. `src/queues/` itself needs `bullmq`, `amqplib`
+  (plus `@types/amqplib`), `@aws-sdk/client-sqs` and `joi`; the companions
+  bring their own — `class-transformer`, `pino`, `winston`,
+  `@opentelemetry/api` and `@opentelemetry/sdk-trace-node` for the logger,
+  `@aws-sdk/client-secrets-manager` and `dotenv` for `config-provider`.
+  Measured 2026-09-19: `docs/audit/evidence/extract-queues-2026-09-19.txt`
+  and `extract-queues-closure-2026-09-19.txt`.
+
+The `cache` and `email` figures were measured on 2026-09-18 and have not been
+re-verified since; in particular they predate the scaffold change described
+above, which was only discovered during the 2026-09-19 `queues` measurement.
+
+`queues` is the one that changed. On 2026-09-18 it **did not lift** at all:
+copying it alone left 29 unresolved imports, and the only closure that
+compiled pulled in 11 of the template's 13 top-level `src/` directories
+(`EXT3`, `EXT4`). Removing the demo domain module and moving consumer
+registration to `QueueConsumerModule.forFeature` brought that down to the two
+companions above.
 
 **This measures compile time, not boot time.** Every result above means
 `tsc --noEmit` exits 0 — it does not mean the lifted module works once
 running. Whether, say, `cache`'s `forRootAsync` resolves when the host project
 registers no matching config scope is untested; the audit does not answer it,
 and neither does this README.
+
+## Clone the template and strip what you don't need
+
+The other supported workflow: clone the repository and delete what you don't
+need, keeping the rest wired together.
+
+There is no demo domain module to delete. Every top-level directory under
+`src/` is infrastructure, and each one comes out on its own with the same three
+edits:
+
+1. Remove its registration from `src/app.module.ts`.
+2. Remove its config scope from that file's `scopes` array.
+3. Remove its variables from `.env.example`.
+
+Two directories are worth knowing about before you start:
+
+- `src/templates/` holds two generic templates, `WELCOME` and `VERIFICATION`,
+  registered in `src/templates/template.const.ts`. Both are starting points, not
+  demo content — there is nothing here to strip.
+- `src/user/` is two unrelated files, not one module. `src/user/user.module.ts`
+  is an empty module that nothing imports and is safe to delete on its own
+  (finding `R3`). `src/user/current-user.decorator.ts` is live —
+  `src/auth/google/google.controller.ts` imports it — so it stays.
+
+Run `pnpm run modularity:check -- --report` for the current dependency graph
+before deleting anything, rather than trusting a copy of it that will drift.
 
 ## Installation
 
@@ -65,9 +128,11 @@ This project needs PostgreSQL and Redis running locally. Start both with:
 docker-compose up -d
 ```
 
-Redis backs the BullMQ background job queues (e.g. the spaceship-created
-email notification) — see `REDIS_HOST` / `REDIS_PORT` / `REDIS_PASSWORD` in
-`.env.example`. The app depends on Redis at runtime, not just in tests.
+Redis backs the BullMQ background job queues: `src/app.module.ts` wires both
+the producer and the consumer adapter against it, even though the template
+ships no queue handlers of its own. See `REDIS_HOST` / `REDIS_PORT` /
+`REDIS_PASSWORD` in `.env.example`. The app depends on Redis at runtime, not
+just in tests.
 
 ## Running the app
 

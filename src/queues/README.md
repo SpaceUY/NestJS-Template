@@ -75,10 +75,13 @@ abstract class QueueConsumerHandler<TPayload = unknown> {
 ```
 
 Handlers are registered as NestJS providers, so they can inject services through
-their constructor. Because they resolve within `QueueConsumerModule`'s own
-injector scope, their dependencies must be either globally-provided or reachable
-through a module passed to `forRootAsync`'s `imports` — a non-global provider
-from an un-imported module won't resolve.
+their constructor. Where they are provided decides where their dependencies
+resolve. Declared in the domain module and registered with
+`QueueConsumerModule.forFeature`, a handler resolves in that module's own
+injector and its collaborators need no special treatment. Passed instead to the
+root's `consumers` array, it is provided inside `QueueConsumerModule`'s own
+dynamic-module scope, so its dependencies must be globally-provided or reachable
+through a module passed to `forRootAsync`'s `imports`. See `## Registration`.
 
 ### `MessageContext`
 
@@ -120,11 +123,40 @@ QueueProducerModule.forRootAsync({
 });
 ```
 
+#### Reaching adapter-specific methods
+
+`QueueProducerService` exposes only the broker-agnostic `send`/`dispatch`.
+BullMQ's `addJob` (retry attempts, backoff) lives on the concrete adapter, so
+a project that needs it aliases the concrete class in its own wiring:
+
+```ts
+{
+  provide: BullMqProducerAdapter,
+  useFactory: (producer: QueueProducerService): BullMqProducerAdapter => {
+    if (!(producer instanceof BullMqProducerAdapter)) {
+      throw new Error(
+        `BullMqProducerAdapter was requested but the wired producer is ${producer.constructor.name}.`,
+      );
+    }
+    return producer;
+  },
+  inject: [QueueProducerService],
+}
+```
+
+The `instanceof` guard matters: a plain `useExisting` alias still compiles and
+still boots after the adapter is swapped for RabbitMQ or SQS, and the first
+`addJob` call then dies with "is not a function" in the request path. The
+template does not ship this provider — nothing in it needs BullMQ-specific
+options.
+
 ### Consumer
 
-All consumers are declared in one place via the `consumers` array. The adapter
-config can come from DI (`forRootAsync`), but the consumer class references stay
-synchronous.
+The root registration binds the adapter. It also accepts a `consumers` array,
+which declares every handler in one place; the adapter config can come from DI
+(`forRootAsync`), but those consumer class references stay synchronous. The
+array is optional — see the per-feature path below, which is the one to use
+for anything but a trivial app.
 
 ```ts
 // Synchronous
@@ -157,6 +189,42 @@ Both modules optionally inject `LoggerService` from the container and call
 context with the adapter's class name, which is safe because `LoggerService` is
 registered as `Scope.TRANSIENT`. With no `LoggerService` registered, the adapter
 keeps its own `NestLoggerAdapter` default.
+
+### Consumer — per-feature registration
+
+The root registration above provides the adapter. Each domain module then
+registers its own handlers:
+
+```ts
+// src/invoicing/invoicing-queue.module.ts
+import { Module } from '@nestjs/common';
+import { QueueConsumerModule } from '../queues/abstract/consumer/queue-consumer.module';
+import { InvoiceProcessor } from './invoice.processor';
+import { InvoiceRecipients } from './invoice-recipients.provider';
+
+@Module({
+  imports: [
+    QueueConsumerModule.forFeature([
+      { queue: 'invoices', handler: InvoiceProcessor },
+    ]),
+  ],
+  providers: [InvoiceProcessor, InvoiceRecipients],
+})
+export class InvoicingQueueModule {}
+```
+
+`forFeature` does not provide `InvoiceProcessor` — this module does. That is
+why `InvoiceRecipients`, a non-global provider, resolves without anyone
+copying it into the queue registration. The module starts consuming its own
+queues on init and stops them on shutdown, independently of every other
+feature.
+
+Two requirements: the root must be registered with `isGlobal: true`, and
+handlers must be singleton-scoped (`ModuleRef.get` resolves nothing else).
+
+A working version of exactly this graph is compiled and asserted in
+`src/queues/abstract/tests/queue-consumer-feature.module.di.spec.ts` — read
+that file rather than trusting this snippet, since it is the one CI runs.
 
 ## Acknowledgment Contract
 
