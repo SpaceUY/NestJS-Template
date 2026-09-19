@@ -24,6 +24,7 @@ const TIER_ORDER = ['platform', 'infrastructure', 'feature', 'app'];
 const TIERS = {
   common: 'platform',
   'config-provider': 'platform',
+  analytics: 'infrastructure',
   cache: 'infrastructure',
   'cloud-storage': 'infrastructure',
   database: 'infrastructure',

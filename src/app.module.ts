@@ -44,10 +44,10 @@ import {
   analyticsScope,
   AnalyticsScopeConfig,
   ANALYTICS_ADAPTERS,
-} from './common/observability/analytics/config/analytics.scope';
-import { AnalyticsAbstractModule } from './common/observability/analytics/abstract/analytics-abstract.module';
-import { PosthogAdapterService } from './common/observability/analytics/posthog-adapter/posthog-adapter.service';
-import { ConsoleAdapterService as AnalyticsConsoleAdapterService } from './common/observability/analytics/console-adapter/console-adapter.service';
+} from './analytics/config/analytics.scope';
+import { AnalyticsAbstractModule } from './analytics/abstract/analytics-abstract.module';
+import { PosthogAdapterService } from './analytics/posthog-adapter/posthog-adapter.service';
+import { ConsoleAdapterService as AnalyticsConsoleAdapterService } from './analytics/console-adapter/console-adapter.service';
 import { QueueProducerModule } from './queues/abstract/producer/queue-producer.module';
 import { QueueConsumerModule } from './queues/abstract/consumer/queue-consumer.module';
 import { BullMqProducerAdapter } from './queues/bullmq-adapter/bullmq-producer.adapter';

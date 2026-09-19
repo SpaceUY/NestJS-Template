@@ -24,7 +24,7 @@ adapter — PostHog or console — is wired at module registration time in
 
 ```ts
 import { Injectable } from '@nestjs/common';
-import { AnalyticsService } from './common/observability/analytics/abstract/analytics.service';
+import { AnalyticsService } from './analytics/abstract/analytics.service';
 
 @Injectable()
 export class SomeService {

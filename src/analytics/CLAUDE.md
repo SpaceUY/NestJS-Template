@@ -3,7 +3,7 @@
 > Inherits the repo-root `CLAUDE.md` (always loaded),
 > `docs/architecture/module-contract.md` and `src/common/CLAUDE.md`. Read those
 > first — this file adds only what is specific to
-> `src/common/observability/analytics/`.
+> `src/analytics/`.
 
 ## Scope
 
@@ -54,7 +54,7 @@ pattern of spying on the underlying client rather than booting Nest.
 
 ## Reuse
 
-Copy `src/common/observability/analytics/` whole. `abstract/` and
+Copy `src/analytics/` whole. `abstract/` and
 `console-adapter/` need only `@nestjs/common`; `posthog-adapter/` needs the
 peer dependency `posthog-node`. It depends on
 `src/config-provider/abstract/` for the scope helpers and, in the adapters,

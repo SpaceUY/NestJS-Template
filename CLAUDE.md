@@ -22,9 +22,9 @@ Before changing anything under `src/<module>/`, read `src/<module>/CLAUDE.md`.
 | `src/config-provider` | `src/config-provider/CLAUDE.md` | `src/config-provider/README.md` |
 | `src/common` | `src/common/CLAUDE.md` | `src/common/README.md` |
 | `src/common/observability/logger` | `src/common/observability/logger/CLAUDE.md` | `src/common/observability/logger/README.md` |
-| `src/common/observability/analytics` | `src/common/observability/analytics/CLAUDE.md` | `src/common/observability/analytics/README.md` |
 | `src/common/observability/telemetry` | `src/common/observability/telemetry/CLAUDE.md` | `src/common/observability/telemetry/README.md` |
 | `src/database` | `src/database/CLAUDE.md` | — |
+| `src/analytics` | `src/analytics/CLAUDE.md` | `src/analytics/README.md` |
 | `src/auth` | `src/auth/CLAUDE.md` | `src/auth/README.md` |
 | `src/cache` | `src/cache/CLAUDE.md` | `src/cache/README.md` |
 | `src/cloud-storage` | `src/cloud-storage/CLAUDE.md` | `src/cloud-storage/README.md` |

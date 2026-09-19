@@ -3,8 +3,8 @@ import { PostHog } from 'posthog-node';
 import { AnalyticsService } from '../abstract/analytics.service';
 import { CaptureEventInput } from '../abstract/analytics.interfaces';
 import { PosthogAdapterConfig } from './posthog-adapter-config.interface';
-import { LoggerService } from '../../logger/abstract/logger.service';
-import { NestLoggerAdapter } from '../../logger/nest-adapter/nest-logger.adapter';
+import { LoggerService } from '../../common/observability/logger/abstract/logger.service';
+import { NestLoggerAdapter } from '../../common/observability/logger/nest-adapter/nest-logger.adapter';
 
 @Injectable()
 export class PosthogAdapterService

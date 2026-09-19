@@ -1,6 +1,4 @@
 {
   "generated": "2026-09-19",
-  "violations": [
-    "cycle|common,config-provider"
-  ]
+  "violations": []
 }
