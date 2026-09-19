@@ -1,6 +1,5 @@
-import { Column, Entity, OneToOne } from 'typeorm';
+import { Column, Entity } from 'typeorm';
 import { AuthType } from '../../auth/core/auth-type.enum';
-import { Spaceship } from './spaceship.entity';
 import { BaseEntity } from './base.entity';
 
 @Entity()
@@ -19,7 +18,4 @@ export class User extends BaseEntity {
 
   @Column({ type: 'varchar', unique: true, nullable: true })
   auth0Id: string | null;
-
-  @OneToOne(() => Spaceship, (spaceship) => spaceship.captain)
-  ship: Spaceship;
 }

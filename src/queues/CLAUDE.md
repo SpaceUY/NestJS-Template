@@ -11,12 +11,12 @@ queues, plus the BullMQ, RabbitMQ and SQS adapters behind them. Unlike the
 single-abstract-class shape most modules use, queues are bidirectional, so
 the contract is split in two: `QueueProducerService` (publish) and
 `QueueConsumerAdapter`/`QueueConsumerHandler` (consume). BullMQ is the only
-adapter wired by default (`src/queues/queues.module.ts`); RabbitMQ and SQS
+adapter wired by default; RabbitMQ and SQS
 ship complete but unwired — see "Known gaps".
 
 Does not own: a queue's job payload shape or the business logic that runs
 when a message is handled — that's `QueueConsumerHandler` subclasses living
-with the domain module (e.g. `src/spaceship/notification/`). `src/queues/`
+with the domain module. `src/queues/`
 must stay liftable into another project on its own; a domain handler
 *living* here would break that — see "Rules" for the one place this module
 still has to name one.
@@ -50,8 +50,8 @@ adapter's own connection config and is registered in
    `dispatch` (broker-agnostic `delay`/`priority`) are needed. A consumer
    needing adapter-specific options (BullMQ `attempts`/`backoff`, etc.)
    injects the concrete adapter class directly and is coupled to that
-   broker by design — `src/spaceship/notification/notification.producer.ts`
-   is the reference. Note this coupling in the consuming module's own guide;
+   broker by design — a consuming project's own producer is the
+   reference. Note this coupling in the consuming module's own guide;
    don't hide it.
 2. `QueueConsumerModule.forRoot(Async)` takes **one** `consumers:
    ConsumerRegistration[]` array for the whole app, not a `forFeature` per
@@ -102,37 +102,10 @@ needs `bullmq` plus `src/redis.scope.ts` (or a queues-local replacement if
 lifting it without `cache/`); `rabbitmq-adapter/` needs `amqplib` (+
 `rabbitmq.scope.ts`); `sqs-adapter/` needs `@aws-sdk/client-sqs`.
 
-`queues.module.ts` — the wired default this file's "Scope" section describes
-— does **not** lift. It imports the app-root `../redis.scope` and five
-symbols from `../spaceship/notification/` (findings `M2`, `M3`). Its measured
-extraction closure is 11 of the template's 13 top-level `src/` directories
-plus `src/redis.scope.ts`; the verdict on copying it is **does not lift**
-(`EXT3`, `EXT4`) — this is not a trim-and-go, the module's own wired default
-cannot be extracted.
-
-What to actually do: copy `abstract/` plus `src/common/observability/logger/`
-and the adapter directories you want, then write your own thin wiring module
-in the destination project. Do not copy `queues.module.ts`, and never copy a
-domain module's `QueueConsumerHandler` alongside it.
-
 ## Known gaps
 
 See `docs/audit/2026-09-18-modularity-audit.md`.
 
 - RabbitMQ and SQS adapters are complete but unwired: only BullMQ is
-  registered in `queues.module.ts`. Selecting either today means writing
+  registered in `src/app.module.ts`. Selecting either today means writing
   the `QueueProducerModule`/`QueueConsumerModule` wiring yourself.
-- `queues.module.ts` names a domain handler class and imports a
-  domain-specific recipients module (see Rule 2) — a real, visible
-  deviation from "generic infra module, zero domain knowledge" that every
-  other adapter module in this template holds to. It's forced by
-  `QueueConsumerModule`'s single-registration-call API; a `forFeature`-style
-  per-domain registration (like the module-contract's other modules use)
-  would remove it, but wasn't implemented.
-- `notification.producer.ts` injecting the concrete `BullMqProducerAdapter`
-  (Rule 1) means swapping the wired adapter away from BullMQ breaks spaceship
-  notifications' retry/backoff. TypeScript cannot catch it — the alias in
-  `queues.module.ts` is resolved at runtime — so that alias guards it with an
-  `instanceof` check and throws during bootstrap instead of failing with
-  `addJob is not a function` on the first enqueue. The swap is still a real
-  coupling; it just fails loudly now.

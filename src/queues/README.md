@@ -5,10 +5,6 @@ Provider-agnostic message queues for NestJS using the same adapter pattern as
 `@nestjs/microservices`, no decorators — adapters are built directly against raw
 broker libraries (e.g. `amqplib`, AWS SDK v3).
 
-**Before you lift this:** the wired module this repo ships (`queues.module.ts`)
-does not lift into another project as-is. See [`## Reuse`](#reuse) below for
-what does lift, and what copying the rest actually costs.
-
 The module is split into two **independent** dynamic modules, each with its own
 connection to the broker:
 
@@ -16,7 +12,7 @@ connection to the broker:
 - **`QueueConsumerModule`** — consuming messages.
 
 Three concrete adapters ship alongside the abstract contracts: BullMQ, RabbitMQ
-and SQS. Only BullMQ is wired by default, in `queues.module.ts`; selecting
+and SQS. Only BullMQ is wired by default, in `src/app.module.ts`; selecting
 either of the others means writing that wiring yourself.
 
 ## Directory Structure
@@ -40,7 +36,6 @@ src/queues/
 ├── bullmq-adapter/                        # the wired default (bullmq + redisScope)
 ├── rabbitmq-adapter/                      # complete, unwired (amqplib + rabbitmqScope)
 ├── sqs-adapter/                           # complete, unwired (@aws-sdk/client-sqs)
-├── queues.module.ts                       # the one place an adapter is named
 ├── CLAUDE.md
 └── README.md
 ```
@@ -531,13 +526,7 @@ It needs `src/common/observability/logger/` alongside it:
 `LoggerService`/`NestLoggerAdapter` are imported by the producer and consumer
 services and modules. Its `tests/` folder mostly travels with it too —
 `queue-producer.module.unit.spec.ts` and `queue-consumer.module.unit.spec.ts`
-need only that same logger import — but leave `queues.module.di.spec.ts`
-behind: it imports `queues.module.ts` itself, plus
-`SpaceshipNotificationProcessor`, `EmailService`, `TemplateService`,
-`ConfigProviderAbstractModule`/`Service`, `redisScope`, `rabbitmqScope`,
-`notificationRecipientsScope` and `emailScope` — essentially the same
-unliftable closure described below, because it exists to compile the real
-wired module, not the abstract contract. Copy the one adapter directory you
+need only that same logger import. Copy the one adapter directory you
 actually need next to it — each adapter has its own extra dependency:
 `bullmq-adapter/` needs the `bullmq` package plus a Redis config scope
 (`src/redis.scope.ts`, or your own),
@@ -545,26 +534,10 @@ actually need next to it — each adapter has its own extra dependency:
 needs `@aws-sdk/client-sqs`. You do not need all three — pick the broker you
 use.
 
-**What does not lift.** `queues.module.ts`, the wired BullMQ default
-documented above, is not part of that liftable unit. It imports the app-root
-`src/redis.scope.ts` directly and pulls in five symbols from
-`src/spaceship/notification/` — this template's demo notification feature —
-to register a concrete consumer for it. Neither exists outside this template,
-so this file does not come with you.
-
-**The measured cost of taking it anyway.** Copying `src/queues/` alone into a
-fresh project and compiling it produces 29 unresolved-import errors. Closing
-all of them — making `queues.module.ts` itself compile — means also copying
-11 of this template's 13 top-level `src/` directories, plus the app-root
-`src/redis.scope.ts` file. That is not a short companion list; it is most of
-the template (measured in `docs/audit/2026-09-18-modularity-audit.md`,
-findings `EXT3`/`EXT4`).
-
 **What to do instead.** Copy `abstract/` and `src/common/observability/logger/`,
 plus the adapter directory (or directories) you need, into your project. Then
 write your own thin wiring module — a small `@Module` that calls
 `QueueProducerModule.forRootAsync(...)`/`QueueConsumerModule.forRootAsync(...)`
-with your own adapter and your own config, the same shape `queues.module.ts`
-uses for BullMQ here. Do not copy `queues.module.ts` itself, and do not copy a
-domain module's `QueueConsumerHandler` alongside it — write your own for
-whatever you're actually consuming.
+with your own adapter and your own config, the same shape `src/app.module.ts`
+uses for BullMQ here. Do not copy a domain module's `QueueConsumerHandler`
+alongside it — write your own for whatever you're actually consuming.

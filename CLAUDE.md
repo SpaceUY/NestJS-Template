@@ -33,7 +33,6 @@ Before changing anything under `src/<module>/`, read `src/<module>/CLAUDE.md`.
 | `src/templating` | `src/templating/CLAUDE.md` | `src/templating/README.md` |
 | `src/templates` | `src/templates/CLAUDE.md` | `src/templates/README.md` |
 | `src/queues` | `src/queues/CLAUDE.md` | `src/queues/README.md` |
-| `src/spaceship` | `src/spaceship/CLAUDE.md` | — |
 
 `src/user` has no guide — it holds `src/user/current-user.decorator.ts` plus an
 empty `src/user/user.module.ts` that nothing imports (finding `R3`).

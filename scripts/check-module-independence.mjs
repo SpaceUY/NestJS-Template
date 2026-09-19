@@ -32,7 +32,6 @@ const TIERS = {
   queues: 'infrastructure',
   templating: 'infrastructure',
   auth: 'feature',
-  spaceship: 'feature',
   templates: 'feature',
   user: 'feature',
   [APP_ROOT]: 'app',

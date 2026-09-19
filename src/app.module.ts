@@ -29,7 +29,6 @@ import {
   expoScope,
   ExpoScopeConfig,
 } from './push-notification/expo-adapter/config/expo.scope';
-import { SpaceshipModule } from './spaceship/spaceship.module';
 import { TemplateModule } from './templating/template.module';
 import { PugAdapterModule } from './templating/pug-adapter/pug-adapter.module';
 import { ConsoleAdapterService } from './email/console-adapter/console-adapter.service';
@@ -49,11 +48,12 @@ import {
 import { AnalyticsAbstractModule } from './common/observability/analytics/abstract/analytics-abstract.module';
 import { PosthogAdapterService } from './common/observability/analytics/posthog-adapter/posthog-adapter.service';
 import { ConsoleAdapterService as AnalyticsConsoleAdapterService } from './common/observability/analytics/console-adapter/console-adapter.service';
-import { QueuesModule } from './queues/queues.module';
+import { QueueProducerModule } from './queues/abstract/producer/queue-producer.module';
+import { QueueConsumerModule } from './queues/abstract/consumer/queue-consumer.module';
+import { BullMqProducerAdapter } from './queues/bullmq-adapter/bullmq-producer.adapter';
+import { BullMqConsumerAdapter } from './queues/bullmq-adapter/bullmq-consumer.adapter';
 import { redisScope, RedisScopeConfig } from './redis.scope';
 import { rabbitmqScope } from './queues/rabbitmq-adapter/config/rabbitmq.scope';
-import { notificationRecipientsScope } from './spaceship/notification/config/notification-recipients.scope';
-import { spaceshipCacheScope } from './spaceship/config/spaceship-cache.scope';
 import { CacheAbstractModule } from './cache/abstract/cache-abstract.module';
 import { RedisCacheAdapterService } from './cache/redis-adapter/redis-adapter.service';
 @Module({
@@ -77,13 +77,34 @@ import { RedisCacheAdapterService } from './cache/redis-adapter/redis-adapter.se
         analyticsScope,
         redisScope,
         rabbitmqScope,
-        notificationRecipientsScope,
-        spaceshipCacheScope,
       ],
     }),
     AuthModule,
     MiddlewareModule,
-    QueuesModule,
+    QueueProducerModule.forRootAsync({
+      isGlobal: true,
+      inject: [redisScope.KEY],
+      useFactory: (redis: RedisScopeConfig) =>
+        new BullMqProducerAdapter({
+          connection: {
+            host: redis.host,
+            port: redis.port,
+            password: redis.password || undefined,
+          },
+        }),
+    }),
+    QueueConsumerModule.forRootAsync({
+      isGlobal: true,
+      inject: [redisScope.KEY],
+      useFactory: (redis: RedisScopeConfig) =>
+        new BullMqConsumerAdapter({
+          connection: {
+            host: redis.host,
+            port: redis.port,
+            password: redis.password || undefined,
+          },
+        }),
+    }),
     CacheAbstractModule.forRootAsync({
       isGlobal: true,
       inject: [redisScope.KEY],
@@ -95,7 +116,6 @@ import { RedisCacheAdapterService } from './cache/redis-adapter/redis-adapter.se
           password: redis.password || undefined,
         }),
     }),
-    SpaceshipModule,
     DatabaseModule,
     LoggerAbstractModule.forRootAsync({
       isGlobal: true,

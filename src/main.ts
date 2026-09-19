@@ -24,7 +24,6 @@ async function bootstrap(): Promise<void> {
 
   const config = new DocumentBuilder()
     .setTitle('NestJS Template')
-    .addTag('spaceship')
     .addBearerAuth()
     .build();
   const document = SwaggerModule.createDocument(app, config);

@@ -34,11 +34,4 @@ export const Exceptions = {
       errorMsg: `${args.entity} with ${args.field} ${args.value} already exists`,
     }),
   },
-  spaceship: {
-    notFound: (args: { uuid: string }): ExceptionInfo => ({
-      httpStatus: HttpStatus.NOT_FOUND,
-      errorCode: 'SPACESHIP_NOT_FOUND',
-      errorMsg: `Spaceship ${args.uuid} not found`,
-    }),
-  },
 };

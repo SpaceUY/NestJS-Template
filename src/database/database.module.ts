@@ -1,7 +1,6 @@
 import { Global, Module } from '@nestjs/common';
 import { TypeOrmModule } from '@nestjs/typeorm';
 import { User } from './entities/user.entity';
-import { Spaceship } from './entities/spaceship.entity';
 import { databaseScope, DatabaseScopeConfig } from './config/database.scope';
 
 @Global()
@@ -37,7 +36,7 @@ import { databaseScope, DatabaseScopeConfig } from './config/database.scope';
         );
       },
     }),
-    TypeOrmModule.forFeature([User, Spaceship]),
+    TypeOrmModule.forFeature([User]),
   ],
   exports: [TypeOrmModule],
 })
