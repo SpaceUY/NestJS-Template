@@ -39,8 +39,8 @@ const queuesTestScope = defineConfigScope<QueuesTestScopeConfig>(
   'queuesTest',
   { host: from.env('REDIS_HOST'), port: from.env('REDIS_PORT') },
   (raw) => ({
-    host: String((raw as Record<string, unknown>).host ?? 'localhost'),
-    port: Number((raw as Record<string, unknown>).port ?? 6379),
+    host: String(raw.host ?? 'localhost'),
+    port: Number(raw.port ?? 6379),
   }),
 );
 
@@ -90,11 +90,12 @@ class InvoiceProcessor extends QueueConsumerHandler<{ invoiceId: string }> {
     payload: { invoiceId: string },
     ctx: MessageContext,
   ): Promise<void> {
-    // ctx is unused by this handler's own logic; it is accepted (and passed
-    // by the test below) only so the call shape matches what the adapter's
-    // callback contract requires in production.
-    void ctx;
     this.seen.push(`${payload.invoiceId}@${this.config.host}`);
+    // Explicit ack (rather than relying on the adapter's implicit ack on
+    // resolve) so the DI-graph test can assert this exact `ctx` — the one
+    // the feature module's bound callback was actually invoked with — was
+    // delivered to this handler instance.
+    await ctx.ack();
   }
 
   recipientCount(): number {
@@ -119,6 +120,10 @@ class InvoicingModule {}
 
 describe('QueueConsumerModule.forFeature (DI graph)', () => {
   let moduleRef: TestingModule;
+  // Captured before `init()` so it records the real call `forFeature`'s
+  // `QueueConsumerFeatureModule.onModuleInit` makes during startup, rather
+  // than a call the test triggers itself.
+  let startConsumingSpy: jest.SpyInstance;
 
   beforeAll(async () => {
     moduleRef = await Test.createTestingModule({
@@ -150,6 +155,11 @@ describe('QueueConsumerModule.forFeature (DI graph)', () => {
         InvoicingModule,
       ],
     }).compile();
+
+    const adapter = moduleRef.get<BullMqConsumerAdapter>(QueueConsumerAdapter, {
+      strict: false,
+    });
+    startConsumingSpy = jest.spyOn(adapter, 'startConsuming');
 
     await moduleRef.init();
   });
@@ -191,17 +201,8 @@ describe('QueueConsumerModule.forFeature (DI graph)', () => {
   });
 
   it('starts consuming the registered queue with the handler bound', async () => {
-    const adapter = moduleRef.get<BullMqConsumerAdapter>(QueueConsumerAdapter, {
-      strict: false,
-    });
-    const startConsuming = jest.spyOn(adapter, 'startConsuming');
-    const handler = moduleRef.get<InvoiceProcessor>(InvoiceProcessor, {
-      strict: false,
-    });
-
     // The worker was created during init(); assert against the mocked bullmq
-    // Worker constructor rather than re-running startConsuming, which is
-    // idempotent per queue.
+    // Worker constructor that the root's connection config reached it.
     const { Worker } = jest.requireMock('bullmq') as {
       Worker: jest.Mock;
     };
@@ -213,16 +214,28 @@ describe('QueueConsumerModule.forFeature (DI graph)', () => {
       }),
     );
 
-    // And the callback the feature module handed the adapter reaches the
-    // handler instance that lives in the domain module.
+    // `forFeature`'s feature module calls `adapter.startConsuming(queue,
+    // instance.handle.bind(instance))` — capture that exact call (recorded
+    // before `init()` above) and invoke the callback it handed the adapter,
+    // rather than calling `handle` on the handler directly. This is what
+    // would fail if `QueueConsumerFeatureModule` bound the wrong handler.
+    expect(startConsumingSpy).toHaveBeenCalledWith(QUEUE, expect.any(Function));
+    const [, callback] = startConsumingSpy.mock.calls[0] as [
+      string,
+      (payload: unknown, ctx: MessageContext) => Promise<void>,
+    ];
+
     const ctx = {
       headers: {},
       ack: jest.fn(async () => {}),
       nack: jest.fn(async () => {}),
     } as MessageContext;
-    await handler.handle({ invoiceId: 'INV-1' }, ctx);
-    expect(handler.seen).toEqual(['INV-1@localhost']);
+    await callback({ invoiceId: 'INV-1' }, ctx);
 
-    startConsuming.mockRestore();
+    const handler = moduleRef.get<InvoiceProcessor>(InvoiceProcessor, {
+      strict: false,
+    });
+    expect(handler.seen).toEqual(['INV-1@localhost']);
+    expect(ctx.ack).toHaveBeenCalledTimes(1);
   });
 });
