@@ -1,0 +1,540 @@
+# Evidence: adding companions to src/queues/ until tsc stops naming missing
+# template files (final companion set), in the same scratch project as
+# extract-queues-2026-09-19.txt
+# Date: 2026-09-19
+# Scratch project: /tmp/tmp.hfiDWRjwiX/probe
+#
+# Method: companions were added one at a time, re-running `pnpm exec tsc
+# --noEmit` after each, adding only what that run's errors named (a
+# directory when a template path was missing, an npm package when a bare
+# specifier was missing). Order and commands:
+#
+#   1. mkdir -p src/common/observability
+#      cp -r "$TEMPLATE/src/common/observability/logger" src/common/observability/logger
+#      pnpm exec tsc --noEmit        # still failed: bare-specifier TS2307 for
+#                                     # class-transformer, pino, winston,
+#                                     # @opentelemetry/api, @opentelemetry/sdk-trace-node
+#   2. pnpm add class-transformer pino winston @opentelemetry/api @opentelemetry/sdk-trace-node
+#      pnpm exec tsc --noEmit        # bare-specifier errors gone; remaining
+#                                     # TS2307 now name config-provider files
+#   3. cp -r "$TEMPLATE/src/config-provider" src/config-provider
+#      pnpm exec tsc --noEmit        # still failed: bare-specifier TS2307 for
+#                                     # @aws-sdk/client-secrets-manager, dotenv
+#   4. pnpm add @aws-sdk/client-secrets-manager dotenv
+#      pnpm exec tsc --noEmit        # final run — raw output below
+#
+# NOTE: only src/common/observability/logger/ was copied, not the whole of
+# src/common/ — the errors from copying src/queues/ alone named only paths
+# under common/observability/logger/, never any other src/common/ path, so
+# only that subdirectory was added, per "add only what the compiler's errors
+# actually name." A first attempt (in a separate, still-intact scratch
+# project at /tmp/tmp.EhorGOi8hK/probe) copied the whole src/common/
+# directory per the brief's literal example command; that pulled in
+# src/common/observability/telemetry/ and other unrelated common/ content
+# and produced noise (missing @opentelemetry/* packages private to
+# telemetry, a pre-existing `response.interceptor.ts` type error, etc.) not
+# caused by src/queues/'s actual closure. That attempt was abandoned in
+# place (not deleted, since rm -rf is forbidden) rather than used for this
+# measurement.
+#
+# RESULT: after adding src/common/observability/logger/ + src/config-provider/
+# (plus the npm packages above), no remaining error names a template path
+# outside {src/queues/, src/common/observability/logger/,
+# src/config-provider/} or the scaffold's own test/app.e2e-spec.ts. So the
+# measured final companion set is exactly:
+#   src/common/observability/logger/  +  src/config-provider/
+# This matches the design's predicted closure.
+#
+# HOWEVER: `pnpm exec tsc --noEmit` does NOT exit 0 with this companion set —
+# it exits 2. This file is not empty (unlike extract-cache.txt, which records
+# cache's lift as clean). All 156 remaining "error TS2307" lines below are
+# either (a) 155 same-tree relative imports missing an explicit `.js`
+# extension — required because the current `@nestjs/cli@latest` scaffold
+# generates `"type": "module"` + `moduleResolution: "nodenext"`, and none of
+# the template's own source files write extensioned relative imports — or
+# (b) the same pre-existing, unrelated test/app.e2e-spec.ts
+# "supertest/types" error noted in extract-queues-2026-09-19.txt. None of the
+# 156 name a template file outside the three copied directories. The
+# remaining non-TS2307 errors (TS2708/TS2694 "jest" namespace, TS7006
+# implicit-any, TS2339, TS18046, TS2835, TS2731) are likewise not
+# cross-module import failures — they come from the scaffold using vitest's
+# globals instead of jest's, and from the scaffold's TypeScript 6 / strict
+# settings applied to files the template itself does not compile under
+# those settings.
+#
+# CONTRADICTION TO FLAG: the brief's stopping condition ("stop at the first
+# set that exits 0") could not be reached with today's `@nestjs/cli@latest`
+# scaffold for either src/queues/ or, per the 2026-09-18 audit's
+# extract-cache.txt/extract-email-closure.txt, other modules that did reach
+# exit 0 before. This looks like scaffold drift (a newer @nestjs/cli now
+# defaults to an ESM/nodenext/vitest project) rather than a regression in
+# src/queues/'s own extractability. Companion completeness (no missing
+# cross-module file) was still cleanly determined from the errors' file
+# paths, which is what is reported here.
+#
+# error-code histogram of the final raw output below:
+#   TS2708: 180   TS2307: 156   TS2339: 52   TS7006: 37   TS2694: 20
+#   TS18046: 9    TS2835: 5     TS2731: 1
+# Total lines: 460. Exit code: 2.
+#
+# ---- raw `pnpm exec tsc --noEmit` output follows (final companion set) ----
+src/common/observability/logger/abstract/logger-abstract.module.ts(9,31): error TS2307: Cannot find module './logger.service' or its corresponding type declarations.
+src/common/observability/logger/abstract/logger-abstract.module.ts(10,34): error TS2307: Cannot find module './logger.interfaces' or its corresponding type declarations.
+src/common/observability/logger/abstract/logger-abstract.module.unit.spec.ts(2,38): error TS2307: Cannot find module './logger-abstract.module' or its corresponding type declarations.
+src/common/observability/logger/abstract/logger-abstract.module.unit.spec.ts(3,31): error TS2307: Cannot find module './logger.service' or its corresponding type declarations.
+src/common/observability/logger/abstract/logger-abstract.module.unit.spec.ts(6,16): error TS2708: Cannot use namespace 'jest' as a value.
+src/common/observability/logger/abstract/logger-abstract.module.unit.spec.ts(7,9): error TS2708: Cannot use namespace 'jest' as a value.
+src/common/observability/logger/abstract/logger-abstract.module.unit.spec.ts(8,10): error TS2708: Cannot use namespace 'jest' as a value.
+src/common/observability/logger/abstract/logger-abstract.module.unit.spec.ts(9,11): error TS2708: Cannot use namespace 'jest' as a value.
+src/common/observability/logger/abstract/logger-abstract.module.unit.spec.ts(10,11): error TS2708: Cannot use namespace 'jest' as a value.
+src/common/observability/logger/abstract/logger-abstract.module.unit.spec.ts(51,20): error TS2708: Cannot use namespace 'jest' as a value.
+src/common/observability/logger/abstract/logger-abstract.module.unit.spec.ts(131,20): error TS2708: Cannot use namespace 'jest' as a value.
+src/common/observability/logger/abstract/logger.service.ts(1,44): error TS2307: Cannot find module './logger.interfaces' or its corresponding type declarations.
+src/common/observability/logger/abstract/serialize-error.unit.spec.ts(1,56): error TS2835: Relative import paths need explicit file extensions in ECMAScript imports when '--moduleResolution' is 'node16' or 'nodenext'. Did you mean './serialize-error.js'?
+src/common/observability/logger/nest-adapter/nest-logger.adapter.ts(2,31): error TS2307: Cannot find module '../abstract/logger.service' or its corresponding type declarations.
+src/common/observability/logger/nest-adapter/nest-logger.adapter.ts(3,26): error TS2307: Cannot find module '../abstract/logger.interfaces' or its corresponding type declarations.
+src/common/observability/logger/nest-adapter/nest-logger.adapter.ts(4,40): error TS2835: Relative import paths need explicit file extensions in ECMAScript imports when '--moduleResolution' is 'node16' or 'nodenext'. Did you mean '../abstract/serialize-error.js'?
+src/common/observability/logger/nest-adapter/nest-logger.adapter.ts(22,10): error TS2339: Property 'emitTelemetry' does not exist on type 'NestLoggerAdapter'.
+src/common/observability/logger/nest-adapter/nest-logger.adapter.ts(27,10): error TS2339: Property 'emitTelemetry' does not exist on type 'NestLoggerAdapter'.
+src/common/observability/logger/nest-adapter/nest-logger.adapter.ts(33,10): error TS2339: Property 'emitTelemetry' does not exist on type 'NestLoggerAdapter'.
+src/common/observability/logger/nest-adapter/nest-logger.adapter.ts(38,10): error TS2339: Property 'emitTelemetry' does not exist on type 'NestLoggerAdapter'.
+src/common/observability/logger/nest-adapter/nest-logger.adapter.unit.spec.ts(2,35): error TS2307: Cannot find module './nest-logger.adapter' or its corresponding type declarations.
+src/common/observability/logger/nest-adapter/nest-logger.adapter.unit.spec.ts(4,1): error TS2708: Cannot use namespace 'jest' as a value.
+src/common/observability/logger/nest-adapter/nest-logger.adapter.unit.spec.ts(5,11): error TS2708: Cannot use namespace 'jest' as a value.
+src/common/observability/logger/nest-adapter/nest-logger.adapter.unit.spec.ts(6,10): error TS2708: Cannot use namespace 'jest' as a value.
+src/common/observability/logger/nest-adapter/nest-logger.adapter.unit.spec.ts(7,11): error TS2708: Cannot use namespace 'jest' as a value.
+src/common/observability/logger/nest-adapter/nest-logger.adapter.unit.spec.ts(8,12): error TS2708: Cannot use namespace 'jest' as a value.
+src/common/observability/logger/nest-adapter/nest-logger.adapter.unit.spec.ts(9,12): error TS2708: Cannot use namespace 'jest' as a value.
+src/common/observability/logger/nest-adapter/nest-logger.adapter.unit.spec.ts(16,24): error TS2694: Namespace 'global.jest' has no exported member 'Mocked'.
+src/common/observability/logger/nest-adapter/nest-logger.adapter.unit.spec.ts(19,5): error TS2708: Cannot use namespace 'jest' as a value.
+src/common/observability/logger/nest-adapter/nest-logger.adapter.unit.spec.ts(40,20): error TS2708: Cannot use namespace 'jest' as a value.
+src/common/observability/logger/nest-adapter/nest-logger.adapter.unit.spec.ts(55,20): error TS2708: Cannot use namespace 'jest' as a value.
+src/common/observability/logger/nest-adapter/nest-logger.adapter.unit.spec.ts(84,20): error TS2708: Cannot use namespace 'jest' as a value.
+src/common/observability/logger/nest-adapter/nest-logger.adapter.unit.spec.ts(99,20): error TS2708: Cannot use namespace 'jest' as a value.
+src/common/observability/logger/nest-adapter/nest-logger.adapter.unit.spec.ts(117,46): error TS2708: Cannot use namespace 'jest' as a value.
+src/common/observability/logger/nest-adapter/nest-logger.adapter.unit.spec.ts(122,20): error TS2708: Cannot use namespace 'jest' as a value.
+src/common/observability/logger/pino-adapter/pino-logger.adapter.ts(2,31): error TS2307: Cannot find module '../abstract/logger.service' or its corresponding type declarations.
+src/common/observability/logger/pino-adapter/pino-logger.adapter.ts(3,26): error TS2307: Cannot find module '../abstract/logger.interfaces' or its corresponding type declarations.
+src/common/observability/logger/pino-adapter/pino-logger.adapter.ts(4,32): error TS2835: Relative import paths need explicit file extensions in ECMAScript imports when '--moduleResolution' is 'node16' or 'nodenext'. Did you mean '../abstract/serialize-error.js'?
+src/common/observability/logger/pino-adapter/pino-logger.adapter.ts(29,10): error TS2339: Property 'emitTelemetry' does not exist on type 'PinoLoggerAdapter'.
+src/common/observability/logger/pino-adapter/pino-logger.adapter.ts(34,10): error TS2339: Property 'emitTelemetry' does not exist on type 'PinoLoggerAdapter'.
+src/common/observability/logger/pino-adapter/pino-logger.adapter.ts(39,10): error TS2339: Property 'emitTelemetry' does not exist on type 'PinoLoggerAdapter'.
+src/common/observability/logger/pino-adapter/pino-logger.adapter.ts(44,10): error TS2339: Property 'emitTelemetry' does not exist on type 'PinoLoggerAdapter'.
+src/common/observability/logger/pino-adapter/pino-logger.adapter.unit.spec.ts(1,35): error TS2307: Cannot find module './pino-logger.adapter' or its corresponding type declarations.
+src/common/observability/logger/pino-adapter/pino-logger.adapter.unit.spec.ts(4,9): error TS2708: Cannot use namespace 'jest' as a value.
+src/common/observability/logger/pino-adapter/pino-logger.adapter.unit.spec.ts(5,9): error TS2708: Cannot use namespace 'jest' as a value.
+src/common/observability/logger/pino-adapter/pino-logger.adapter.unit.spec.ts(6,10): error TS2708: Cannot use namespace 'jest' as a value.
+src/common/observability/logger/pino-adapter/pino-logger.adapter.unit.spec.ts(7,10): error TS2708: Cannot use namespace 'jest' as a value.
+src/common/observability/logger/pino-adapter/pino-logger.adapter.unit.spec.ts(10,1): error TS2708: Cannot use namespace 'jest' as a value.
+src/common/observability/logger/pino-adapter/pino-logger.adapter.unit.spec.ts(11,19): error TS2708: Cannot use namespace 'jest' as a value.
+src/common/observability/logger/pino-adapter/pino-logger.adapter.unit.spec.ts(16,27): error TS2708: Cannot use namespace 'jest' as a value.
+src/common/observability/logger/pino-adapter/pino-logger.adapter.unit.spec.ts(22,5): error TS2708: Cannot use namespace 'jest' as a value.
+src/common/observability/logger/pino-adapter/pino-logger.adapter.unit.spec.ts(51,20): error TS2708: Cannot use namespace 'jest' as a value.
+src/common/observability/logger/pino-adapter/pino-logger.adapter.unit.spec.ts(69,20): error TS2708: Cannot use namespace 'jest' as a value.
+src/common/observability/logger/pino-adapter/pino-logger.adapter.unit.spec.ts(87,20): error TS2708: Cannot use namespace 'jest' as a value.
+src/common/observability/logger/pino-adapter/pino-logger.adapter.unit.spec.ts(105,20): error TS2708: Cannot use namespace 'jest' as a value.
+src/common/observability/logger/trace-context/trace-context-logger.decorator.ts(2,31): error TS2307: Cannot find module '../abstract/logger.service' or its corresponding type declarations.
+src/common/observability/logger/trace-context/trace-context-logger.decorator.ts(3,26): error TS2307: Cannot find module '../abstract/logger.interfaces' or its corresponding type declarations.
+src/common/observability/logger/trace-context/trace-context-logger.decorator.ts(38,10): error TS2339: Property 'emitTelemetry' does not exist on type 'TraceContextLoggerDecorator'.
+src/common/observability/logger/trace-context/trace-context-logger.decorator.unit.spec.ts(3,31): error TS2307: Cannot find module '../abstract/logger.service' or its corresponding type declarations.
+src/common/observability/logger/trace-context/trace-context-logger.decorator.unit.spec.ts(4,44): error TS2307: Cannot find module '../abstract/logger.interfaces' or its corresponding type declarations.
+src/common/observability/logger/trace-context/trace-context-logger.decorator.unit.spec.ts(5,45): error TS2307: Cannot find module './trace-context-logger.decorator' or its corresponding type declarations.
+src/common/observability/logger/trace-context/trace-context-logger.decorator.unit.spec.ts(80,27): error TS2708: Cannot use namespace 'jest' as a value.
+src/common/observability/logger/trace-context/trace-context-logger.decorator.unit.spec.ts(88,36): error TS2708: Cannot use namespace 'jest' as a value.
+src/common/observability/logger/trace-context/trace-context-logger.decorator.unit.spec.ts(99,51): error TS2694: Namespace 'global.jest' has no exported member 'Mock'.
+src/common/observability/logger/winston-adapter/winston-logger.adapter.ts(2,31): error TS2307: Cannot find module '../abstract/logger.service' or its corresponding type declarations.
+src/common/observability/logger/winston-adapter/winston-logger.adapter.ts(3,26): error TS2307: Cannot find module '../abstract/logger.interfaces' or its corresponding type declarations.
+src/common/observability/logger/winston-adapter/winston-logger.adapter.ts(4,32): error TS2835: Relative import paths need explicit file extensions in ECMAScript imports when '--moduleResolution' is 'node16' or 'nodenext'. Did you mean '../abstract/serialize-error.js'?
+src/common/observability/logger/winston-adapter/winston-logger.adapter.ts(33,10): error TS2339: Property 'emitTelemetry' does not exist on type 'WinstonLoggerAdapter'.
+src/common/observability/logger/winston-adapter/winston-logger.adapter.ts(38,10): error TS2339: Property 'emitTelemetry' does not exist on type 'WinstonLoggerAdapter'.
+src/common/observability/logger/winston-adapter/winston-logger.adapter.ts(43,10): error TS2339: Property 'emitTelemetry' does not exist on type 'WinstonLoggerAdapter'.
+src/common/observability/logger/winston-adapter/winston-logger.adapter.ts(48,10): error TS2339: Property 'emitTelemetry' does not exist on type 'WinstonLoggerAdapter'.
+src/common/observability/logger/winston-adapter/winston-logger.adapter.unit.spec.ts(1,38): error TS2307: Cannot find module './winston-logger.adapter' or its corresponding type declarations.
+src/common/observability/logger/winston-adapter/winston-logger.adapter.unit.spec.ts(4,1): error TS2708: Cannot use namespace 'jest' as a value.
+src/common/observability/logger/winston-adapter/winston-logger.adapter.unit.spec.ts(7,19): error TS2708: Cannot use namespace 'jest' as a value.
+src/common/observability/logger/winston-adapter/winston-logger.adapter.unit.spec.ts(8,13): error TS2708: Cannot use namespace 'jest' as a value.
+src/common/observability/logger/winston-adapter/winston-logger.adapter.unit.spec.ts(9,13): error TS2708: Cannot use namespace 'jest' as a value.
+src/common/observability/logger/winston-adapter/winston-logger.adapter.unit.spec.ts(10,14): error TS2708: Cannot use namespace 'jest' as a value.
+src/common/observability/logger/winston-adapter/winston-logger.adapter.unit.spec.ts(11,14): error TS2708: Cannot use namespace 'jest' as a value.
+src/common/observability/logger/winston-adapter/winston-logger.adapter.unit.spec.ts(13,28): error TS2708: Cannot use namespace 'jest' as a value.
+src/common/observability/logger/winston-adapter/winston-logger.adapter.unit.spec.ts(15,16): error TS2708: Cannot use namespace 'jest' as a value.
+src/common/observability/logger/winston-adapter/winston-logger.adapter.unit.spec.ts(16,18): error TS2708: Cannot use namespace 'jest' as a value.
+src/common/observability/logger/winston-adapter/winston-logger.adapter.unit.spec.ts(17,13): error TS2708: Cannot use namespace 'jest' as a value.
+src/common/observability/logger/winston-adapter/winston-logger.adapter.unit.spec.ts(22,28): error TS2708: Cannot use namespace 'jest' as a value.
+src/common/observability/logger/winston-adapter/winston-logger.adapter.unit.spec.ts(24,65): error TS2694: Namespace 'global.jest' has no exported member 'Mocked'.
+src/common/observability/logger/winston-adapter/winston-logger.adapter.unit.spec.ts(25,14): error TS2694: Namespace 'global.jest' has no exported member 'Mock'.
+src/common/observability/logger/winston-adapter/winston-logger.adapter.unit.spec.ts(26,14): error TS2694: Namespace 'global.jest' has no exported member 'Mock'.
+src/common/observability/logger/winston-adapter/winston-logger.adapter.unit.spec.ts(27,15): error TS2694: Namespace 'global.jest' has no exported member 'Mock'.
+src/common/observability/logger/winston-adapter/winston-logger.adapter.unit.spec.ts(28,15): error TS2694: Namespace 'global.jest' has no exported member 'Mock'.
+src/common/observability/logger/winston-adapter/winston-logger.adapter.unit.spec.ts(31,43): error TS2694: Namespace 'global.jest' has no exported member 'Mocked'.
+src/common/observability/logger/winston-adapter/winston-logger.adapter.unit.spec.ts(32,16): error TS2694: Namespace 'global.jest' has no exported member 'Mock'.
+src/common/observability/logger/winston-adapter/winston-logger.adapter.unit.spec.ts(33,16): error TS2694: Namespace 'global.jest' has no exported member 'Mock'.
+src/common/observability/logger/winston-adapter/winston-logger.adapter.unit.spec.ts(34,17): error TS2694: Namespace 'global.jest' has no exported member 'Mock'.
+src/common/observability/logger/winston-adapter/winston-logger.adapter.unit.spec.ts(35,17): error TS2694: Namespace 'global.jest' has no exported member 'Mock'.
+src/common/observability/logger/winston-adapter/winston-logger.adapter.unit.spec.ts(43,5): error TS2708: Cannot use namespace 'jest' as a value.
+src/common/observability/logger/winston-adapter/winston-logger.adapter.unit.spec.ts(83,20): error TS2708: Cannot use namespace 'jest' as a value.
+src/common/observability/logger/winston-adapter/winston-logger.adapter.unit.spec.ts(101,20): error TS2708: Cannot use namespace 'jest' as a value.
+src/common/observability/logger/winston-adapter/winston-logger.adapter.unit.spec.ts(119,20): error TS2708: Cannot use namespace 'jest' as a value.
+src/common/observability/logger/winston-adapter/winston-logger.adapter.unit.spec.ts(137,20): error TS2708: Cannot use namespace 'jest' as a value.
+src/config-provider/abstract/config-provider-abstract.module.ts(7,39): error TS2835: Relative import paths need explicit file extensions in ECMAScript imports when '--moduleResolution' is 'node16' or 'nodenext'. Did you mean './config-provider-tokens.js'?
+src/config-provider/abstract/config-provider-abstract.module.ts(11,8): error TS2307: Cannot find module './config-provider.error' or its corresponding type declarations.
+src/config-provider/abstract/config-provider-abstract.module.ts(17,8): error TS2307: Cannot find module './config-provider.interfaces' or its corresponding type declarations.
+src/config-provider/abstract/config-provider-abstract.module.ts(18,39): error TS2307: Cannot find module './config-provider.service' or its corresponding type declarations.
+src/config-provider/abstract/config-provider-abstract.module.ts(19,49): error TS2307: Cannot find module './reloadable-config-provider.service' or its corresponding type declarations.
+src/config-provider/abstract/config-provider-abstract.module.ts(20,31): error TS2307: Cannot find module '../../common/observability/logger/abstract/logger.service' or its corresponding type declarations.
+src/config-provider/abstract/config-provider-abstract.module.ts(229,13): error TS18046: 'src' is of type 'unknown'.
+src/config-provider/abstract/config-provider-abstract.module.ts(230,58): error TS18046: 'src' is of type 'unknown'.
+src/config-provider/abstract/config-provider-abstract.module.ts(232,25): error TS18046: 'src' is of type 'unknown'.
+src/config-provider/abstract/config-provider-abstract.module.ts(247,38): error TS7006: Parameter 's' implicitly has an 'any' type.
+src/config-provider/abstract/config-provider-abstract.module.ts(271,11): error TS18046: 'src' is of type 'unknown'.
+src/config-provider/abstract/config-provider-abstract.module.ts(271,43): error TS18046: 'src' is of type 'unknown'.
+src/config-provider/abstract/config-provider-abstract.module.ts(281,34): error TS18046: 'src' is of type 'unknown'.
+src/config-provider/abstract/config-provider-abstract.module.ts(287,15): error TS18046: 'src' is of type 'unknown'.
+src/config-provider/abstract/config-provider-abstract.module.ts(294,38): error TS7006: Parameter 's' implicitly has an 'any' type.
+src/config-provider/abstract/config-provider-abstract.module.unit.spec.ts(2,46): error TS2307: Cannot find module './config-provider-abstract.module' or its corresponding type declarations.
+src/config-provider/abstract/config-provider-abstract.module.unit.spec.ts(3,40): error TS2307: Cannot find module './config-provider.error' or its corresponding type declarations.
+src/config-provider/abstract/config-provider-abstract.module.unit.spec.ts(4,39): error TS2307: Cannot find module './config-provider.interfaces' or its corresponding type declarations.
+src/config-provider/abstract/config-provider-abstract.module.unit.spec.ts(5,39): error TS2307: Cannot find module './config-provider.service' or its corresponding type declarations.
+src/config-provider/abstract/config-provider-abstract.module.unit.spec.ts(6,49): error TS2307: Cannot find module './reloadable-config-provider.service' or its corresponding type declarations.
+src/config-provider/abstract/config-provider-abstract.module.unit.spec.ts(7,35): error TS2307: Cannot find module './define-config-scope.util' or its corresponding type declarations.
+src/config-provider/abstract/config-provider-abstract.module.unit.spec.ts(8,25): error TS2307: Cannot find module './config-source.util' or its corresponding type declarations.
+src/config-provider/abstract/config-provider-abstract.module.unit.spec.ts(9,31): error TS2307: Cannot find module '../../common/observability/logger/abstract/logger.service' or its corresponding type declarations.
+src/config-provider/abstract/config-provider-abstract.module.unit.spec.ts(10,35): error TS2307: Cannot find module '../../common/observability/logger/nest-adapter/nest-logger.adapter' or its corresponding type declarations.
+src/config-provider/abstract/config-provider-abstract.module.unit.spec.ts(24,17): error TS2339: Property 'logger' does not exist on type 'ZeroArgAdapter'.
+src/config-provider/abstract/config-provider-abstract.module.unit.spec.ts(74,16): error TS2339: Property 'notifyReload' does not exist on type 'MockReloadableAdapter'.
+src/config-provider/abstract/config-provider-abstract.module.unit.spec.ts(90,4): error TS7006: Parameter 'raw' implicitly has an 'any' type.
+src/config-provider/abstract/config-provider-abstract.module.unit.spec.ts(259,8): error TS7006: Parameter 'raw' implicitly has an 'any' type.
+src/config-provider/abstract/config-provider.interfaces.ts(2,39): error TS2307: Cannot find module './config-provider.service' or its corresponding type declarations.
+src/config-provider/abstract/config-provider.service.ts(1,31): error TS2307: Cannot find module '../../common/observability/logger/abstract/logger.service' or its corresponding type declarations.
+src/config-provider/abstract/config-provider.service.ts(2,35): error TS2307: Cannot find module '../../common/observability/logger/nest-adapter/nest-logger.adapter' or its corresponding type declarations.
+src/config-provider/abstract/config-source.util.ts(1,41): error TS2307: Cannot find module './config-provider.interfaces' or its corresponding type declarations.
+src/config-provider/abstract/define-config-scope.util.ts(4,8): error TS2307: Cannot find module './config-provider.interfaces' or its corresponding type declarations.
+src/config-provider/abstract/reloadable-config-provider.service.ts(1,39): error TS2307: Cannot find module './config-provider.service' or its corresponding type declarations.
+src/config-provider/abstract/reloadable-config-provider.service.ts(5,8): error TS2307: Cannot find module './config-provider.error' or its corresponding type declarations.
+src/config-provider/env-adapter/env-config.adapter.ts(4,39): error TS2307: Cannot find module '../abstract/config-provider.service' or its corresponding type declarations.
+src/config-provider/env-adapter/env-config.adapter.ts(8,8): error TS2307: Cannot find module '../abstract/config-provider.error' or its corresponding type declarations.
+src/config-provider/env-adapter/env-config.adapter.ts(9,41): error TS2307: Cannot find module './env-config.interfaces' or its corresponding type declarations.
+src/config-provider/env-adapter/env-config.adapter.unit.spec.ts(3,34): error TS2307: Cannot find module './env-config.adapter' or its corresponding type declarations.
+src/config-provider/env-adapter/env-config.adapter.unit.spec.ts(7,8): error TS2307: Cannot find module '../abstract/config-provider.error' or its corresponding type declarations.
+src/config-provider/env-adapter/env-config.adapter.unit.spec.ts(9,1): error TS2708: Cannot use namespace 'jest' as a value.
+src/config-provider/env-adapter/env-config.adapter.unit.spec.ts(10,1): error TS2708: Cannot use namespace 'jest' as a value.
+src/config-provider/env-adapter/env-config.adapter.unit.spec.ts(12,46): error TS2694: Namespace 'global.jest' has no exported member 'Mock'.
+src/config-provider/env-adapter/env-config.adapter.unit.spec.ts(13,50): error TS2694: Namespace 'global.jest' has no exported member 'Mock'.
+src/config-provider/env-adapter/env-config.adapter.unit.spec.ts(14,46): error TS2694: Namespace 'global.jest' has no exported member 'Mock'.
+src/config-provider/env-adapter/env-config.adapter.unit.spec.ts(21,5): error TS2708: Cannot use namespace 'jest' as a value.
+src/config-provider/secrets-manager-adapter/secrets-manager-config.adapter.ts(9,8): error TS2307: Cannot find module '../abstract/config-provider.error' or its corresponding type declarations.
+src/config-provider/secrets-manager-adapter/secrets-manager-config.adapter.ts(10,49): error TS2307: Cannot find module '../abstract/reloadable-config-provider.service' or its corresponding type declarations.
+src/config-provider/secrets-manager-adapter/secrets-manager-config.adapter.ts(11,46): error TS2307: Cannot find module './secrets-manager-config.interfaces' or its corresponding type declarations.
+src/config-provider/secrets-manager-adapter/secrets-manager-config.adapter.ts(108,16): error TS2339: Property 'notifyReload' does not exist on type 'SecretsManagerConfigAdapter'.
+src/config-provider/secrets-manager-adapter/secrets-manager-config.adapter.unit.spec.ts(2,45): error TS2307: Cannot find module './secrets-manager-config.adapter' or its corresponding type declarations.
+src/config-provider/secrets-manager-adapter/secrets-manager-config.adapter.unit.spec.ts(6,8): error TS2307: Cannot find module '../abstract/config-provider.error' or its corresponding type declarations.
+src/config-provider/secrets-manager-adapter/secrets-manager-config.adapter.unit.spec.ts(8,18): error TS2708: Cannot use namespace 'jest' as a value.
+src/config-provider/secrets-manager-adapter/secrets-manager-config.adapter.unit.spec.ts(10,1): error TS2708: Cannot use namespace 'jest' as a value.
+src/config-provider/secrets-manager-adapter/secrets-manager-config.adapter.unit.spec.ts(11,25): error TS2708: Cannot use namespace 'jest' as a value.
+src/config-provider/secrets-manager-adapter/secrets-manager-config.adapter.unit.spec.ts(14,26): error TS2708: Cannot use namespace 'jest' as a value.
+src/config-provider/secrets-manager-adapter/secrets-manager-config.adapter.unit.spec.ts(14,56): error TS7006: Parameter 'input' implicitly has an 'any' type.
+src/config-provider/secrets-manager-adapter/secrets-manager-config.adapter.unit.spec.ts(34,20): error TS2708: Cannot use namespace 'jest' as a value.
+src/config-provider/secrets-manager-adapter/secrets-manager-config.adapter.unit.spec.ts(176,24): error TS2708: Cannot use namespace 'jest' as a value.
+src/config-provider/secrets-manager-adapter/secrets-manager-config.adapter.unit.spec.ts(188,20): error TS2708: Cannot use namespace 'jest' as a value.
+src/config-provider/secrets-manager-adapter/secrets-manager-config.adapter.unit.spec.ts(189,19): error TS2708: Cannot use namespace 'jest' as a value.
+src/queues/abstract/consumer/queue-consumer-feature.module.ts(3,38): error TS2307: Cannot find module './queue-consumer.adapter' or its corresponding type declarations.
+src/queues/abstract/consumer/queue-consumer-feature.module.ts(4,38): error TS2307: Cannot find module './queue-consumer.handler' or its corresponding type declarations.
+src/queues/abstract/consumer/queue-consumer-feature.module.ts(5,38): error TS2307: Cannot find module './queue-consumer.interfaces' or its corresponding type declarations.
+src/queues/abstract/consumer/queue-consumer.adapter.ts(1,32): error TS2307: Cannot find module './queue-consumer.interfaces' or its corresponding type declarations.
+src/queues/abstract/consumer/queue-consumer.adapter.ts(2,31): error TS2307: Cannot find module '../../../common/observability/logger/abstract/logger.service' or its corresponding type declarations.
+src/queues/abstract/consumer/queue-consumer.adapter.ts(3,35): error TS2307: Cannot find module '../../../common/observability/logger/nest-adapter/nest-logger.adapter' or its corresponding type declarations.
+src/queues/abstract/consumer/queue-consumer.handler.ts(1,32): error TS2307: Cannot find module './queue-consumer.interfaces' or its corresponding type declarations.
+src/queues/abstract/consumer/queue-consumer.interfaces.ts(2,38): error TS2307: Cannot find module './queue-consumer.adapter' or its corresponding type declarations.
+src/queues/abstract/consumer/queue-consumer.interfaces.ts(3,38): error TS2307: Cannot find module './queue-consumer.handler' or its corresponding type declarations.
+src/queues/abstract/consumer/queue-consumer.module.ts(11,38): error TS2307: Cannot find module './queue-consumer.adapter' or its corresponding type declarations.
+src/queues/abstract/consumer/queue-consumer.module.ts(12,38): error TS2307: Cannot find module './queue-consumer.handler' or its corresponding type declarations.
+src/queues/abstract/consumer/queue-consumer.module.ts(17,8): error TS2307: Cannot find module './queue-consumer.interfaces' or its corresponding type declarations.
+src/queues/abstract/consumer/queue-consumer.module.ts(18,31): error TS2307: Cannot find module '../../../common/observability/logger/abstract/logger.service' or its corresponding type declarations.
+src/queues/abstract/consumer/queue-consumer.module.ts(22,8): error TS2307: Cannot find module './queue-consumer-feature.module' or its corresponding type declarations.
+src/queues/abstract/producer/queue-delivery-options.util.ts(1,38): error TS2307: Cannot find module './queue-producer.interfaces' or its corresponding type declarations.
+src/queues/abstract/producer/queue-delivery-options.util.ts(5,8): error TS2307: Cannot find module './queue-producer.error' or its corresponding type declarations.
+src/queues/abstract/producer/queue-delivery-options.util.ts(31,45): error TS2731: Implicit conversion of a 'symbol' to a 'string' will fail at runtime. Consider wrapping this expression in 'String(...)'.
+src/queues/abstract/producer/queue-producer.interfaces.ts(2,38): error TS2307: Cannot find module './queue-producer.service' or its corresponding type declarations.
+src/queues/abstract/producer/queue-producer.module.ts(2,38): error TS2307: Cannot find module './queue-producer.service' or its corresponding type declarations.
+src/queues/abstract/producer/queue-producer.module.ts(6,8): error TS2307: Cannot find module './queue-producer.interfaces' or its corresponding type declarations.
+src/queues/abstract/producer/queue-producer.module.ts(7,31): error TS2307: Cannot find module '../../../common/observability/logger/abstract/logger.service' or its corresponding type declarations.
+src/queues/abstract/producer/queue-producer.service.ts(1,31): error TS2307: Cannot find module './queue-producer.interfaces' or its corresponding type declarations.
+src/queues/abstract/producer/queue-producer.service.ts(2,31): error TS2307: Cannot find module '../../../common/observability/logger/abstract/logger.service' or its corresponding type declarations.
+src/queues/abstract/producer/queue-producer.service.ts(3,35): error TS2307: Cannot find module '../../../common/observability/logger/nest-adapter/nest-logger.adapter' or its corresponding type declarations.
+src/queues/abstract/tests/queue-consumer-feature.module.di.spec.ts(13,37): error TS2307: Cannot find module '../consumer/queue-consumer.module' or its corresponding type declarations.
+src/queues/abstract/tests/queue-consumer-feature.module.di.spec.ts(14,38): error TS2307: Cannot find module '../consumer/queue-consumer.adapter' or its corresponding type declarations.
+src/queues/abstract/tests/queue-consumer-feature.module.di.spec.ts(15,38): error TS2307: Cannot find module '../consumer/queue-consumer.handler' or its corresponding type declarations.
+src/queues/abstract/tests/queue-consumer-feature.module.di.spec.ts(16,32): error TS2307: Cannot find module '../consumer/queue-consumer.interfaces' or its corresponding type declarations.
+src/queues/abstract/tests/queue-consumer-feature.module.di.spec.ts(17,39): error TS2307: Cannot find module '../../bullmq-adapter/bullmq-consumer.adapter' or its corresponding type declarations.
+src/queues/abstract/tests/queue-consumer-feature.module.di.spec.ts(18,31): error TS2307: Cannot find module '../../../common/observability/logger/abstract/logger.service' or its corresponding type declarations.
+src/queues/abstract/tests/queue-consumer-feature.module.di.spec.ts(19,38): error TS2307: Cannot find module '../../../common/observability/logger/abstract/logger-abstract.module' or its corresponding type declarations.
+src/queues/abstract/tests/queue-consumer-feature.module.di.spec.ts(20,35): error TS2307: Cannot find module '../../../common/observability/logger/nest-adapter/nest-logger.adapter' or its corresponding type declarations.
+src/queues/abstract/tests/queue-consumer-feature.module.di.spec.ts(21,46): error TS2307: Cannot find module '../../../config-provider/abstract/config-provider-abstract.module' or its corresponding type declarations.
+src/queues/abstract/tests/queue-consumer-feature.module.di.spec.ts(22,39): error TS2307: Cannot find module '../../../config-provider/abstract/config-provider.service' or its corresponding type declarations.
+src/queues/abstract/tests/queue-consumer-feature.module.di.spec.ts(23,39): error TS2307: Cannot find module '../../../config-provider/abstract/config-source.util' or its corresponding type declarations.
+src/queues/abstract/tests/queue-consumer-feature.module.di.spec.ts(24,35): error TS2307: Cannot find module '../../../config-provider/abstract/define-config-scope.util' or its corresponding type declarations.
+src/queues/abstract/tests/queue-consumer-feature.module.di.spec.ts(28,1): error TS2708: Cannot use namespace 'jest' as a value.
+src/queues/abstract/tests/queue-consumer-feature.module.di.spec.ts(41,4): error TS7006: Parameter 'raw' implicitly has an 'any' type.
+src/queues/abstract/tests/queue-consumer-feature.module.di.spec.ts(126,31): error TS2694: Namespace 'global.jest' has no exported member 'SpyInstance'.
+src/queues/abstract/tests/queue-consumer-feature.module.di.spec.ts(162,25): error TS2708: Cannot use namespace 'jest' as a value.
+src/queues/abstract/tests/queue-consumer-feature.module.di.spec.ts(206,24): error TS2708: Cannot use namespace 'jest' as a value.
+src/queues/abstract/tests/queue-consumer-feature.module.di.spec.ts(207,20): error TS2694: Namespace 'global.jest' has no exported member 'Mock'.
+src/queues/abstract/tests/queue-consumer-feature.module.di.spec.ts(230,12): error TS2708: Cannot use namespace 'jest' as a value.
+src/queues/abstract/tests/queue-consumer-feature.module.di.spec.ts(231,13): error TS2708: Cannot use namespace 'jest' as a value.
+src/queues/abstract/tests/queue-consumer.module.unit.spec.ts(4,37): error TS2307: Cannot find module '../consumer/queue-consumer.module' or its corresponding type declarations.
+src/queues/abstract/tests/queue-consumer.module.unit.spec.ts(5,38): error TS2307: Cannot find module '../consumer/queue-consumer.adapter' or its corresponding type declarations.
+src/queues/abstract/tests/queue-consumer.module.unit.spec.ts(6,38): error TS2307: Cannot find module '../consumer/queue-consumer.handler' or its corresponding type declarations.
+src/queues/abstract/tests/queue-consumer.module.unit.spec.ts(7,32): error TS2307: Cannot find module '../consumer/queue-consumer.interfaces' or its corresponding type declarations.
+src/queues/abstract/tests/queue-consumer.module.unit.spec.ts(8,31): error TS2307: Cannot find module '../../../common/observability/logger/abstract/logger.service' or its corresponding type declarations.
+src/queues/abstract/tests/queue-consumer.module.unit.spec.ts(9,35): error TS2307: Cannot find module '../../../common/observability/logger/nest-adapter/nest-logger.adapter' or its corresponding type declarations.
+src/queues/abstract/tests/queue-consumer.module.unit.spec.ts(13,8): error TS2307: Cannot find module '../consumer/queue-consumer-feature.module' or its corresponding type declarations.
+src/queues/abstract/tests/queue-consumer.module.unit.spec.ts(16,20): error TS2708: Cannot use namespace 'jest' as a value.
+src/queues/abstract/tests/queue-consumer.module.unit.spec.ts(17,19): error TS2708: Cannot use namespace 'jest' as a value.
+src/queues/abstract/tests/queue-consumer.module.unit.spec.ts(22,12): error TS2708: Cannot use namespace 'jest' as a value.
+src/queues/abstract/tests/queue-consumer.module.unit.spec.ts(27,12): error TS2708: Cannot use namespace 'jest' as a value.
+src/queues/abstract/tests/queue-consumer.module.unit.spec.ts(44,12): error TS2708: Cannot use namespace 'jest' as a value.
+src/queues/abstract/tests/queue-consumer.module.unit.spec.ts(49,8): error TS2708: Cannot use namespace 'jest' as a value.
+src/queues/abstract/tests/queue-consumer.module.unit.spec.ts(50,9): error TS2708: Cannot use namespace 'jest' as a value.
+src/queues/abstract/tests/queue-consumer.module.unit.spec.ts(104,14): error TS2708: Cannot use namespace 'jest' as a value.
+src/queues/abstract/tests/queue-consumer.module.unit.spec.ts(105,15): error TS2708: Cannot use namespace 'jest' as a value.
+src/queues/abstract/tests/queue-consumer.module.unit.spec.ts(106,16): error TS2708: Cannot use namespace 'jest' as a value.
+src/queues/abstract/tests/queue-consumer.module.unit.spec.ts(107,16): error TS2708: Cannot use namespace 'jest' as a value.
+src/queues/abstract/tests/queue-consumer.module.unit.spec.ts(108,21): error TS2708: Cannot use namespace 'jest' as a value.
+src/queues/abstract/tests/queue-consumer.module.unit.spec.ts(109,24): error TS2708: Cannot use namespace 'jest' as a value.
+src/queues/abstract/tests/queue-producer.module.unit.spec.ts(2,37): error TS2307: Cannot find module '../producer/queue-producer.module' or its corresponding type declarations.
+src/queues/abstract/tests/queue-producer.module.unit.spec.ts(3,38): error TS2307: Cannot find module '../producer/queue-producer.service' or its corresponding type declarations.
+src/queues/abstract/tests/queue-producer.module.unit.spec.ts(4,31): error TS2307: Cannot find module '../../../common/observability/logger/abstract/logger.service' or its corresponding type declarations.
+src/queues/abstract/tests/queue-producer.module.unit.spec.ts(5,35): error TS2307: Cannot find module '../../../common/observability/logger/nest-adapter/nest-logger.adapter' or its corresponding type declarations.
+src/queues/abstract/tests/queue-producer.module.unit.spec.ts(8,10): error TS2708: Cannot use namespace 'jest' as a value.
+src/queues/abstract/tests/queue-producer.module.unit.spec.ts(9,14): error TS2708: Cannot use namespace 'jest' as a value.
+src/queues/abstract/tests/queue-producer.module.unit.spec.ts(13,8): error TS2708: Cannot use namespace 'jest' as a value.
+src/queues/abstract/tests/queue-producer.module.unit.spec.ts(14,9): error TS2708: Cannot use namespace 'jest' as a value.
+src/queues/abstract/tests/queue-producer.module.unit.spec.ts(15,10): error TS2708: Cannot use namespace 'jest' as a value.
+src/queues/abstract/tests/queue-producer.module.unit.spec.ts(16,10): error TS2708: Cannot use namespace 'jest' as a value.
+src/queues/abstract/tests/queue-producer.module.unit.spec.ts(17,15): error TS2708: Cannot use namespace 'jest' as a value.
+src/queues/abstract/tests/queue-producer.module.unit.spec.ts(18,18): error TS2708: Cannot use namespace 'jest' as a value.
+src/queues/bullmq-adapter/bullmq-consumer.adapter.ts(3,38): error TS2307: Cannot find module '../abstract/consumer/queue-consumer.adapter' or its corresponding type declarations.
+src/queues/bullmq-adapter/bullmq-consumer.adapter.ts(4,32): error TS2307: Cannot find module '../abstract/consumer/queue-consumer.interfaces' or its corresponding type declarations.
+src/queues/bullmq-adapter/bullmq-consumer.adapter.ts(8,8): error TS2307: Cannot find module '../abstract/consumer/queue-consumer.error' or its corresponding type declarations.
+src/queues/bullmq-adapter/bullmq-consumer.adapter.ts(12,8): error TS2307: Cannot find module './bullmq-adapter.interfaces' or its corresponding type declarations.
+src/queues/bullmq-adapter/bullmq-consumer.adapter.ts(13,38): error TS2307: Cannot find module './bullmq-message.context' or its corresponding type declarations.
+src/queues/bullmq-adapter/bullmq-consumer.adapter.ts(48,12): error TS2339: Property 'logger' does not exist on type 'BullMqConsumerAdapter'.
+src/queues/bullmq-adapter/bullmq-consumer.adapter.ts(67,12): error TS2339: Property 'logger' does not exist on type 'BullMqConsumerAdapter'.
+src/queues/bullmq-adapter/bullmq-consumer.adapter.ts(75,10): error TS2339: Property 'logger' does not exist on type 'BullMqConsumerAdapter'.
+src/queues/bullmq-adapter/bullmq-consumer.adapter.ts(95,10): error TS2339: Property 'logger' does not exist on type 'BullMqConsumerAdapter'.
+src/queues/bullmq-adapter/bullmq-consumer.adapter.ts(123,12): error TS2339: Property 'logger' does not exist on type 'BullMqConsumerAdapter'.
+src/queues/bullmq-adapter/bullmq-consumer.adapter.ts(167,10): error TS2339: Property 'logger' does not exist on type 'BullMqConsumerAdapter'.
+src/queues/bullmq-adapter/bullmq-message.context.ts(2,32): error TS2307: Cannot find module '../abstract/consumer/queue-consumer.interfaces' or its corresponding type declarations.
+src/queues/bullmq-adapter/bullmq-producer.adapter.ts(3,38): error TS2307: Cannot find module '../abstract/producer/queue-producer.service' or its corresponding type declarations.
+src/queues/bullmq-adapter/bullmq-producer.adapter.ts(4,31): error TS2307: Cannot find module '../abstract/producer/queue-producer.interfaces' or its corresponding type declarations.
+src/queues/bullmq-adapter/bullmq-producer.adapter.ts(8,8): error TS2307: Cannot find module '../abstract/producer/queue-producer.error' or its corresponding type declarations.
+src/queues/bullmq-adapter/bullmq-producer.adapter.ts(9,48): error TS2307: Cannot find module '../abstract/producer/queue-delivery-options.util' or its corresponding type declarations.
+src/queues/bullmq-adapter/bullmq-producer.adapter.ts(13,8): error TS2307: Cannot find module './bullmq-adapter.interfaces' or its corresponding type declarations.
+src/queues/bullmq-adapter/bullmq-producer.adapter.ts(128,12): error TS2339: Property 'logger' does not exist on type 'BullMqProducerAdapter'.
+src/queues/bullmq-adapter/bullmq-producer.adapter.ts(140,10): error TS2339: Property 'logger' does not exist on type 'BullMqProducerAdapter'.
+src/queues/bullmq-adapter/tests/bullmq-consumer.adapter.unit.spec.ts(3,39): error TS2307: Cannot find module '../bullmq-consumer.adapter' or its corresponding type declarations.
+src/queues/bullmq-adapter/tests/bullmq-consumer.adapter.unit.spec.ts(4,38): error TS2307: Cannot find module '../bullmq-message.context' or its corresponding type declarations.
+src/queues/bullmq-adapter/tests/bullmq-consumer.adapter.unit.spec.ts(5,32): error TS2307: Cannot find module '../../abstract/consumer/queue-consumer.interfaces' or its corresponding type declarations.
+src/queues/bullmq-adapter/tests/bullmq-consumer.adapter.unit.spec.ts(6,39): error TS2307: Cannot find module '../../abstract/consumer/queue-consumer.error' or its corresponding type declarations.
+src/queues/bullmq-adapter/tests/bullmq-consumer.adapter.unit.spec.ts(8,25): error TS2708: Cannot use namespace 'jest' as a value.
+src/queues/bullmq-adapter/tests/bullmq-consumer.adapter.unit.spec.ts(12,1): error TS2708: Cannot use namespace 'jest' as a value.
+src/queues/bullmq-adapter/tests/bullmq-consumer.adapter.unit.spec.ts(13,11): error TS2708: Cannot use namespace 'jest' as a value.
+src/queues/bullmq-adapter/tests/bullmq-consumer.adapter.unit.spec.ts(13,41): error TS7006: Parameter '_name' implicitly has an 'any' type.
+src/queues/bullmq-adapter/tests/bullmq-consumer.adapter.unit.spec.ts(13,48): error TS7006: Parameter 'processor' implicitly has an 'any' type.
+src/queues/bullmq-adapter/tests/bullmq-consumer.adapter.unit.spec.ts(15,28): error TS2708: Cannot use namespace 'jest' as a value.
+src/queues/bullmq-adapter/tests/bullmq-consumer.adapter.unit.spec.ts(49,20): error TS2708: Cannot use namespace 'jest' as a value.
+src/queues/bullmq-adapter/tests/bullmq-consumer.adapter.unit.spec.ts(54,9): error TS2708: Cannot use namespace 'jest' as a value.
+src/queues/bullmq-adapter/tests/bullmq-consumer.adapter.unit.spec.ts(73,9): error TS2708: Cannot use namespace 'jest' as a value.
+src/queues/bullmq-adapter/tests/bullmq-consumer.adapter.unit.spec.ts(77,9): error TS2708: Cannot use namespace 'jest' as a value.
+src/queues/bullmq-adapter/tests/bullmq-consumer.adapter.unit.spec.ts(86,24): error TS2708: Cannot use namespace 'jest' as a value.
+src/queues/bullmq-adapter/tests/bullmq-consumer.adapter.unit.spec.ts(104,9): error TS2708: Cannot use namespace 'jest' as a value.
+src/queues/bullmq-adapter/tests/bullmq-consumer.adapter.unit.spec.ts(114,9): error TS2708: Cannot use namespace 'jest' as a value.
+src/queues/bullmq-adapter/tests/bullmq-consumer.adapter.unit.spec.ts(124,9): error TS2708: Cannot use namespace 'jest' as a value.
+src/queues/bullmq-adapter/tests/bullmq-consumer.adapter.unit.spec.ts(137,9): error TS2708: Cannot use namespace 'jest' as a value.
+src/queues/bullmq-adapter/tests/bullmq-consumer.adapter.unit.spec.ts(148,24): error TS2708: Cannot use namespace 'jest' as a value.
+src/queues/bullmq-adapter/tests/bullmq-consumer.adapter.unit.spec.ts(167,9): error TS2708: Cannot use namespace 'jest' as a value.
+src/queues/bullmq-adapter/tests/bullmq-consumer.adapter.unit.spec.ts(184,34): error TS2694: Namespace 'global.jest' has no exported member 'Mock'.
+src/queues/bullmq-adapter/tests/bullmq-consumer.adapter.unit.spec.ts(192,11): error TS2708: Cannot use namespace 'jest' as a value.
+src/queues/bullmq-adapter/tests/bullmq-producer.adapter.unit.spec.ts(3,39): error TS2307: Cannot find module '../bullmq-producer.adapter' or its corresponding type declarations.
+src/queues/bullmq-adapter/tests/bullmq-producer.adapter.unit.spec.ts(4,39): error TS2307: Cannot find module '../../abstract/producer/queue-producer.error' or its corresponding type declarations.
+src/queues/bullmq-adapter/tests/bullmq-producer.adapter.unit.spec.ts(6,17): error TS2708: Cannot use namespace 'jest' as a value.
+src/queues/bullmq-adapter/tests/bullmq-producer.adapter.unit.spec.ts(7,24): error TS2708: Cannot use namespace 'jest' as a value.
+src/queues/bullmq-adapter/tests/bullmq-producer.adapter.unit.spec.ts(9,1): error TS2708: Cannot use namespace 'jest' as a value.
+src/queues/bullmq-adapter/tests/bullmq-producer.adapter.unit.spec.ts(10,10): error TS2708: Cannot use namespace 'jest' as a value.
+src/queues/bullmq-adapter/tests/bullmq-producer.adapter.unit.spec.ts(10,40): error TS7006: Parameter 'name' implicitly has an 'any' type.
+src/queues/bullmq-adapter/tests/bullmq-producer.adapter.unit.spec.ts(29,5): error TS2708: Cannot use namespace 'jest' as a value.
+src/queues/rabbitmq-adapter/config/rabbitmq.scope.ts(2,39): error TS2307: Cannot find module '../../../config-provider/abstract/config-source.util' or its corresponding type declarations.
+src/queues/rabbitmq-adapter/config/rabbitmq.scope.ts(3,35): error TS2307: Cannot find module '../../../config-provider/abstract/define-config-scope.util' or its corresponding type declarations.
+src/queues/rabbitmq-adapter/config/rabbitmq.scope.ts(18,4): error TS7006: Parameter 'raw' implicitly has an 'any' type.
+src/queues/rabbitmq-adapter/rabbitmq-consumer.adapter.ts(3,38): error TS2307: Cannot find module '../abstract/consumer/queue-consumer.adapter' or its corresponding type declarations.
+src/queues/rabbitmq-adapter/rabbitmq-consumer.adapter.ts(4,32): error TS2307: Cannot find module '../abstract/consumer/queue-consumer.interfaces' or its corresponding type declarations.
+src/queues/rabbitmq-adapter/rabbitmq-consumer.adapter.ts(8,8): error TS2307: Cannot find module '../abstract/consumer/queue-consumer.error' or its corresponding type declarations.
+src/queues/rabbitmq-adapter/rabbitmq-consumer.adapter.ts(9,48): error TS2307: Cannot find module './rabbitmq-adapter.interfaces' or its corresponding type declarations.
+src/queues/rabbitmq-adapter/rabbitmq-consumer.adapter.ts(10,40): error TS2307: Cannot find module './rabbitmq-message.context' or its corresponding type declarations.
+src/queues/rabbitmq-adapter/rabbitmq-consumer.adapter.ts(70,12): error TS2339: Property 'logger' does not exist on type 'RabbitMqConsumerAdapter'.
+src/queues/rabbitmq-adapter/rabbitmq-consumer.adapter.ts(87,14): error TS2339: Property 'logger' does not exist on type 'RabbitMqConsumerAdapter'.
+src/queues/rabbitmq-adapter/rabbitmq-consumer.adapter.ts(119,10): error TS2339: Property 'logger' does not exist on type 'RabbitMqConsumerAdapter'.
+src/queues/rabbitmq-adapter/rabbitmq-consumer.adapter.ts(148,12): error TS2339: Property 'logger' does not exist on type 'RabbitMqConsumerAdapter'.
+src/queues/rabbitmq-adapter/rabbitmq-consumer.adapter.ts(155,10): error TS2339: Property 'logger' does not exist on type 'RabbitMqConsumerAdapter'.
+src/queues/rabbitmq-adapter/rabbitmq-consumer.adapter.ts(179,14): error TS2339: Property 'logger' does not exist on type 'RabbitMqConsumerAdapter'.
+src/queues/rabbitmq-adapter/rabbitmq-consumer.adapter.ts(208,12): error TS2339: Property 'logger' does not exist on type 'RabbitMqConsumerAdapter'.
+src/queues/rabbitmq-adapter/rabbitmq-consumer.adapter.ts(241,12): error TS2339: Property 'logger' does not exist on type 'RabbitMqConsumerAdapter'.
+src/queues/rabbitmq-adapter/rabbitmq-consumer.adapter.ts(260,13): error TS18046: 'settleError' is of type 'unknown'.
+src/queues/rabbitmq-adapter/rabbitmq-consumer.adapter.ts(262,12): error TS2339: Property 'logger' does not exist on type 'RabbitMqConsumerAdapter'.
+src/queues/rabbitmq-adapter/rabbitmq-consumer.adapter.ts(300,18): error TS2339: Property 'logger' does not exist on type 'RabbitMqConsumerAdapter'.
+src/queues/rabbitmq-adapter/rabbitmq-consumer.adapter.ts(333,10): error TS2339: Property 'logger' does not exist on type 'RabbitMqConsumerAdapter'.
+src/queues/rabbitmq-adapter/rabbitmq-consumer.adapter.ts(348,10): error TS2339: Property 'logger' does not exist on type 'RabbitMqConsumerAdapter'.
+src/queues/rabbitmq-adapter/rabbitmq-message.context.ts(2,32): error TS2307: Cannot find module '../abstract/consumer/queue-consumer.interfaces' or its corresponding type declarations.
+src/queues/rabbitmq-adapter/rabbitmq-message.context.ts(6,8): error TS2307: Cannot find module '../abstract/consumer/queue-consumer.error' or its corresponding type declarations.
+src/queues/rabbitmq-adapter/rabbitmq-producer.adapter.ts(4,38): error TS2307: Cannot find module '../abstract/producer/queue-producer.service' or its corresponding type declarations.
+src/queues/rabbitmq-adapter/rabbitmq-producer.adapter.ts(5,31): error TS2307: Cannot find module '../abstract/producer/queue-producer.interfaces' or its corresponding type declarations.
+src/queues/rabbitmq-adapter/rabbitmq-producer.adapter.ts(9,8): error TS2307: Cannot find module '../abstract/producer/queue-producer.error' or its corresponding type declarations.
+src/queues/rabbitmq-adapter/rabbitmq-producer.adapter.ts(14,8): error TS2307: Cannot find module './rabbitmq-adapter.interfaces' or its corresponding type declarations.
+src/queues/rabbitmq-adapter/rabbitmq-producer.adapter.ts(15,48): error TS2307: Cannot find module '../abstract/producer/queue-delivery-options.util' or its corresponding type declarations.
+src/queues/rabbitmq-adapter/rabbitmq-producer.adapter.ts(112,10): error TS2339: Property 'logger' does not exist on type 'RabbitMqProducerAdapter'.
+src/queues/rabbitmq-adapter/rabbitmq-producer.adapter.ts(163,10): error TS2339: Property 'logger' does not exist on type 'RabbitMqProducerAdapter'.
+src/queues/rabbitmq-adapter/rabbitmq-producer.adapter.ts(185,12): error TS2339: Property 'logger' does not exist on type 'RabbitMqProducerAdapter'.
+src/queues/rabbitmq-adapter/rabbitmq-producer.adapter.ts(305,18): error TS2339: Property 'logger' does not exist on type 'RabbitMqProducerAdapter'.
+src/queues/rabbitmq-adapter/rabbitmq-producer.adapter.ts(338,18): error TS2339: Property 'logger' does not exist on type 'RabbitMqProducerAdapter'.
+src/queues/rabbitmq-adapter/rabbitmq-producer.adapter.ts(392,10): error TS2339: Property 'logger' does not exist on type 'RabbitMqProducerAdapter'.
+src/queues/rabbitmq-adapter/tests/rabbitmq-consumer.adapter.unit.spec.ts(4,41): error TS2307: Cannot find module '../rabbitmq-consumer.adapter' or its corresponding type declarations.
+src/queues/rabbitmq-adapter/tests/rabbitmq-consumer.adapter.unit.spec.ts(5,40): error TS2307: Cannot find module '../rabbitmq-message.context' or its corresponding type declarations.
+src/queues/rabbitmq-adapter/tests/rabbitmq-consumer.adapter.unit.spec.ts(6,32): error TS2307: Cannot find module '../../abstract/consumer/queue-consumer.interfaces' or its corresponding type declarations.
+src/queues/rabbitmq-adapter/tests/rabbitmq-consumer.adapter.unit.spec.ts(7,39): error TS2307: Cannot find module '../../abstract/consumer/queue-consumer.error' or its corresponding type declarations.
+src/queues/rabbitmq-adapter/tests/rabbitmq-consumer.adapter.unit.spec.ts(9,1): error TS2708: Cannot use namespace 'jest' as a value.
+src/queues/rabbitmq-adapter/tests/rabbitmq-consumer.adapter.unit.spec.ts(9,40): error TS2708: Cannot use namespace 'jest' as a value.
+src/queues/rabbitmq-adapter/tests/rabbitmq-consumer.adapter.unit.spec.ts(11,37): error TS2694: Namespace 'global.jest' has no exported member 'Mock'.
+src/queues/rabbitmq-adapter/tests/rabbitmq-consumer.adapter.unit.spec.ts(18,18): error TS2708: Cannot use namespace 'jest' as a value.
+src/queues/rabbitmq-adapter/tests/rabbitmq-consumer.adapter.unit.spec.ts(19,15): error TS2708: Cannot use namespace 'jest' as a value.
+src/queues/rabbitmq-adapter/tests/rabbitmq-consumer.adapter.unit.spec.ts(20,14): error TS2708: Cannot use namespace 'jest' as a value.
+src/queues/rabbitmq-adapter/tests/rabbitmq-consumer.adapter.unit.spec.ts(21,13): error TS2708: Cannot use namespace 'jest' as a value.
+src/queues/rabbitmq-adapter/tests/rabbitmq-consumer.adapter.unit.spec.ts(22,12): error TS2708: Cannot use namespace 'jest' as a value.
+src/queues/rabbitmq-adapter/tests/rabbitmq-consumer.adapter.unit.spec.ts(23,10): error TS2708: Cannot use namespace 'jest' as a value.
+src/queues/rabbitmq-adapter/tests/rabbitmq-consumer.adapter.unit.spec.ts(24,11): error TS2708: Cannot use namespace 'jest' as a value.
+src/queues/rabbitmq-adapter/tests/rabbitmq-consumer.adapter.unit.spec.ts(25,9): error TS2708: Cannot use namespace 'jest' as a value.
+src/queues/rabbitmq-adapter/tests/rabbitmq-consumer.adapter.unit.spec.ts(28,20): error TS2708: Cannot use namespace 'jest' as a value.
+src/queues/rabbitmq-adapter/tests/rabbitmq-consumer.adapter.unit.spec.ts(29,9): error TS2708: Cannot use namespace 'jest' as a value.
+src/queues/rabbitmq-adapter/tests/rabbitmq-consumer.adapter.unit.spec.ts(30,12): error TS2708: Cannot use namespace 'jest' as a value.
+src/queues/rabbitmq-adapter/tests/rabbitmq-consumer.adapter.unit.spec.ts(51,5): error TS2708: Cannot use namespace 'jest' as a value.
+src/queues/rabbitmq-adapter/tests/rabbitmq-consumer.adapter.unit.spec.ts(58,24): error TS2708: Cannot use namespace 'jest' as a value.
+src/queues/rabbitmq-adapter/tests/rabbitmq-consumer.adapter.unit.spec.ts(76,24): error TS2708: Cannot use namespace 'jest' as a value.
+src/queues/rabbitmq-adapter/tests/rabbitmq-consumer.adapter.unit.spec.ts(90,24): error TS2708: Cannot use namespace 'jest' as a value.
+src/queues/rabbitmq-adapter/tests/rabbitmq-consumer.adapter.unit.spec.ts(102,24): error TS2708: Cannot use namespace 'jest' as a value.
+src/queues/rabbitmq-adapter/tests/rabbitmq-consumer.adapter.unit.spec.ts(116,24): error TS2708: Cannot use namespace 'jest' as a value.
+src/queues/rabbitmq-adapter/tests/rabbitmq-consumer.adapter.unit.spec.ts(130,24): error TS2708: Cannot use namespace 'jest' as a value.
+src/queues/rabbitmq-adapter/tests/rabbitmq-consumer.adapter.unit.spec.ts(145,9): error TS2708: Cannot use namespace 'jest' as a value.
+src/queues/rabbitmq-adapter/tests/rabbitmq-consumer.adapter.unit.spec.ts(164,9): error TS2708: Cannot use namespace 'jest' as a value.
+src/queues/rabbitmq-adapter/tests/rabbitmq-consumer.adapter.unit.spec.ts(173,24): error TS2708: Cannot use namespace 'jest' as a value.
+src/queues/rabbitmq-adapter/tests/rabbitmq-consumer.adapter.unit.spec.ts(191,9): error TS2708: Cannot use namespace 'jest' as a value.
+src/queues/rabbitmq-adapter/tests/rabbitmq-consumer.adapter.unit.spec.ts(205,9): error TS2708: Cannot use namespace 'jest' as a value.
+src/queues/rabbitmq-adapter/tests/rabbitmq-consumer.adapter.unit.spec.ts(209,9): error TS2708: Cannot use namespace 'jest' as a value.
+src/queues/rabbitmq-adapter/tests/rabbitmq-consumer.adapter.unit.spec.ts(228,11): error TS2708: Cannot use namespace 'jest' as a value.
+src/queues/rabbitmq-adapter/tests/rabbitmq-consumer.adapter.unit.spec.ts(240,9): error TS2708: Cannot use namespace 'jest' as a value.
+src/queues/rabbitmq-adapter/tests/rabbitmq-consumer.adapter.unit.spec.ts(271,9): error TS2708: Cannot use namespace 'jest' as a value.
+src/queues/rabbitmq-adapter/tests/rabbitmq-consumer.adapter.unit.spec.ts(282,24): error TS2708: Cannot use namespace 'jest' as a value.
+src/queues/rabbitmq-adapter/tests/rabbitmq-consumer.adapter.unit.spec.ts(298,9): error TS2708: Cannot use namespace 'jest' as a value.
+src/queues/rabbitmq-adapter/tests/rabbitmq-consumer.adapter.unit.spec.ts(303,9): error TS2708: Cannot use namespace 'jest' as a value.
+src/queues/rabbitmq-adapter/tests/rabbitmq-consumer.adapter.unit.spec.ts(317,9): error TS2708: Cannot use namespace 'jest' as a value.
+src/queues/rabbitmq-adapter/tests/rabbitmq-consumer.adapter.unit.spec.ts(329,9): error TS2708: Cannot use namespace 'jest' as a value.
+src/queues/rabbitmq-adapter/tests/rabbitmq-producer.adapter.unit.spec.ts(3,41): error TS2307: Cannot find module '../rabbitmq-producer.adapter' or its corresponding type declarations.
+src/queues/rabbitmq-adapter/tests/rabbitmq-producer.adapter.unit.spec.ts(4,43): error TS2307: Cannot find module '../rabbitmq-adapter.interfaces' or its corresponding type declarations.
+src/queues/rabbitmq-adapter/tests/rabbitmq-producer.adapter.unit.spec.ts(5,39): error TS2307: Cannot find module '../../abstract/producer/queue-producer.error' or its corresponding type declarations.
+src/queues/rabbitmq-adapter/tests/rabbitmq-producer.adapter.unit.spec.ts(7,1): error TS2708: Cannot use namespace 'jest' as a value.
+src/queues/rabbitmq-adapter/tests/rabbitmq-producer.adapter.unit.spec.ts(7,40): error TS2708: Cannot use namespace 'jest' as a value.
+src/queues/rabbitmq-adapter/tests/rabbitmq-producer.adapter.unit.spec.ts(9,37): error TS2694: Namespace 'global.jest' has no exported member 'Mock'.
+src/queues/rabbitmq-adapter/tests/rabbitmq-producer.adapter.unit.spec.ts(18,18): error TS2708: Cannot use namespace 'jest' as a value.
+src/queues/rabbitmq-adapter/tests/rabbitmq-producer.adapter.unit.spec.ts(19,21): error TS2708: Cannot use namespace 'jest' as a value.
+src/queues/rabbitmq-adapter/tests/rabbitmq-producer.adapter.unit.spec.ts(20,18): error TS2708: Cannot use namespace 'jest' as a value.
+src/queues/rabbitmq-adapter/tests/rabbitmq-producer.adapter.unit.spec.ts(20,27): error TS7006: Parameter '_queue' implicitly has an 'any' type.
+src/queues/rabbitmq-adapter/tests/rabbitmq-producer.adapter.unit.spec.ts(20,35): error TS7006: Parameter '_content' implicitly has an 'any' type.
+src/queues/rabbitmq-adapter/tests/rabbitmq-producer.adapter.unit.spec.ts(20,45): error TS7006: Parameter '_options' implicitly has an 'any' type.
+src/queues/rabbitmq-adapter/tests/rabbitmq-producer.adapter.unit.spec.ts(20,55): error TS7006: Parameter 'confirm' implicitly has an 'any' type.
+src/queues/rabbitmq-adapter/tests/rabbitmq-producer.adapter.unit.spec.ts(24,14): error TS2708: Cannot use namespace 'jest' as a value.
+src/queues/rabbitmq-adapter/tests/rabbitmq-producer.adapter.unit.spec.ts(24,23): error TS7006: Parameter '_exchange' implicitly has an 'any' type.
+src/queues/rabbitmq-adapter/tests/rabbitmq-producer.adapter.unit.spec.ts(24,34): error TS7006: Parameter '_routingKey' implicitly has an 'any' type.
+src/queues/rabbitmq-adapter/tests/rabbitmq-producer.adapter.unit.spec.ts(24,47): error TS7006: Parameter '_content' implicitly has an 'any' type.
+src/queues/rabbitmq-adapter/tests/rabbitmq-producer.adapter.unit.spec.ts(24,57): error TS7006: Parameter '_options' implicitly has an 'any' type.
+src/queues/rabbitmq-adapter/tests/rabbitmq-producer.adapter.unit.spec.ts(24,67): error TS7006: Parameter 'confirm' implicitly has an 'any' type.
+src/queues/rabbitmq-adapter/tests/rabbitmq-producer.adapter.unit.spec.ts(28,9): error TS2708: Cannot use namespace 'jest' as a value.
+src/queues/rabbitmq-adapter/tests/rabbitmq-producer.adapter.unit.spec.ts(31,27): error TS2708: Cannot use namespace 'jest' as a value.
+src/queues/rabbitmq-adapter/tests/rabbitmq-producer.adapter.unit.spec.ts(32,9): error TS2708: Cannot use namespace 'jest' as a value.
+src/queues/rabbitmq-adapter/tests/rabbitmq-producer.adapter.unit.spec.ts(33,12): error TS2708: Cannot use namespace 'jest' as a value.
+src/queues/rabbitmq-adapter/tests/rabbitmq-producer.adapter.unit.spec.ts(48,5): error TS2708: Cannot use namespace 'jest' as a value.
+src/queues/rabbitmq-adapter/tests/rabbitmq-producer.adapter.unit.spec.ts(229,10): error TS7006: Parameter '_queue' implicitly has an 'any' type.
+src/queues/rabbitmq-adapter/tests/rabbitmq-producer.adapter.unit.spec.ts(229,18): error TS7006: Parameter '_content' implicitly has an 'any' type.
+src/queues/rabbitmq-adapter/tests/rabbitmq-producer.adapter.unit.spec.ts(229,28): error TS7006: Parameter '_options' implicitly has an 'any' type.
+src/queues/rabbitmq-adapter/tests/rabbitmq-producer.adapter.unit.spec.ts(229,38): error TS7006: Parameter 'confirm' implicitly has an 'any' type.
+src/queues/sqs-adapter/sqs-consumer.adapter.ts(3,38): error TS2307: Cannot find module '../abstract/consumer/queue-consumer.adapter' or its corresponding type declarations.
+src/queues/sqs-adapter/sqs-consumer.adapter.ts(4,32): error TS2307: Cannot find module '../abstract/consumer/queue-consumer.interfaces' or its corresponding type declarations.
+src/queues/sqs-adapter/sqs-consumer.adapter.ts(8,8): error TS2307: Cannot find module '../abstract/consumer/queue-consumer.error' or its corresponding type declarations.
+src/queues/sqs-adapter/sqs-consumer.adapter.ts(9,43): error TS2307: Cannot find module './sqs-adapter.interfaces' or its corresponding type declarations.
+src/queues/sqs-adapter/sqs-consumer.adapter.ts(10,35): error TS2307: Cannot find module './sqs-message.context' or its corresponding type declarations.
+src/queues/sqs-adapter/sqs-consumer.adapter.ts(11,33): error TS2307: Cannot find module './sqs-queue-url.util' or its corresponding type declarations.
+src/queues/sqs-adapter/sqs-consumer.adapter.ts(82,12): error TS2339: Property 'logger' does not exist on type 'SqsConsumerAdapter'.
+src/queues/sqs-adapter/sqs-consumer.adapter.ts(94,10): error TS2339: Property 'logger' does not exist on type 'SqsConsumerAdapter'.
+src/queues/sqs-adapter/sqs-consumer.adapter.ts(114,10): error TS2339: Property 'logger' does not exist on type 'SqsConsumerAdapter'.
+src/queues/sqs-adapter/sqs-consumer.adapter.ts(157,14): error TS2339: Property 'logger' does not exist on type 'SqsConsumerAdapter'.
+src/queues/sqs-adapter/sqs-consumer.adapter.ts(236,12): error TS2339: Property 'logger' does not exist on type 'SqsConsumerAdapter'.
+src/queues/sqs-adapter/sqs-consumer.adapter.ts(255,13): error TS18046: 'settleError' is of type 'unknown'.
+src/queues/sqs-adapter/sqs-consumer.adapter.ts(257,12): error TS2339: Property 'logger' does not exist on type 'SqsConsumerAdapter'.
+src/queues/sqs-adapter/sqs-consumer.adapter.ts(293,12): error TS2339: Property 'logger' does not exist on type 'SqsConsumerAdapter'.
+src/queues/sqs-adapter/sqs-message.context.ts(7,32): error TS2307: Cannot find module '../abstract/consumer/queue-consumer.interfaces' or its corresponding type declarations.
+src/queues/sqs-adapter/sqs-message.context.ts(11,8): error TS2307: Cannot find module '../abstract/consumer/queue-consumer.error' or its corresponding type declarations.
+src/queues/sqs-adapter/sqs-producer.adapter.ts(7,38): error TS2307: Cannot find module '../abstract/producer/queue-producer.service' or its corresponding type declarations.
+src/queues/sqs-adapter/sqs-producer.adapter.ts(8,31): error TS2307: Cannot find module '../abstract/producer/queue-producer.interfaces' or its corresponding type declarations.
+src/queues/sqs-adapter/sqs-producer.adapter.ts(12,8): error TS2307: Cannot find module '../abstract/producer/queue-producer.error' or its corresponding type declarations.
+src/queues/sqs-adapter/sqs-producer.adapter.ts(16,8): error TS2307: Cannot find module './sqs-adapter.interfaces' or its corresponding type declarations.
+src/queues/sqs-adapter/sqs-producer.adapter.ts(17,33): error TS2307: Cannot find module './sqs-queue-url.util' or its corresponding type declarations.
+src/queues/sqs-adapter/sqs-producer.adapter.ts(18,48): error TS2307: Cannot find module '../abstract/producer/queue-delivery-options.util' or its corresponding type declarations.
+src/queues/sqs-adapter/sqs-producer.adapter.ts(135,12): error TS2339: Property 'logger' does not exist on type 'SqsProducerAdapter'.
+src/queues/sqs-adapter/sqs-producer.adapter.ts(147,10): error TS2339: Property 'logger' does not exist on type 'SqsProducerAdapter'.
+src/queues/sqs-adapter/sqs-producer.adapter.ts(172,12): error TS2339: Property 'logger' does not exist on type 'SqsProducerAdapter'.
+src/queues/sqs-adapter/tests/sqs-consumer.adapter.unit.spec.ts(2,36): error TS2307: Cannot find module '../sqs-consumer.adapter' or its corresponding type declarations.
+src/queues/sqs-adapter/tests/sqs-consumer.adapter.unit.spec.ts(3,35): error TS2307: Cannot find module '../sqs-message.context' or its corresponding type declarations.
+src/queues/sqs-adapter/tests/sqs-consumer.adapter.unit.spec.ts(7,8): error TS2307: Cannot find module '../../abstract/consumer/queue-consumer.interfaces' or its corresponding type declarations.
+src/queues/sqs-adapter/tests/sqs-consumer.adapter.unit.spec.ts(8,39): error TS2307: Cannot find module '../../abstract/consumer/queue-consumer.error' or its corresponding type declarations.
+src/queues/sqs-adapter/tests/sqs-consumer.adapter.unit.spec.ts(10,18): error TS2708: Cannot use namespace 'jest' as a value.
+src/queues/sqs-adapter/tests/sqs-consumer.adapter.unit.spec.ts(11,21): error TS2708: Cannot use namespace 'jest' as a value.
+src/queues/sqs-adapter/tests/sqs-consumer.adapter.unit.spec.ts(13,1): error TS2708: Cannot use namespace 'jest' as a value.
+src/queues/sqs-adapter/tests/sqs-consumer.adapter.unit.spec.ts(14,14): error TS2708: Cannot use namespace 'jest' as a value.
+src/queues/sqs-adapter/tests/sqs-consumer.adapter.unit.spec.ts(17,23): error TS2708: Cannot use namespace 'jest' as a value.
+src/queues/sqs-adapter/tests/sqs-consumer.adapter.unit.spec.ts(17,53): error TS7006: Parameter 'input' implicitly has an 'any' type.
+src/queues/sqs-adapter/tests/sqs-consumer.adapter.unit.spec.ts(18,26): error TS2708: Cannot use namespace 'jest' as a value.
+src/queues/sqs-adapter/tests/sqs-consumer.adapter.unit.spec.ts(18,56): error TS7006: Parameter 'input' implicitly has an 'any' type.
+src/queues/sqs-adapter/tests/sqs-consumer.adapter.unit.spec.ts(19,25): error TS2708: Cannot use namespace 'jest' as a value.
+src/queues/sqs-adapter/tests/sqs-consumer.adapter.unit.spec.ts(19,55): error TS7006: Parameter 'input' implicitly has an 'any' type.
+src/queues/sqs-adapter/tests/sqs-consumer.adapter.unit.spec.ts(20,35): error TS2708: Cannot use namespace 'jest' as a value.
+src/queues/sqs-adapter/tests/sqs-consumer.adapter.unit.spec.ts(22,26): error TS7006: Parameter 'input' implicitly has an 'any' type.
+src/queues/sqs-adapter/tests/sqs-consumer.adapter.unit.spec.ts(39,11): error TS7006: Parameter 'c' implicitly has an 'any' type.
+src/queues/sqs-adapter/tests/sqs-consumer.adapter.unit.spec.ts(40,14): error TS7006: Parameter 'i' implicitly has an 'any' type.
+src/queues/sqs-adapter/tests/sqs-consumer.adapter.unit.spec.ts(45,11): error TS7006: Parameter 'c' implicitly has an 'any' type.
+src/queues/sqs-adapter/tests/sqs-consumer.adapter.unit.spec.ts(46,14): error TS7006: Parameter 'i' implicitly has an 'any' type.
+src/queues/sqs-adapter/tests/sqs-consumer.adapter.unit.spec.ts(64,5): error TS2708: Cannot use namespace 'jest' as a value.
+src/queues/sqs-adapter/tests/sqs-consumer.adapter.unit.spec.ts(72,24): error TS2708: Cannot use namespace 'jest' as a value.
+src/queues/sqs-adapter/tests/sqs-consumer.adapter.unit.spec.ts(91,24): error TS2708: Cannot use namespace 'jest' as a value.
+src/queues/sqs-adapter/tests/sqs-consumer.adapter.unit.spec.ts(106,24): error TS2708: Cannot use namespace 'jest' as a value.
+src/queues/sqs-adapter/tests/sqs-consumer.adapter.unit.spec.ts(120,24): error TS2708: Cannot use namespace 'jest' as a value.
+src/queues/sqs-adapter/tests/sqs-consumer.adapter.unit.spec.ts(135,24): error TS2708: Cannot use namespace 'jest' as a value.
+src/queues/sqs-adapter/tests/sqs-consumer.adapter.unit.spec.ts(150,24): error TS2708: Cannot use namespace 'jest' as a value.
+src/queues/sqs-adapter/tests/sqs-consumer.adapter.unit.spec.ts(166,9): error TS2708: Cannot use namespace 'jest' as a value.
+src/queues/sqs-adapter/tests/sqs-consumer.adapter.unit.spec.ts(170,37): error TS7006: Parameter 'c' implicitly has an 'any' type.
+src/queues/sqs-adapter/tests/sqs-consumer.adapter.unit.spec.ts(185,9): error TS2708: Cannot use namespace 'jest' as a value.
+src/queues/sqs-adapter/tests/sqs-consumer.adapter.unit.spec.ts(189,9): error TS2708: Cannot use namespace 'jest' as a value.
+src/queues/sqs-adapter/tests/sqs-consumer.adapter.unit.spec.ts(193,37): error TS7006: Parameter 'c' implicitly has an 'any' type.
+src/queues/sqs-adapter/tests/sqs-consumer.adapter.unit.spec.ts(211,9): error TS2708: Cannot use namespace 'jest' as a value.
+src/queues/sqs-adapter/tests/sqs-consumer.adapter.unit.spec.ts(227,11): error TS2708: Cannot use namespace 'jest' as a value.
+src/queues/sqs-adapter/tests/sqs-producer.adapter.unit.spec.ts(3,36): error TS2307: Cannot find module '../sqs-producer.adapter' or its corresponding type declarations.
+src/queues/sqs-adapter/tests/sqs-producer.adapter.unit.spec.ts(4,38): error TS2307: Cannot find module '../sqs-adapter.interfaces' or its corresponding type declarations.
+src/queues/sqs-adapter/tests/sqs-producer.adapter.unit.spec.ts(8,8): error TS2307: Cannot find module '../../abstract/producer/queue-producer.error' or its corresponding type declarations.
+src/queues/sqs-adapter/tests/sqs-producer.adapter.unit.spec.ts(10,18): error TS2708: Cannot use namespace 'jest' as a value.
+src/queues/sqs-adapter/tests/sqs-producer.adapter.unit.spec.ts(11,21): error TS2708: Cannot use namespace 'jest' as a value.
+src/queues/sqs-adapter/tests/sqs-producer.adapter.unit.spec.ts(13,1): error TS2708: Cannot use namespace 'jest' as a value.
+src/queues/sqs-adapter/tests/sqs-producer.adapter.unit.spec.ts(14,14): error TS2708: Cannot use namespace 'jest' as a value.
+src/queues/sqs-adapter/tests/sqs-producer.adapter.unit.spec.ts(17,23): error TS2708: Cannot use namespace 'jest' as a value.
+src/queues/sqs-adapter/tests/sqs-producer.adapter.unit.spec.ts(17,53): error TS7006: Parameter 'input' implicitly has an 'any' type.
+src/queues/sqs-adapter/tests/sqs-producer.adapter.unit.spec.ts(18,23): error TS2708: Cannot use namespace 'jest' as a value.
+src/queues/sqs-adapter/tests/sqs-producer.adapter.unit.spec.ts(18,53): error TS7006: Parameter 'input' implicitly has an 'any' type.
+src/queues/sqs-adapter/tests/sqs-producer.adapter.unit.spec.ts(33,42): error TS7006: Parameter 'c' implicitly has an 'any' type.
+src/queues/sqs-adapter/tests/sqs-producer.adapter.unit.spec.ts(45,5): error TS2708: Cannot use namespace 'jest' as a value.
+src/queues/sqs-adapter/tests/sqs-producer.adapter.unit.spec.ts(67,10): error TS7006: Parameter 'c' implicitly has an 'any' type.
+test/app.e2e-spec.ts(4,21): error TS2307: Cannot find module 'supertest/types' or its corresponding type declarations.
