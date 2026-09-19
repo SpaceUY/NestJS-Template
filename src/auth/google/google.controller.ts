@@ -2,7 +2,7 @@ import { Body, Controller, Get, Post, UseGuards } from '@nestjs/common';
 import { AuthGuard } from '@nestjs/passport';
 import { CurrentUser } from 'src/user/current-user.decorator';
 import { AuthTokenService } from '../core/auth-token/auth-token.service';
-import { AuthType } from '../core/auth-type.enum';
+import { AuthType } from '../../database/entities/auth-type.enum';
 import { User } from '../../database/entities/user.entity';
 import { GoogleService } from './google.service';
 

@@ -1,6 +1,6 @@
 import { Injectable } from '@nestjs/common';
 import { JwtService } from '@nestjs/jwt';
-import { AuthType } from '../auth-type.enum';
+import { AuthType } from '../../../database/entities/auth-type.enum';
 import { User } from '../../../database/entities/user.entity';
 
 export interface AuthTokenPayload {

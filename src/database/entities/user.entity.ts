@@ -1,5 +1,5 @@
 import { Column, Entity } from 'typeorm';
-import { AuthType } from '../../auth/core/auth-type.enum';
+import { AuthType } from './auth-type.enum';
 import { BaseEntity } from './base.entity';
 
 @Entity()

@@ -24,7 +24,7 @@ does not own the `User` entity, which lives in `src/database/entities/user.entit
 | `AuthModule` | `src/auth/auth.module.ts` | Import into any module with protected routes |
 | `AuthTokenService` | `src/auth/core/auth-token/auth-token.service.ts` | `generateAuthToken`, `validateAuthToken` — injecting it requires importing `AuthTokenModule` (`src/auth/core/auth-token/auth-token.module.ts`); `AuthModule` does not re-export it |
 | `AuthTokenPayload` | `src/auth/core/auth-token/auth-token.service.ts` | JWT payload shape |
-| `AuthType` | `src/auth/core/auth-type.enum.ts` | `EMAIL` / `GOOGLE` / `AUTH0`; stored on `User.authType` |
+| `AuthType` | `src/database/entities/auth-type.enum.ts` | `EMAIL` / `GOOGLE` / `AUTH0`; stored on `User.authType` |
 | `jwtScope`, `JwtScopeConfig` | `src/auth/config/jwt.scope.ts` | JWT config |
 | `googleScope`, `GoogleScopeConfig` | `src/auth/google/config/google.scope.ts` | Google OAuth config |
 | `auth0Scope`, `Auth0ScopeConfig` | `src/auth/auth0/config/auth0.scope.ts` | Auth0 config |
@@ -143,7 +143,8 @@ controller — do not extend it.
 
 Couples to `src/config-provider/`, `src/database/entities/user.entity.ts`,
 `src/common/exception/` and `src/user/current-user.decorator.ts` — port those
-first. `src/auth/google/` and `src/auth/auth0/` are independently droppable;
+first. `auth` depends on `database` for both `User` and `AuthType`.
+`src/auth/google/` and `src/auth/auth0/` are independently droppable;
 `src/auth/email/` is an empty scaffold (finding `R3`), not a provider to port.
 See `src/auth/README.md`'s `## Reuse` for the peer-dependency list and the
 step order.

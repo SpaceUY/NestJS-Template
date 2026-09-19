@@ -6,8 +6,6 @@
     "abs-import|src/auth/google/google.service.ts|src/common/exception/exceptions",
     "abs-import|src/auth/jwt.strategy.ts|src/common/exception/core/ExceptionBase",
     "abs-import|src/auth/jwt.strategy.ts|src/common/exception/exceptions",
-    "cycle|auth,database",
-    "cycle|common,config-provider",
-    "tier|src/database/entities/user.entity.ts|database(infrastructure) -> auth(feature)"
+    "cycle|common,config-provider"
   ]
 }

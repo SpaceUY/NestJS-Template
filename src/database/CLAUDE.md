@@ -19,6 +19,7 @@ that owns the data.
 | `DatabaseModule` | `src/database/database.module.ts` | Imported once by `src/app.module.ts` |
 | `BaseEntity` | `src/database/entities/base.entity.ts` | Every entity extends it |
 | `User` | `src/database/entities/user.entity.ts` | Auth identity |
+| `AuthType` | `src/database/entities/auth-type.enum.ts` | `EMAIL` / `GOOGLE` / `AUTH0`; stored on `User.authType` |
 | `databaseScope`, `DatabaseScopeConfig` | `src/database/config/database.scope.ts` | Connection config |
 | `AppDataSource` | `src/database/data-source.ts` | TypeORM CLI entry point only — never import from application code |
 
@@ -89,8 +90,8 @@ carry this template's config-provider dependency — port them together with
 `src/config-provider/`, or rewrite the factory against whatever config mechanism
 the target project uses.
 
-`User` is coupled to `src/auth/core/auth-type.enum.ts`; take `auth` with it or
-drop the `authType` column.
+`User` owns `src/database/entities/auth-type.enum.ts` directly; dropping
+`auth` just means dropping the `authType` column too.
 
 ## Known gaps
 
