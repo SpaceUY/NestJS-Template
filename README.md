@@ -68,8 +68,8 @@ above, before any template code was copied in.
   `src/queues/` alone leaves **19** unresolved imports; with both companions
   `tsc --noEmit` exits 0. `src/queues/` itself needs `bullmq`, `amqplib`
   (plus `@types/amqplib`), `@aws-sdk/client-sqs` and `joi`, plus
-  `@types/jest` if you copy its `tests/` folders — 7 of those 19 errors are
-  in spec files; the companions
+  `@types/jest` if you copy its `tests/` folders — 11 of those 19 errors are
+  in spec files, 8 are not; the companions
   bring their own — `class-transformer`, `pino`, `winston`,
   `@opentelemetry/api` and `@opentelemetry/sdk-trace-node` for the logger,
   `@aws-sdk/client-secrets-manager` and `dotenv` for `config-provider`.

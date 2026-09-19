@@ -598,7 +598,9 @@ the processor throws. The adapter maps the context contract onto that:
 
 **Scope of this section.** It describes the narrowest useful copy — `abstract/`
 plus the one adapter directory you use — which needs only the logger alongside
-it. The root `README.md` measures a wider scope: all of `src/queues/`, every
+it for `bullmq-adapter/` or `sqs-adapter/`. Taking `rabbitmq-adapter/` instead
+also needs `src/config-provider/`, because its own scope file imports from
+there. The root `README.md` measures a wider scope: all of `src/queues/`, every
 adapter and both `tests/` folders included, which also needs
 `src/config-provider/`, because `rabbitmq-adapter/config/rabbitmq.scope.ts` and
 `abstract/tests/queue-consumer-feature.module.di.spec.ts` import it. Two
@@ -614,8 +616,10 @@ need only that same logger import. Copy the one adapter directory you
 actually need next to it — each adapter has its own extra dependency:
 `bullmq-adapter/` needs the `bullmq` package plus a Redis config scope
 (`src/redis.scope.ts`, or your own),
-`rabbitmq-adapter/` needs `amqplib` plus its own RabbitMQ scope, `sqs-adapter/`
-needs `@aws-sdk/client-sqs`. You do not need all three — pick the broker you
+`rabbitmq-adapter/` needs `amqplib` plus its own RabbitMQ scope — and that
+scope (`rabbitmq-adapter/config/rabbitmq.scope.ts`) imports `config-source.util`
+and `define-config-scope.util` from `src/config-provider/`, so that companion
+comes too; `sqs-adapter/` needs `@aws-sdk/client-sqs`. You do not need all three — pick the broker you
 use.
 
 **What to do instead.** Copy `abstract/` and `src/common/observability/logger/`,

@@ -805,8 +805,15 @@ the 2026-09-11 audit.
 
 `docs/audit/module-independence-baseline.json` now records zero violations, so
 `pnpm run modularity:check` rejects any new one instead of freezing a known
-set. The design is at
-`docs/superpowers/specs/2026-09-19-queues-decoupling-design.md`.
+set.
+
+The cause was the consumer registration API, not a careless import.
+`QueueConsumerModule.forRoot(Async)` took every queue↔handler pair in a single
+call and provided the handler classes inside its own injector, so one
+infrastructure module had to name every domain handler in the app and re-import
+their dependencies. `QueueConsumerModule.forFeature(consumers)` records the
+binding without providing the handler: the domain module declares it in its own
+`providers`, and the feature module resolves it at init.
 
 The body of this audit is left exactly as written on 2026-09-18. It describes
 the tree as it was measured that day; several files it cites no longer exist.

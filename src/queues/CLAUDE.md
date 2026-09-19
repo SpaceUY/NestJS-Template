@@ -53,7 +53,7 @@ adapter's own connection config and is registered in
    injects the concrete adapter class directly and is coupled to that
    broker by design. The template ships no provider that makes the concrete
    class injectable — a project that wants one aliases it in its own wiring;
-   `README.md`'s `## Registration` section has the recipe and the guard it
+   `src/queues/README.md`'s `## Registration` section has the recipe and the guard it
    needs. Note this coupling in the consuming module's own guide; don't hide
    it.
 2. A domain module registers its own consumers with
@@ -95,15 +95,17 @@ things here fail only on actual resolution: a consumer adapter built by
 of the domain module that owns it (together with that module's own non-global
 provider, which the handler injects), and the callback the adapter is actually
 bound to reaching that same handler instance. It is also this module's
-executable example — the graph `README.md`'s `## Registration` section
-describes. Changing any of that without running it is how a wiring bug reaches
+executable example — the graph `src/queues/README.md`'s `## Registration`
+section describes. Changing any of that without running it is how a wiring bug reaches
 production.
 
 ## Reuse
 
-Scoped to the narrowest useful copy — `abstract/` plus one adapter directory.
-Lifting all of `src/queues/`, `tests/` folders included, additionally needs
-`src/config-provider/`; the root `README.md` measures that wider scope.
+Scoped to the narrowest useful copy — `abstract/` plus one adapter directory,
+which needs `src/config-provider/` only when that adapter is
+`rabbitmq-adapter/` (its scope file imports from there). Lifting all of
+`src/queues/`, `tests/` folders included, needs `src/config-provider/` either
+way; the root `README.md` measures that wider scope.
 
 `abstract/` depends on `@nestjs/common` **and**
 `src/common/observability/logger/` — `LoggerService`/`NestLoggerAdapter` are
