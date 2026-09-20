@@ -93,7 +93,8 @@ practices are the valuable half.
 
 See `docs/audit/2026-09-11-template-audit.md`.
 
-- **`C5`** — `src/auth/google/google.service.ts` logs the raw provider error on
-  the token path, against this module's own practices.
+- **`C5`** — ~~`src/auth/google/google.service.ts` logs the raw provider error on
+  the token path, against this module's own practices.~~ **Fixed on
+  `fix/security-defaults`:** it logs the error's constructor name only.
 - Direct `@nestjs/common` `Logger` use persists in middleware and the Google
   auth module.

@@ -7,9 +7,12 @@ import { DocumentBuilder, SwaggerModule } from '@nestjs/swagger';
 
 async function bootstrap(): Promise<void> {
   const app = await NestFactory.create(AppModule);
+  const appConf = app.get<AppScopeConfig>(appScope.KEY);
   app.enableShutdownHooks();
   app.enableCors({
-    origin: '*',
+    // Comes from CORS_ORIGINS; required, and never a wildcard, when
+    // NODE_ENV=PROD. See src/app.scope.ts.
+    origin: appConf.corsOrigins,
     methods: ['GET', 'POST', 'PUT', 'PATCH', 'DELETE', 'OPTIONS'],
     allowedHeaders: [
       'origin',
@@ -29,7 +32,6 @@ async function bootstrap(): Promise<void> {
   const document = SwaggerModule.createDocument(app, config);
   SwaggerModule.setup('api', app, document);
 
-  const appConf = app.get<AppScopeConfig>(appScope.KEY);
   await app.listen(appConf.port);
 }
 bootstrap();

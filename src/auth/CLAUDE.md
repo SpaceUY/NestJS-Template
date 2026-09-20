@@ -70,8 +70,10 @@ All three are registered in the `scopes` array in `src/app.module.ts`.
    `src/common/exception/exceptions.ts` — do not construct `HttpException` here.
 5. Auth failure messages stay generic. `invalidCredentials` must not reveal
    whether the account exists.
-6. Never log a token, an ID token, or a raw provider error.
-   `src/auth/google/google.service.ts` currently does (finding `C5`).
+6. Never log a token, an ID token, or a raw provider error. A rejected
+   `verifyIdToken` carries the submitted token in its message, so
+   `src/auth/google/google.service.ts` logs the error's *kind* and nothing
+   else (`_logProviderFailure`). Follow that shape for any new provider.
 7. `GoogleModule` and `Auth0Module` are imported unconditionally by
    `src/auth/auth.module.ts` and only *log* when their `enabled` flag is false.
    A project not using one of them removes the import rather than relying on
@@ -154,9 +156,14 @@ step order.
 
 See `docs/audit/2026-09-11-template-audit.md`.
 
-- **`C2`** — `jwtScope` defaults `secret` to `'Not A Safe Secret'`, so an app with
-  no `JWT_SECRET` signs tokens with a public constant.
-- **`C5`** — raw provider errors logged on the Google token path.
+- **`C2`** — ~~`jwtScope` defaults `secret` to `'Not A Safe Secret'`, so an app with
+  no `JWT_SECRET` signs tokens with a public constant.~~ **Fixed on
+  `fix/security-defaults`:** `secret` is `Joi.string().required()` with no
+  default, so the app refuses to boot without `JWT_SECRET`.
+- **`C5`** — ~~raw provider errors logged on the Google token path.~~ **Fixed on
+  `fix/security-defaults`:** both catch blocks log the error's constructor name
+  only, and no longer log at all when the failure is an expected
+  `RequestException`.
 - **`R3`** — `src/auth/auth.service.ts` is an empty `@Injectable()` that
   `AuthModule` still exports; `src/auth/email/` is an empty controller and module.
 - **`N6`** — ~~`src/auth/jwt.strategy.ts`, `src/auth/google/google.controller.ts`

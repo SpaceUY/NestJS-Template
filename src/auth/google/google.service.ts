@@ -53,10 +53,10 @@ export class GoogleService {
 
       return this.authTokenService.generateAuthToken(user, AuthType.GOOGLE);
     } catch (e) {
-      this.logger.error('Google login: ', e);
       if (e instanceof RequestException) {
         throw e;
       }
+      this._logProviderFailure('register', e);
       throw new RequestException(Exceptions.auth.invalidCredentials);
     }
   }
@@ -86,11 +86,22 @@ export class GoogleService {
         AuthType.GOOGLE,
       );
     } catch (e) {
-      this.logger.error('Google login: ', e);
       if (e instanceof RequestException) {
         throw e;
       }
+      this._logProviderFailure('login', e);
       throw new RequestException(Exceptions.auth.invalidCredentials);
     }
+  }
+
+  /**
+   * Logs the kind of failure and nothing else. A rejected `verifyIdToken`
+   * carries the submitted ID token in its message, so logging the error
+   * object — or its message — writes a credential to the log (finding `C5`).
+   */
+  private _logProviderFailure(operation: string, e: unknown): void {
+    this.logger.error(
+      `Google ${operation} failed: ${e instanceof Error ? e.name : typeof e}`,
+    );
   }
 }
