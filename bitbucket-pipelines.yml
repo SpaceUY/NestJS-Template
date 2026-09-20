@@ -14,7 +14,8 @@ definitions:
           - pnpm install --frozen-lockfile
           - pnpm run docs:check
           - pnpm run modularity:check
-          - pnpm run lint
+          - pnpm run lint:ci
+          - pnpm test
           - pnpm run build
         artifacts:
           - dist/**
