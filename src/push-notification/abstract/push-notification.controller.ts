@@ -1,4 +1,5 @@
 import {
+  BadRequestException,
   Body,
   Controller,
   InternalServerErrorException,
@@ -8,7 +9,10 @@ import {
 import { ApiTags } from '@nestjs/swagger';
 import { PushNotificationService } from './push-notification.service';
 import { PushNotificationDto } from './dto/push-notification.dto';
-import { PushNotificationException } from './push-notification.exception';
+import {
+  PUSH_NOTIFICATION_ERRORS,
+  PushNotificationError,
+} from './push-notification.error';
 import { SendPushNotificationMetadata } from './push-notification.metadata';
 
 @ApiTags('Push Notification')
@@ -31,10 +35,25 @@ export class PushNotificationController {
         notificationDto,
       );
     } catch (error) {
-      if (error instanceof PushNotificationException) {
-        throw error;
-      }
-      throw new InternalServerErrorException(error);
+      throw this._asHttpException(error);
     }
+  }
+
+  /**
+   * The module error carries a code, not a status: mapping one to the other is
+   * the controller's job, and the message it answers with is written here
+   * rather than taken from the provider.
+   */
+  private _asHttpException(error: unknown): Error {
+    if (
+      error instanceof PushNotificationError &&
+      error.code === PUSH_NOTIFICATION_ERRORS.INVALID_TOKEN
+    ) {
+      return new BadRequestException('The push token is not valid');
+    }
+
+    return new InternalServerErrorException(
+      'The push notification could not be sent',
+    );
   }
 }

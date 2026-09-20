@@ -134,10 +134,9 @@ Two directories fit neither list, having no registration and no config scope in
   registered in `src/templates/template.const.ts`. Both are starting points, not
   demo content — there is nothing here to strip. No module imports it; only
   `src/app.controller.ts` does, for `TEMPLATE_PATHS`.
-- `src/user/` is two unrelated files, not one module. `src/user/user.module.ts`
-  is an empty module that nothing imports and is safe to delete on its own
-  (finding `R3`). `src/user/current-user.decorator.ts` is live, per the edge
-  above, so it stays.
+- `src/user/` is a single file, not a module: `current-user.decorator.ts`,
+  live per the edge above. The empty `user.module.ts` that used to sit beside
+  it was deleted (finding `R3`).
 
 Run `pnpm run modularity:check -- --report` for the current dependency graph
 before deleting anything, rather than trusting a copy of it that will drift.

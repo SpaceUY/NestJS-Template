@@ -1,6 +1,5 @@
-import { ERROR_CODES } from '../../common/enums';
-import { ApiException } from '../../common/exception/api.exception';
 import {
+  BadRequestException,
   Controller,
   Delete,
   Get,
@@ -40,10 +39,7 @@ export class CloudStorageController {
     @UploadedFile() file: CloudStorageUploadFile | undefined,
   ): Promise<FileResponseDto> {
     if (!file?.buffer || file.buffer.length === 0) {
-      throw new ApiException({
-        code: ERROR_CODES.INVALID_PAYLOAD,
-        message: 'A non-empty file is required',
-      });
+      throw new BadRequestException('A non-empty file is required');
     }
 
     return this.cloudStorageService.uploadFile(file);
@@ -55,10 +51,7 @@ export class CloudStorageController {
   @ApiResponse({ status: 200, description: 'Complete', type: String })
   async deleteFile(@Param('fileKey') fileKey: string): Promise<void> {
     if (!fileKey?.trim()) {
-      throw new ApiException({
-        code: ERROR_CODES.INVALID_PAYLOAD,
-        message: 'A valid file key is required',
-      });
+      throw new BadRequestException('A valid file key is required');
     }
 
     await this.cloudStorageService.deleteFile(fileKey);
@@ -70,10 +63,7 @@ export class CloudStorageController {
   @ApiResponse({ status: 200, description: 'Complete', type: FileResponseDto })
   async getFile(@Param('fileKey') fileKey: string): Promise<FileResponseDto> {
     if (!fileKey?.trim()) {
-      throw new ApiException({
-        code: ERROR_CODES.INVALID_PAYLOAD,
-        message: 'A valid file key is required',
-      });
+      throw new BadRequestException('A valid file key is required');
     }
 
     return this.cloudStorageService.getFile(fileKey);

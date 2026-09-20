@@ -139,8 +139,8 @@ cover:
 
 Mock the `User` repository with `getRepositoryToken(User)`, and `OAuth2Client`
 with a plain jest object. Name files `*.unit.spec.ts`.
-`src/auth/email/email.controller.spec.ts` is a legacy-named stub for an empty
-controller — do not extend it.
+The empty email provider directory and its legacy-named controller stub were
+deleted (finding `R3`); there is no email/password provider to test yet.
 
 ## Reuse
 
@@ -148,7 +148,8 @@ Couples to `src/config-provider/`, `src/database/entities/user.entity.ts`,
 `src/common/exception/` and `src/user/current-user.decorator.ts` — port those
 first. `auth` depends on `database` for both `User` and `AuthType`.
 `src/auth/google/` and `src/auth/auth0/` are independently droppable;
-`src/auth/email/` is an empty scaffold (finding `R3`), not a provider to port.
+The email provider directory no longer exists — it was an empty scaffold
+(finding `R3`). Email/password login is not implemented; write it yourself.
 See `src/auth/README.md`'s `## Reuse` for the peer-dependency list and the
 step order.
 
@@ -164,8 +165,10 @@ See `docs/audit/2026-09-11-template-audit.md`.
   `fix/security-defaults`:** both catch blocks log the error's constructor name
   only, and no longer log at all when the failure is an expected
   `RequestException`.
-- **`R3`** — `src/auth/auth.service.ts` is an empty `@Injectable()` that
-  `AuthModule` still exports; `src/auth/email/` is an empty controller and module.
+- **`R3`** — ~~`auth.service.ts` is an empty `@Injectable()` that `AuthModule`
+  still exports, alongside an empty email controller and module.~~
+  **Fixed on `chore/dead-code-and-error-model`:** both deleted, and `AuthModule`
+  no longer provides or exports `AuthService`.
 - **`N6`** — ~~`src/auth/jwt.strategy.ts`, `src/auth/google/google.controller.ts`
   and `src/auth/google/google.service.ts` use absolute `src/...` imports, against
   invariant `T5`.~~ **Fixed on `feature/queues-decoupling`** (also tracked as
