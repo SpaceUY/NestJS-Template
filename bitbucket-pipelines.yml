@@ -65,12 +65,16 @@ pipelines:
     '**':
       - step: *test-build
   branches:
+    # The gates run again on the branch itself before either deploy: a
+    # pull-request build proves the merge source, not the merged result.
     staging:
-      - step: 
+      - step: *test-build
+      - step:
           <<: *build_publish_and_deploy
           deployment: Staging
     master:
-      - step: 
+      - step: *test-build
+      - step:
           <<: *build_publish_and_deploy
           deployment: Production
       

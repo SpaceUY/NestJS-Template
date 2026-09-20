@@ -173,9 +173,12 @@ were measured green in `docs/audit/2026-09-18-modularity-audit.md`'s gate table;
   in a TypeORM project.
 - **`G2`** — ~~CI runs `docs:check`, `modularity:check`, `lint` and `build`;
   `pnpm test` never runs in the pipeline.~~ **Fixed on `chore/ci-test-gate`:**
-  the `test-build` step runs `pnpm test` between `lint:ci` and `build`. Still
-  true, and deliberate: `pnpm run test:e2e` does not run — `test/app.e2e-spec.ts`
-  is unmodified Nest boilerplate and needs a live database.
+  the `test-build` step runs `pnpm test` between `lint:ci` and `build`, and that
+  step now also runs on the `staging` and `master` branches before their deploy
+  step — a pull-request build proves the merge source, not the merged result.
+  Still true, and deliberate: `pnpm run test:e2e` does not run —
+  `test/app.e2e-spec.ts` is unmodified Nest boilerplate and needs a live
+  database.
 - **`TS1`** — `tsconfig.json` is not in strict mode, contrary to the SpaceDev
   standard.
 
