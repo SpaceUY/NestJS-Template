@@ -1,6 +1,8 @@
 FROM node:24.15.0
-# RUN as root
-RUN apk add dumb-init
+# RUN as root. node:24.15.0 is Debian-based, so this is apt, not apk.
+RUN apt-get update \
+    && apt-get install -y --no-install-recommends dumb-init \
+    && rm -rf /var/lib/apt/lists/*
 RUN corepack enable && corepack prepare pnpm@10.15.1 --activate
 # Use the node user from the image (instead of the root user)
 USER node
@@ -17,8 +19,6 @@ RUN pnpm install --frozen-lockfile
 COPY --chown=node:node . .
 
 # Run the build command which creates the production bundle
-RUN pnpm exec prisma generate
-
 RUN pnpm run build
 
 RUN chmod 777 ./docker-script.sh

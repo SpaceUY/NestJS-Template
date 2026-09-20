@@ -169,8 +169,12 @@ were measured green in `docs/audit/2026-09-18-modularity-audit.md`'s gate table;
   silently repairing it.
 - **`B2`** — ~~`package.json` declares `dotenv` twice.~~ **Fixed** — declared
   once; verified in `docs/audit/2026-09-18-modularity-audit.md` (`DOC5`).
-- **`B3`** — `Dockerfile` uses `apk` on a Debian image and runs `prisma generate`
-  in a TypeORM project.
+- **`B3`** — ~~`Dockerfile` uses `apk` on a Debian image and runs `prisma generate`
+  in a TypeORM project.~~ **Fixed on `fix/container-and-deploy-build`:** the
+  image installs `dumb-init` with `apt-get`, the Prisma calls are gone from
+  both `Dockerfile` and `docker-script.sh` (the entrypoint now runs
+  `pnpm run db:migration:run`), and `bitbucket-pipelines.yml`'s deploy step
+  installs `gettext-base` with `apt-get` too. Verified by building the image.
 - **`G2`** — ~~CI runs `docs:check`, `modularity:check`, `lint` and `build`;
   `pnpm test` never runs in the pipeline.~~ **Fixed on `chore/ci-test-gate`:**
   the `test-build` step runs `pnpm test` between `lint:ci` and `build`, and that
