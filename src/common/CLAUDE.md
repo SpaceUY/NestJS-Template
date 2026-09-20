@@ -104,4 +104,5 @@ See `docs/audit/2026-09-11-template-audit.md` and `docs/audit/2026-09-18-modular
   catches only `HttpException`.~~ **Fixed on `fix/security-defaults`:**
   `@Catch()` with a body built field by field, covered by
   `request-exception.filter.unit.spec.ts`.
-- **`G1`** — no tests for the middleware, the utils or the decorators.
+- **`G1`** — `RequestExceptionFilter` is covered; the rest of the middleware,
+  the utils and the decorators are not.
