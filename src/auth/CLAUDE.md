@@ -24,7 +24,7 @@ does not own the `User` entity, which lives in `src/database/entities/user.entit
 | `AuthModule` | `src/auth/auth.module.ts` | Import into any module with protected routes |
 | `AuthTokenService` | `src/auth/core/auth-token/auth-token.service.ts` | `generateAuthToken`, `validateAuthToken` — injecting it requires importing `AuthTokenModule` (`src/auth/core/auth-token/auth-token.module.ts`); `AuthModule` does not re-export it |
 | `AuthTokenPayload` | `src/auth/core/auth-token/auth-token.service.ts` | JWT payload shape |
-| `AuthType` | `src/auth/core/auth-type.enum.ts` | `EMAIL` / `GOOGLE` / `AUTH0`; stored on `User.authType` |
+| `AuthType` | `src/database/entities/auth-type.enum.ts` | `EMAIL` / `GOOGLE` / `AUTH0`; stored on `User.authType` |
 | `jwtScope`, `JwtScopeConfig` | `src/auth/config/jwt.scope.ts` | JWT config |
 | `googleScope`, `GoogleScopeConfig` | `src/auth/google/config/google.scope.ts` | Google OAuth config |
 | `auth0Scope`, `Auth0ScopeConfig` | `src/auth/auth0/config/auth0.scope.ts` | Auth0 config |
@@ -48,14 +48,15 @@ All three are registered in the `scopes` array in `src/app.module.ts`.
 
 ## Rules
 
-1. Protect a route with the guard plus the decorator:
+1. Protect a route with the guard plus the decorator — for example, in a
+   controller of your own:
    ```ts
    @UseGuards(AuthGuard('jwt'))
    @ApiBearerAuth()
-   @Controller('spaceships')
-   export class SpaceshipController {
+   @Controller('me')
+   export class ProfileController {
      @Get()
-     async list(@CurrentUser() user: User): Promise<Spaceship[]> { /* … */ }
+     async profile(@CurrentUser() user: User): Promise<User> { /* … */ }
    }
    ```
    `@ApiBearerAuth()` is not optional — without it the Swagger document lies.
@@ -143,7 +144,8 @@ controller — do not extend it.
 
 Couples to `src/config-provider/`, `src/database/entities/user.entity.ts`,
 `src/common/exception/` and `src/user/current-user.decorator.ts` — port those
-first. `src/auth/google/` and `src/auth/auth0/` are independently droppable;
+first. `auth` depends on `database` for both `User` and `AuthType`.
+`src/auth/google/` and `src/auth/auth0/` are independently droppable;
 `src/auth/email/` is an empty scaffold (finding `R3`), not a provider to port.
 See `src/auth/README.md`'s `## Reuse` for the peer-dependency list and the
 step order.
@@ -157,7 +159,10 @@ See `docs/audit/2026-09-11-template-audit.md`.
 - **`C5`** — raw provider errors logged on the Google token path.
 - **`R3`** — `src/auth/auth.service.ts` is an empty `@Injectable()` that
   `AuthModule` still exports; `src/auth/email/` is an empty controller and module.
-- **`N6`** — `src/auth/jwt.strategy.ts`, `src/auth/google/google.controller.ts`
+- **`N6`** — ~~`src/auth/jwt.strategy.ts`, `src/auth/google/google.controller.ts`
   and `src/auth/google/google.service.ts` use absolute `src/...` imports, against
-  invariant `T5`.
+  invariant `T5`.~~ **Fixed on `feature/queues-decoupling`** (also tracked as
+  `M1`): every specifier in those files is relative now, and
+  `docs/audit/module-independence-baseline.json` records no `abs-import`
+  entry at all, so `pnpm run modularity:check` fails on the next one.
 - **`G1`** — no tests.

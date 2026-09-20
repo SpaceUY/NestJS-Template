@@ -1,0 +1,107 @@
+# Evidence: copying src/queues/ alone into a fresh NestJS project
+# Date: 2026-09-19 (corrected re-run; supersedes the same-dated file
+# produced earlier the same day, which used an unmodified @nestjs/cli@latest
+# scaffold and measured the wrong thing — see the "probe alignment" note
+# below)
+# Scratch project: /tmp/tmp.lhycXtlxGU/probe
+#
+# PROBE ALIGNMENT (done before copying any template code, and why):
+# A fresh `@nestjs/cli@latest` project (today: @nestjs/cli 12.0.3, TypeScript
+# 6.0.3) scaffolds "type": "module" in package.json and
+# "module": "nodenext" / "moduleResolution": "nodenext" in tsconfig.json.
+# The template this repo audits is CommonJS end to end: its tsconfig.json
+# sets "module": "commonjs" with default resolution, and its package.json
+# has no "type" field. Under the scaffold's default ESM/nodenext settings,
+# *every* relative import without an explicit ".js" extension fails to
+# resolve — including same-directory imports inside the very directory
+# being tested — which drowns out any signal about which OTHER modules
+# src/queues/ actually depends on. That is a fact about the probe's module
+# system, not about src/queues/'s dependencies, so it does not belong in
+# this measurement.
+#
+# DISCOVERED, DOCUMENTATION-WORTHY FACT: a project scaffolded today by
+# `@nestjs/cli@latest` is ESM with "nodenext" resolution by default. None of
+# this template's own source files write extensioned relative imports
+# (consistent with invariant T5), so a project scaffolded fresh today needs
+# either "module": "commonjs" (as done here) or every relative import
+# rewritten with explicit ".js" extensions before ANY of this template's
+# modules will compile in it — independent of which module is being lifted.
+#
+# To align the probe with the template's own module system, before copying
+# anything:
+#   - Removed the generated `"type": "module"` line from package.json.
+#   - Replaced tsconfig.json's compilerOptions with the template's own
+#     values: module/target/esModuleInterop/allowSyntheticDefaultImports/
+#     experimentalDecorators/emitDecoratorMetadata/strictNullChecks/
+#     noImplicitAny/strictBindCallApply/skipLibCheck (mirrored from this
+#     repo's own tsconfig.json). `typeRoots` was deliberately NOT copied —
+#     that entry is common's ambient-types concern, not something
+#     src/queues/ needs.
+#   - Changed the scaffold's own src/main.ts from a top-level
+#     `await bootstrap();` to `bootstrap();` — the generated file used
+#     top-level await, which is only legal under an ES2022+/nodenext module
+#     target, and is incompatible with the template's "module": "commonjs" +
+#     target "es2020". This is a scaffold-only file, unrelated to
+#     src/queues/.
+#   - Added `"types": ["node", "jest"]` to tsconfig.json. Diagnosis: with no
+#     "types" field, TypeScript's default behaviour should automatically
+#     load every package under node_modules/@types (all of node, jest,
+#     express, supertest, amqplib were present there as correctly-linked
+#     pnpm symlinks), but empirically (`tsc --noEmit --explainFiles`) only
+#     @types/node and @types/supertest were ever loaded; @types/jest's
+#     ambient globals (describe/it/expect/...) were never picked up, and the
+#     scaffold's own untouched src/app.controller.spec.ts and
+#     test/app.e2e-spec.ts failed with "Cannot find name 'describe'" before
+#     any template code was copied in. The compiler's own error message
+#     suggested this exact fix. Root cause of the automatic-inclusion miss
+#     was not tracked down further (possibly related to this environment's
+#     pnpm 12.4.2, auto-downloaded by corepack, differing from this
+#     template's pinned pnpm 10.15.1) — noted here in case it recurs.
+#   - Installed `@types/jest` as a dev dependency, per the coordinator's
+#     instruction, since the 2026-09-18 evidence kept queues' jest-style
+#     spec files in scope and they need this to typecheck.
+#
+# BASELINE CHECK (before copying src/queues/): with the above alignment,
+# `pnpm exec tsc --noEmit` on the untouched, aligned scaffold exits 0 with
+# no output at all — cleaner than the "only test/app.e2e-spec.ts" allowance
+# in the instructions required. This confirms the probe itself was sane
+# before any template code entered it.
+#
+# Commands run, in order:
+#   SCRATCH=$(mktemp -d)                     # -> /tmp/tmp.lhycXtlxGU
+#   cd "$SCRATCH"
+#   pnpm dlx @nestjs/cli@latest new probe --package-manager pnpm --skip-git --skip-install
+#   cd probe
+#   pnpm install
+#   pnpm add bullmq amqplib @aws-sdk/client-sqs joi
+#   pnpm add -D @types/amqplib @types/jest
+#   # probe alignment edits described above (package.json, tsconfig.json, src/main.ts)
+#   pnpm exec tsc --noEmit                   # baseline: exit 0, no output
+#   TEMPLATE=/run/media/leonel/4f37aba0-a422-4ae0-b330-35fcb650f362/trabajo/proyectos/nest/NestJS-Template
+#   cp -r "$TEMPLATE/src/queues" src/queues
+#   pnpm exec tsc --noEmit
+#
+# Raw output below. grep -c "error TS2307" on this output = 19.
+# Total lines in the raw output: 19 (all TS2307; no other error codes).
+# Exit code: 2.
+#
+# ---- raw `pnpm exec tsc --noEmit` output follows ----
+src/queues/abstract/consumer/queue-consumer.adapter.ts(2,31): error TS2307: Cannot find module '../../../common/observability/logger/abstract/logger.service' or its corresponding type declarations.
+src/queues/abstract/consumer/queue-consumer.adapter.ts(3,35): error TS2307: Cannot find module '../../../common/observability/logger/nest-adapter/nest-logger.adapter' or its corresponding type declarations.
+src/queues/abstract/consumer/queue-consumer.module.ts(18,31): error TS2307: Cannot find module '../../../common/observability/logger/abstract/logger.service' or its corresponding type declarations.
+src/queues/abstract/producer/queue-producer.module.ts(7,31): error TS2307: Cannot find module '../../../common/observability/logger/abstract/logger.service' or its corresponding type declarations.
+src/queues/abstract/producer/queue-producer.service.ts(2,31): error TS2307: Cannot find module '../../../common/observability/logger/abstract/logger.service' or its corresponding type declarations.
+src/queues/abstract/producer/queue-producer.service.ts(3,35): error TS2307: Cannot find module '../../../common/observability/logger/nest-adapter/nest-logger.adapter' or its corresponding type declarations.
+src/queues/abstract/tests/queue-consumer-feature.module.di.spec.ts(18,31): error TS2307: Cannot find module '../../../common/observability/logger/abstract/logger.service' or its corresponding type declarations.
+src/queues/abstract/tests/queue-consumer-feature.module.di.spec.ts(19,38): error TS2307: Cannot find module '../../../common/observability/logger/abstract/logger-abstract.module' or its corresponding type declarations.
+src/queues/abstract/tests/queue-consumer-feature.module.di.spec.ts(20,35): error TS2307: Cannot find module '../../../common/observability/logger/nest-adapter/nest-logger.adapter' or its corresponding type declarations.
+src/queues/abstract/tests/queue-consumer-feature.module.di.spec.ts(21,46): error TS2307: Cannot find module '../../../config-provider/abstract/config-provider-abstract.module' or its corresponding type declarations.
+src/queues/abstract/tests/queue-consumer-feature.module.di.spec.ts(22,39): error TS2307: Cannot find module '../../../config-provider/abstract/config-provider.service' or its corresponding type declarations.
+src/queues/abstract/tests/queue-consumer-feature.module.di.spec.ts(23,39): error TS2307: Cannot find module '../../../config-provider/abstract/config-source.util' or its corresponding type declarations.
+src/queues/abstract/tests/queue-consumer-feature.module.di.spec.ts(24,35): error TS2307: Cannot find module '../../../config-provider/abstract/define-config-scope.util' or its corresponding type declarations.
+src/queues/abstract/tests/queue-consumer.module.unit.spec.ts(8,31): error TS2307: Cannot find module '../../../common/observability/logger/abstract/logger.service' or its corresponding type declarations.
+src/queues/abstract/tests/queue-consumer.module.unit.spec.ts(9,35): error TS2307: Cannot find module '../../../common/observability/logger/nest-adapter/nest-logger.adapter' or its corresponding type declarations.
+src/queues/abstract/tests/queue-producer.module.unit.spec.ts(4,31): error TS2307: Cannot find module '../../../common/observability/logger/abstract/logger.service' or its corresponding type declarations.
+src/queues/abstract/tests/queue-producer.module.unit.spec.ts(5,35): error TS2307: Cannot find module '../../../common/observability/logger/nest-adapter/nest-logger.adapter' or its corresponding type declarations.
+src/queues/rabbitmq-adapter/config/rabbitmq.scope.ts(2,39): error TS2307: Cannot find module '../../../config-provider/abstract/config-source.util' or its corresponding type declarations.
+src/queues/rabbitmq-adapter/config/rabbitmq.scope.ts(3,35): error TS2307: Cannot find module '../../../config-provider/abstract/define-config-scope.util' or its corresponding type declarations.

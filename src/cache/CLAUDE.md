@@ -16,8 +16,7 @@ Does not own: HTTP response caching, memoization, or the choice of what to cache
 — the consuming service decides that.
 
 Registered in `src/app.module.ts` via `CacheAbstractModule.forRootAsync`, bound
-to `RedisCacheAdapterService`; `src/spaceship/spaceship.service.ts` is the
-first real consumer (cache-aside on the spaceship list endpoint).
+to `RedisCacheAdapterService`.
 
 ## Public surface
 

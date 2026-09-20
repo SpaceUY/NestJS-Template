@@ -45,7 +45,9 @@ export interface QueueConsumerModuleOptions {
   // by design: the sync path uses no DI factory, so there is nothing to import —
   // use forRootAsync to bring in a non-global module (e.g. a custom logger).
   adapter: new () => QueueConsumerAdapter;
-  consumers: ConsumerRegistration[];
+  // Optional: an app that registers every consumer through `forFeature` has no
+  // root-level registrations to declare.
+  consumers?: ConsumerRegistration[];
   isGlobal?: boolean;
 }
 
@@ -60,6 +62,7 @@ export interface QueueConsumerModuleAsyncOptions {
     // eslint-disable-next-line @typescript-eslint/no-explicit-any
     ...args: any[]
   ) => Promise<QueueConsumerAdapter> | QueueConsumerAdapter;
-  consumers: ConsumerRegistration[];
+  // Optional, for the same reason as on the sync options above.
+  consumers?: ConsumerRegistration[];
   isGlobal?: boolean;
 }

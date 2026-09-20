@@ -1,6 +1,6 @@
 import Joi from 'joi';
-import { configSources as from } from '../../../../config-provider/abstract/config-source.util';
-import { defineConfigScope } from '../../../../config-provider/abstract/define-config-scope.util';
+import { configSources as from } from '../../config-provider/abstract/config-source.util';
+import { defineConfigScope } from '../../config-provider/abstract/define-config-scope.util';
 
 export const ANALYTICS_ADAPTERS = {
   POSTHOG: 'POSTHOG',

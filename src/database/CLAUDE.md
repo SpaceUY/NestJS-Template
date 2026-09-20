@@ -10,7 +10,7 @@ migration directory. Global (`@Global()`), so `TypeOrmModule` is available
 everywhere without re-importing.
 
 Does not own: repositories or queries. Those live in the service of the module
-that owns the data — `src/spaceship/spaceship.service.ts` is the reference.
+that owns the data.
 
 ## Public surface
 
@@ -19,7 +19,7 @@ that owns the data — `src/spaceship/spaceship.service.ts` is the reference.
 | `DatabaseModule` | `src/database/database.module.ts` | Imported once by `src/app.module.ts` |
 | `BaseEntity` | `src/database/entities/base.entity.ts` | Every entity extends it |
 | `User` | `src/database/entities/user.entity.ts` | Auth identity |
-| `Spaceship` | `src/database/entities/spaceship.entity.ts` | Example domain entity |
+| `AuthType` | `src/database/entities/auth-type.enum.ts` | `EMAIL` / `GOOGLE` / `AUTH0`; stored on `User.authType` |
 | `databaseScope`, `DatabaseScopeConfig` | `src/database/config/database.scope.ts` | Connection config |
 | `AppDataSource` | `src/database/data-source.ts` | TypeORM CLI entry point only — never import from application code |
 
@@ -45,8 +45,6 @@ change a key.
 2. `BaseEntity` gives every row `id` (integer PK), `uuid`, `createdAt`,
    `updatedAt`, `deletedAt`. **`id` is internal — for joins and FKs only. Only
    `uuid` may appear in an API response or a route parameter.**
-   `src/spaceship/spaceship.service.ts` looks rows up by `uuid` for exactly this
-   reason.
 3. Deletes are soft. Use `softRemove` / `softDelete`; `deletedAt` is the marker
    and TypeORM filters it out of ordinary finds. Never `delete()`.
 4. Schema changes are migrations, always generated, never hand-written
@@ -65,14 +63,14 @@ change a key.
 8. Select the columns you need. No `SELECT *` through `find()` on wide entities
    when a `select` clause will do.
 9. Declare an explicit FK column next to a relation when the ID is read without
-   loading the relation — `Spaceship.captainId` is the pattern.
+   loading the relation: the `@ManyToOne` property plus a `@Column()` holding
+   the raw id, so a caller that only needs the id never pays for a join.
 
 ## Tests
 
 No test covers this module (finding `G1`). Service tests mock the repository
-with `getRepositoryToken(Entity)` and a plain jest object — see
-`src/spaceship/spaceship.service.spec.ts`. Do not spin up a real database in a
-unit test; integration coverage belongs in `test/`.
+with `getRepositoryToken(Entity)` and a plain jest object. Do not spin up a
+real database in a unit test; integration coverage belongs in `test/`.
 
 ## Reuse
 
@@ -93,8 +91,8 @@ carry this template's config-provider dependency — port them together with
 `src/config-provider/`, or rewrite the factory against whatever config mechanism
 the target project uses.
 
-`User` is coupled to `src/auth/core/auth-type.enum.ts`; take `auth` with it or
-drop the `authType` column.
+`User` owns `src/database/entities/auth-type.enum.ts` directly; dropping
+`auth` just means dropping the `authType` column too.
 
 ## Known gaps
 

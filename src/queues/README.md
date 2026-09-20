@@ -5,10 +5,6 @@ Provider-agnostic message queues for NestJS using the same adapter pattern as
 `@nestjs/microservices`, no decorators — adapters are built directly against raw
 broker libraries (e.g. `amqplib`, AWS SDK v3).
 
-**Before you lift this:** the wired module this repo ships (`queues.module.ts`)
-does not lift into another project as-is. See [`## Reuse`](#reuse) below for
-what does lift, and what copying the rest actually costs.
-
 The module is split into two **independent** dynamic modules, each with its own
 connection to the broker:
 
@@ -16,7 +12,7 @@ connection to the broker:
 - **`QueueConsumerModule`** — consuming messages.
 
 Three concrete adapters ship alongside the abstract contracts: BullMQ, RabbitMQ
-and SQS. Only BullMQ is wired by default, in `queues.module.ts`; selecting
+and SQS. Only BullMQ is wired by default, in `src/app.module.ts`; selecting
 either of the others means writing that wiring yourself.
 
 ## Directory Structure
@@ -40,7 +36,6 @@ src/queues/
 ├── bullmq-adapter/                        # the wired default (bullmq + redisScope)
 ├── rabbitmq-adapter/                      # complete, unwired (amqplib + rabbitmqScope)
 ├── sqs-adapter/                           # complete, unwired (@aws-sdk/client-sqs)
-├── queues.module.ts                       # the one place an adapter is named
 ├── CLAUDE.md
 └── README.md
 ```
@@ -80,10 +75,13 @@ abstract class QueueConsumerHandler<TPayload = unknown> {
 ```
 
 Handlers are registered as NestJS providers, so they can inject services through
-their constructor. Because they resolve within `QueueConsumerModule`'s own
-injector scope, their dependencies must be either globally-provided or reachable
-through a module passed to `forRootAsync`'s `imports` — a non-global provider
-from an un-imported module won't resolve.
+their constructor. Where they are provided decides where their dependencies
+resolve. Declared in the domain module and registered with
+`QueueConsumerModule.forFeature`, a handler resolves in that module's own
+injector and its collaborators need no special treatment. Passed instead to the
+root's `consumers` array, it is provided inside `QueueConsumerModule`'s own
+dynamic-module scope, so its dependencies must be globally-provided or reachable
+through a module passed to `forRootAsync`'s `imports`. See `## Registration`.
 
 ### `MessageContext`
 
@@ -125,11 +123,40 @@ QueueProducerModule.forRootAsync({
 });
 ```
 
+#### Reaching adapter-specific methods
+
+`QueueProducerService` exposes only the broker-agnostic `send`/`dispatch`.
+BullMQ's `addJob` (retry attempts, backoff) lives on the concrete adapter, so
+a project that needs it aliases the concrete class in its own wiring:
+
+```ts
+{
+  provide: BullMqProducerAdapter,
+  useFactory: (producer: QueueProducerService): BullMqProducerAdapter => {
+    if (!(producer instanceof BullMqProducerAdapter)) {
+      throw new Error(
+        `BullMqProducerAdapter was requested but the wired producer is ${producer.constructor.name}.`,
+      );
+    }
+    return producer;
+  },
+  inject: [QueueProducerService],
+}
+```
+
+The `instanceof` guard matters: a plain `useExisting` alias still compiles and
+still boots after the adapter is swapped for RabbitMQ or SQS, and the first
+`addJob` call then dies with "is not a function" in the request path. The
+template does not ship this provider — nothing in it needs BullMQ-specific
+options.
+
 ### Consumer
 
-All consumers are declared in one place via the `consumers` array. The adapter
-config can come from DI (`forRootAsync`), but the consumer class references stay
-synchronous.
+The root registration binds the adapter. It also accepts a `consumers` array,
+which declares every handler in one place; the adapter config can come from DI
+(`forRootAsync`), but those consumer class references stay synchronous. The
+array is optional — see the per-feature path below, which is the one to use
+for anything but a trivial app.
 
 ```ts
 // Synchronous
@@ -162,6 +189,42 @@ Both modules optionally inject `LoggerService` from the container and call
 context with the adapter's class name, which is safe because `LoggerService` is
 registered as `Scope.TRANSIENT`. With no `LoggerService` registered, the adapter
 keeps its own `NestLoggerAdapter` default.
+
+### Consumer — per-feature registration
+
+The root registration above provides the adapter. Each domain module then
+registers its own handlers:
+
+```ts
+// src/invoicing/invoicing-queue.module.ts
+import { Module } from '@nestjs/common';
+import { QueueConsumerModule } from '../queues/abstract/consumer/queue-consumer.module';
+import { InvoiceProcessor } from './invoice.processor';
+import { InvoiceRecipients } from './invoice-recipients.provider';
+
+@Module({
+  imports: [
+    QueueConsumerModule.forFeature([
+      { queue: 'invoices', handler: InvoiceProcessor },
+    ]),
+  ],
+  providers: [InvoiceProcessor, InvoiceRecipients],
+})
+export class InvoicingQueueModule {}
+```
+
+`forFeature` does not provide `InvoiceProcessor` — this module does. That is
+why `InvoiceRecipients`, a non-global provider, resolves without anyone
+copying it into the queue registration. The module starts consuming its own
+queues on init and stops them on shutdown, independently of every other
+feature.
+
+Two requirements: the root must be registered with `isGlobal: true`, and
+handlers must be singleton-scoped (`ModuleRef.get` resolves nothing else).
+
+A working version of exactly this graph is compiled and asserted in
+`src/queues/abstract/tests/queue-consumer-feature.module.di.spec.ts` — read
+that file rather than trusting this snippet, since it is the one CI runs.
 
 ## Acknowledgment Contract
 
@@ -345,7 +408,9 @@ no operator action. A **push consumer** has no such trigger — if its channel o
 connection drops, in-flight consumers are not auto-restored and consumption stays
 halted. Each registered queue's handler is retained, so recovery is a manual
 lever rather than a restart: inject the concrete `RabbitMqConsumerAdapter` and
-call `resume(queue)` (or `resume()` for every halted queue).
+call `resume(queue)` (or `resume()` for every halted queue). As with BullMQ's
+`addJob`, injecting a concrete adapter needs an alias provider in your own
+wiring — see `#### Reaching adapter-specific methods` above.
 
 **Why this is deferred, not missing.** Reconnection *policy* — how long to back
 off, when to alert, when to give up and let the process restart — is a genuine
@@ -411,7 +476,9 @@ the SQS and BullMQ producers. (This adds one broker round-trip per publish.)
 
 **Exchanges — two ways** (per design, both are supported):
 
-1. Dedicated, type-safe method on the concrete producer:
+1. Dedicated, type-safe method on the concrete producer (injected through the
+   same alias provider as `addJob` — see `#### Reaching adapter-specific
+   methods`):
 
    ```ts
    await producer.publishToExchange({
@@ -483,7 +550,11 @@ processes all names, so this only affects the BullMQ dashboard label.
 
 **Richer job options — `addJob`.** For BullMQ-specific options beyond the shared
 tier (`attempts`, `backoff`, `jobId`, `lifo`, `removeOnComplete`, …), inject the
-concrete `BullMqProducerAdapter` and use the dedicated extension:
+concrete `BullMqProducerAdapter` and use the dedicated extension. The root
+registration provides `QueueProducerService` and nothing else, so injecting the
+concrete class fails to resolve at startup until you add the alias provider from
+`## Registration` → `#### Reaching adapter-specific methods` above — the
+template does not ship one:
 
 ```ts
 await producer.addJob({
@@ -525,46 +596,37 @@ the processor throws. The adapter maps the context contract onto that:
 
 ## Reuse
 
+**Scope of this section.** It describes the narrowest useful copy — `abstract/`
+plus the one adapter directory you use — which needs only the logger alongside
+it for `bullmq-adapter/` or `sqs-adapter/`. Taking `rabbitmq-adapter/` instead
+also needs `src/config-provider/`, because its own scope file imports from
+there. The root `README.md` measures a wider scope: all of `src/queues/`, every
+adapter and both `tests/` folders included, which also needs
+`src/config-provider/`, because `rabbitmq-adapter/config/rabbitmq.scope.ts` and
+`abstract/tests/queue-consumer-feature.module.di.spec.ts` import it. Two
+companions there; one or two here, depending on the adapter — the same tree, a
+different amount of it.
+
 **What lifts.** `abstract/` — the producer and consumer contracts and their
 dynamic modules — is a self-contained unit you can copy into another project.
 It needs `src/common/observability/logger/` alongside it:
 `LoggerService`/`NestLoggerAdapter` are imported by the producer and consumer
 services and modules. Its `tests/` folder mostly travels with it too —
 `queue-producer.module.unit.spec.ts` and `queue-consumer.module.unit.spec.ts`
-need only that same logger import — but leave `queues.module.di.spec.ts`
-behind: it imports `queues.module.ts` itself, plus
-`SpaceshipNotificationProcessor`, `EmailService`, `TemplateService`,
-`ConfigProviderAbstractModule`/`Service`, `redisScope`, `rabbitmqScope`,
-`notificationRecipientsScope` and `emailScope` — essentially the same
-unliftable closure described below, because it exists to compile the real
-wired module, not the abstract contract. Copy the one adapter directory you
+need only that same logger import. Copy the one adapter directory you
 actually need next to it — each adapter has its own extra dependency:
 `bullmq-adapter/` needs the `bullmq` package plus a Redis config scope
 (`src/redis.scope.ts`, or your own),
-`rabbitmq-adapter/` needs `amqplib` plus its own RabbitMQ scope, `sqs-adapter/`
-needs `@aws-sdk/client-sqs`. You do not need all three — pick the broker you
+`rabbitmq-adapter/` needs `amqplib` plus its own RabbitMQ scope — and that
+scope (`rabbitmq-adapter/config/rabbitmq.scope.ts`) imports `config-source.util`
+and `define-config-scope.util` from `src/config-provider/`, so that companion
+comes too; `sqs-adapter/` needs `@aws-sdk/client-sqs`. You do not need all three — pick the broker you
 use.
-
-**What does not lift.** `queues.module.ts`, the wired BullMQ default
-documented above, is not part of that liftable unit. It imports the app-root
-`src/redis.scope.ts` directly and pulls in five symbols from
-`src/spaceship/notification/` — this template's demo notification feature —
-to register a concrete consumer for it. Neither exists outside this template,
-so this file does not come with you.
-
-**The measured cost of taking it anyway.** Copying `src/queues/` alone into a
-fresh project and compiling it produces 29 unresolved-import errors. Closing
-all of them — making `queues.module.ts` itself compile — means also copying
-11 of this template's 13 top-level `src/` directories, plus the app-root
-`src/redis.scope.ts` file. That is not a short companion list; it is most of
-the template (measured in `docs/audit/2026-09-18-modularity-audit.md`,
-findings `EXT3`/`EXT4`).
 
 **What to do instead.** Copy `abstract/` and `src/common/observability/logger/`,
 plus the adapter directory (or directories) you need, into your project. Then
 write your own thin wiring module — a small `@Module` that calls
 `QueueProducerModule.forRootAsync(...)`/`QueueConsumerModule.forRootAsync(...)`
-with your own adapter and your own config, the same shape `queues.module.ts`
-uses for BullMQ here. Do not copy `queues.module.ts` itself, and do not copy a
-domain module's `QueueConsumerHandler` alongside it — write your own for
-whatever you're actually consuming.
+with your own adapter and your own config, the same shape `src/app.module.ts`
+uses for BullMQ here. Do not copy a domain module's `QueueConsumerHandler`
+alongside it — write your own for whatever you're actually consuming.

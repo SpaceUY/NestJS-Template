@@ -2,7 +2,7 @@ import { Test, TestingModule } from '@nestjs/testing';
 import { getRepositoryToken } from '@nestjs/typeorm';
 import { RequestException } from '../../common/exception/core/ExceptionBase';
 import { User } from '../../database/entities/user.entity';
-import { AuthType } from '../core/auth-type.enum';
+import { AuthType } from '../../database/entities/auth-type.enum';
 import { AuthTokenService } from '../core/auth-token/auth-token.service';
 import { auth0Scope } from './config/auth0.scope';
 import { Auth0Service } from './auth0.service';

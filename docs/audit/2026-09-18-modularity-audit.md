@@ -797,3 +797,23 @@ fixed** (`B1`, `B2`, `D1`-`D5`, `L1`, `L2`, `R1`, `R2`, `R4`), **17 still
 open** (`B3`, `N1`-`N7`, `C1`-`C5`, `TS1`-`TS3`, `R3`), 3 partially fixed
 (`L3`, `G1`, `G2`), 0 superseded. The original tally above is left struck
 rather than deleted, per this document's own citation rule.
+
+## Closed on 2026-09-19 (branch `feature/queues-decoupling`)
+
+`M1`, `M2`, `M3`, `M4`, `M5`, `M6` and `M7` are closed. `M1` is also `N6` from
+the 2026-09-11 audit.
+
+`docs/audit/module-independence-baseline.json` now records zero violations, so
+`pnpm run modularity:check` rejects any new one instead of freezing a known
+set.
+
+The cause was the consumer registration API, not a careless import.
+`QueueConsumerModule.forRoot(Async)` took every queue↔handler pair in a single
+call and provided the handler classes inside its own injector, so one
+infrastructure module had to name every domain handler in the app and re-import
+their dependencies. `QueueConsumerModule.forFeature(consumers)` records the
+binding without providing the handler: the domain module declares it in its own
+`providers`, and the feature module resolves it at init.
+
+The body of this audit is left exactly as written on 2026-09-18. It describes
+the tree as it was measured that day; several files it cites no longer exist.

@@ -4,7 +4,7 @@ import { Repository } from 'typeorm';
 import { RequestException } from '../../common/exception/core/ExceptionBase';
 import { Exceptions } from '../../common/exception/exceptions';
 import { User } from '../../database/entities/user.entity';
-import { AuthType } from '../core/auth-type.enum';
+import { AuthType } from '../../database/entities/auth-type.enum';
 import { AuthTokenService } from '../core/auth-token/auth-token.service';
 import { auth0Scope, Auth0ScopeConfig } from './config/auth0.scope';
 

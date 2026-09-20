@@ -1,8 +1,8 @@
 import { Injectable } from '@nestjs/common';
 import { AnalyticsService } from '../abstract/analytics.service';
 import { CaptureEventInput } from '../abstract/analytics.interfaces';
-import { LoggerService } from '../../logger/abstract/logger.service';
-import { NestLoggerAdapter } from '../../logger/nest-adapter/nest-logger.adapter';
+import { LoggerService } from '../../common/observability/logger/abstract/logger.service';
+import { NestLoggerAdapter } from '../../common/observability/logger/nest-adapter/nest-logger.adapter';
 
 @Injectable()
 export class ConsoleAdapterService extends AnalyticsService {

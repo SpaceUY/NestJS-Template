@@ -9,8 +9,8 @@
 Cross-cutting primitives with no domain of their own: the HTTP exception
 vocabulary, the global response interceptor and exception filter, shared
 decorators, and the dynamic-module validation helper.
-`src/common/observability/` groups the logging, analytics and tracing
-modules — `logger/`, `analytics/` and `telemetry/` are each a full module in
+`src/common/observability/` groups the logging and tracing
+modules — `logger/` and `telemetry/` are each a full module in
 their own right and each has its own guide.
 
 Does not own: anything business-specific, and anything a single module could own

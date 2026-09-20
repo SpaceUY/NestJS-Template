@@ -5,7 +5,7 @@ import { Repository } from 'typeorm';
 import { Strategy, VerifyCallback } from 'passport-google-oauth20';
 import { googleScope, GoogleScopeConfig } from './config/google.scope';
 import { User } from '../../database/entities/user.entity';
-import { AuthType } from '../core/auth-type.enum';
+import { AuthType } from '../../database/entities/auth-type.enum';
 
 interface GoogleProfile {
   emails: Array<{ value: string }>;

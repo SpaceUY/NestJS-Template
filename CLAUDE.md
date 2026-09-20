@@ -22,9 +22,9 @@ Before changing anything under `src/<module>/`, read `src/<module>/CLAUDE.md`.
 | `src/config-provider` | `src/config-provider/CLAUDE.md` | `src/config-provider/README.md` |
 | `src/common` | `src/common/CLAUDE.md` | `src/common/README.md` |
 | `src/common/observability/logger` | `src/common/observability/logger/CLAUDE.md` | `src/common/observability/logger/README.md` |
-| `src/common/observability/analytics` | `src/common/observability/analytics/CLAUDE.md` | `src/common/observability/analytics/README.md` |
 | `src/common/observability/telemetry` | `src/common/observability/telemetry/CLAUDE.md` | `src/common/observability/telemetry/README.md` |
 | `src/database` | `src/database/CLAUDE.md` | — |
+| `src/analytics` | `src/analytics/CLAUDE.md` | `src/analytics/README.md` |
 | `src/auth` | `src/auth/CLAUDE.md` | `src/auth/README.md` |
 | `src/cache` | `src/cache/CLAUDE.md` | `src/cache/README.md` |
 | `src/cloud-storage` | `src/cloud-storage/CLAUDE.md` | `src/cloud-storage/README.md` |
@@ -33,7 +33,6 @@ Before changing anything under `src/<module>/`, read `src/<module>/CLAUDE.md`.
 | `src/templating` | `src/templating/CLAUDE.md` | `src/templating/README.md` |
 | `src/templates` | `src/templates/CLAUDE.md` | `src/templates/README.md` |
 | `src/queues` | `src/queues/CLAUDE.md` | `src/queues/README.md` |
-| `src/spaceship` | `src/spaceship/CLAUDE.md` | — |
 
 `src/user` has no guide — it holds `src/user/current-user.decorator.ts` plus an
 empty `src/user/user.module.ts` that nothing imports (finding `R3`).
@@ -98,7 +97,8 @@ error. See `src/common/observability/logger/PRACTICES.md`.
 **T5 — Imports inside a module are relative.** `../abstract/cache.service` —
 never `src/cache/abstract/cache.service`. A module that reaches for an absolute
 `src/...` specifier stops working the moment it is copied into another repo.
-Four files still violate this (finding `N6`); do not add a fifth.
+No file violates this today (findings `N6`/`M1`, closed 2026-09-19); keep it
+that way — `pnpm run modularity:check` fails on the first absolute specifier.
 
 **T6 — Named exports, explicit return types, no `any`.** No default exports.
 Every function and method declares its return type.
