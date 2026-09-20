@@ -23,7 +23,7 @@ import {
 } from './email/config/email.scope';
 import { DatabaseModule } from './database/database.module';
 import { databaseScope } from './database/config/database.scope';
-import { PushNotificationAbstractModule } from './push-notification/abstract/push-notification-abstract.module.ts';
+import { PushNotificationAbstractModule } from './push-notification/abstract/push-notification-abstract.module';
 import { ExpoAdapterModule } from './push-notification/expo-adapter/expo-adapter.module';
 import {
   expoScope,

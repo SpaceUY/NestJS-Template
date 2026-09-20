@@ -5,9 +5,8 @@
 > configure and call each provider, and what it costs to lift into another
 > project.
 
-JWT-based authentication for the template. The code has three provider
-directories (`src/auth/email/`, `src/auth/google/`, `src/auth/auth0/`), but
-**only two are implemented** — see the table below. Whichever provider a user
+JWT-based authentication for the template. Two providers ship implemented,
+`src/auth/google/` and `src/auth/auth0/` — see the table below. Whichever provider a user
 logs in through, the flow ends the same way: a call to
 `AuthTokenService.generateAuthToken` that returns the app's own JWT, and every
 other module protects a route the same way afterward, with `AuthGuard('jwt')`.
@@ -23,7 +22,7 @@ with it.
 |---|---|---|
 | Google OAuth | `GET /auth/google/web`, `GET /auth/google/callback`, `POST /auth/google/mobile/register`, `POST /auth/google/mobile/login` | Implemented |
 | Auth0 | `POST /auth/auth0/login` | Implemented |
-| Email | none — `src/auth/email/email.controller.ts` declares `@Controller('email')` with no handlers | **Not implemented.** `src/auth/auth.service.ts` is an empty `@Injectable()`, and `src/auth/email/` is an empty controller and module. `AuthType.EMAIL` is still the `User.authType` default, but no code path issues a token for it (finding `R3`). Write the login/registration logic yourself before relying on it. |
+| Email | none | **Not implemented, and no scaffold either.** The empty email controller directory and the empty `AuthService` were deleted (finding `R3`) rather than left to look like a starting point. `AuthType.EMAIL` is still the `User.authType` default, but no code path issues a token for it — write the login/registration flow yourself. |
 
 ## Configuration
 
@@ -118,14 +117,9 @@ runtime's built-in `fetch`, not an SDK.
 **Dropping a provider.** `src/auth/google/` and `src/auth/auth0/` are
 independent of each other; drop either directory and remove its import from
 `src/auth/auth.module.ts` — nothing else in the module references either one.
-Dropping both leaves only the JWT core (`AuthTokenService`, `JwtStrategy`)
-plus the empty `src/auth/email/` scaffold; at that point you still need to
-write your own login endpoint before this module authenticates anyone.
-
-**`src/auth/email/` is not a third provider you can lift — it isn't built
-yet.** `src/auth/email/email.controller.ts` is an empty `@Controller('email')`
-and `src/auth/auth.service.ts` is an empty `@Injectable()` (finding `R3`).
-Copy them only as a naming convention to follow, not as working code.
+Dropping both leaves only the JWT core (`AuthTokenService`, `JwtStrategy`);
+at that point you still need to write your own login endpoint before this
+module authenticates anyone.
 
 ## Known gaps
 

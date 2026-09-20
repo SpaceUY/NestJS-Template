@@ -29,18 +29,18 @@ instead. A helper used by exactly one module belongs in that module.
 
 ## Internal
 
-`src/common/exception/api.exception.ts` (`ApiException`) is a plain `Error` and
-carries no HTTP status. Its only callers are three throws in the cloud-storage
-default controller (`src/cloud-storage/abstract/cloud-storage.controller.ts:43`,
-`:58`, `:73`). `RequestExceptionFilter` now catches them — it is `@Catch()` —
-but with no status to read it answers a generic `500` where a `400` was
-intended (finding `N2`). Do not import it and do not add callers — throw
-`RequestException` instead.
+`ApiException` was deleted from `src/common/exception/` on
+`chore/dead-code-and-error-model`. It was a plain `Error` with no HTTP status,
+and its only callers — three validation throws in the cloud-storage default
+controller — answered `500` where `400` was intended. They now throw
+`BadRequestException`. If you need a new error shape here, it is one of the two
+in Rule 1, not a third.
 
 ## Rules
 
 1. **Two error layers, and they do not mix.** A *module* error
-   (`CacheError`, `EmailError`, `CloudStorageError`, `ConfigProviderError`) is a
+   (`CacheError`, `EmailError`, `CloudStorageError`, `ConfigProviderError`,
+   `PushNotificationError`, `QueueProducerError`/`QueueConsumerError`) is a
    plain `Error` subclass with `code`, `message` and optional `data` — it carries
    no HTTP semantics, because the module has no idea it is behind HTTP. An
    *HTTP* error is `RequestException`, constructed from an `ExceptionInfo` in the
@@ -95,10 +95,11 @@ destination project's `tsconfig.json` leaves it failing to compile (`EXT7`).
 
 See `docs/audit/2026-09-11-template-audit.md` and `docs/audit/2026-09-18-modularity-audit.md`.
 
-- **`N2`** — four competing error models across the template, and
-  `ApiException`'s three callers in the cloud-storage default controller still
-  answer `500` where `400` was intended, because `ApiException` carries no
-  status for the filter to read.
+- **`N2`** — ~~four competing error models across the template.~~ **Fixed on
+  `chore/dead-code-and-error-model`:** two remain, and they are the two Rule 1
+  describes — a module error (`CacheError`, `PushNotificationError`, …) for
+  infrastructure, and `RequestException` for the HTTP layer.
+  `PushNotificationException` and `ApiException` are both gone.
 - **`C4`** — ~~the filter spreads `exception.getResponse()` into the body and
   catches only `HttpException`.~~ **Fixed on `fix/security-defaults`:**
   `@Catch()` with a body built field by field, covered by

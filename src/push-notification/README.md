@@ -18,10 +18,9 @@ push-notification/
 ├── abstract/
 │   ├── dto/
 │   ├── push-notification-abstract.module.ts
-│   ├── push-notification-error-codes.ts
 │   ├── push-notification-provider.const.ts
 │   ├── push-notification.controller.ts
-│   ├── push-notification.exception.ts
+│   ├── push-notification.error.ts
 │   ├── push-notification.service.ts
 ├── expo-adapter/
 │   ├── expo-adapter-config-provider.const.ts

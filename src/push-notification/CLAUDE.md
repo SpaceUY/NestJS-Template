@@ -20,18 +20,13 @@ domain concern; the template does not model it.
 | Import | From | Purpose |
 |---|---|---|
 | `PushNotificationService` | `src/push-notification/abstract/push-notification.service.ts` | The contract — `sendPushNotification`, `sendPushNotificationInChunks` — inject this |
-| `PushNotificationAbstractModule` | `src/push-notification/abstract/push-notification-abstract.module.ts.ts` | `forRoot` only |
+| `PushNotificationAbstractModule` | `src/push-notification/abstract/push-notification-abstract.module.ts` | `forRoot` only |
 | `IPushNotification` and siblings | `src/push-notification/abstract/push-notification.interface.ts` | Payload shapes |
 | `PushNotificationDto` | `src/push-notification/abstract/dto/push-notification.dto.ts` | Request DTO |
-| `PushNotificationException` | `src/push-notification/abstract/push-notification.exception.ts` | Error type |
-| `PUSH_NOTIFICATION_ERRORS`, `IErrorDefinition` | `src/push-notification/abstract/push-notification-error-codes.ts` | Error definitions |
+| `PushNotificationError`, `PUSH_NOTIFICATION_ERRORS` | `src/push-notification/abstract/push-notification.error.ts` | Error type and codes — the plain-`Error` shape every adapter module here uses |
 | `PUSH_NOTIFICATION_PROVIDER` | `src/push-notification/abstract/push-notification-provider.const.ts` | Token an adapter module must provide |
 | `ExpoAdapterModule` | `src/push-notification/expo-adapter/expo-adapter.module.ts` | Named only in `src/app.module.ts` |
 | `expoScope`, `ExpoScopeConfig` | `src/push-notification/expo-adapter/config/expo.scope.ts` | Expo config |
-
-Note the module file's real name: `push-notification-abstract.module.ts.ts`,
-with a doubled extension (finding `N1`). Import it exactly as written until that
-is fixed.
 
 ## Configuration
 
@@ -54,14 +49,13 @@ is fixed.
    Expo rate-limits large sends; do not loop over `sendPushNotification`, the
    single-send method.
 5. A device token is a credential. Never log it, never return it in a response.
-6. Failures do **not** throw `PushNotificationException`. The class is defined
-   and type-checked against, but never constructed: `ExpoAdapterService`'s two
-   `catch` blocks re-throw the raw `expo-server-sdk` error or the adapter's own
-   `InternalServerErrorException` unchanged, so `PushNotificationController`'s
-   `instanceof PushNotificationException` check never fires and every failure
-   surfaces as `InternalServerErrorException`. This violates the root
-   `CLAUDE.md`'s `T3` — the module does not own its error type in practice,
-   whatever this guide used to claim. See `M15`.
+6. Failures throw `PushNotificationError` with a code from
+   `PUSH_NOTIFICATION_ERRORS` — never a raw `expo-server-sdk` error and never
+   an `HttpException` (invariant `T3`). An adapter has no business naming an
+   HTTP status; mapping the code to one is the controller's job, and
+   `PushNotificationController._asHttpException` is the only place that does
+   it. It answers `400` for `INVALID_TOKEN` and a fixed `500` for everything
+   else, with a message written there rather than taken from the provider.
 
 ## Adding an adapter
 
@@ -76,27 +70,32 @@ is fixed.
 
 ## Tests
 
-No test exists (finding `G1`). The Expo adapter is the place to start: mock
-`expo-server-sdk` at module level, assert chunking behaviour and the re-thrown
-SDK/`InternalServerErrorException` failure — not `PushNotificationException`,
-which is never constructed (`M15`). No `abstract/mocks/` exists (finding `N5`).
+`push-notification.controller.unit.spec.ts` covers the code-to-status mapping
+and asserts no provider text reaches the response;
+`expo-adapter.service.unit.spec.ts` covers the token-validation path, which
+needs no network. Still missing: chunking behaviour and the send path, both of
+which need `expo-server-sdk` mocked at module level. No `abstract/mocks/`
+exists (finding `N5`).
 
 ## Reuse
 
 Copy `src/push-notification/` whole; `expo-adapter/` needs `expo-server-sdk`.
 `config/expo.scope.ts` depends on `src/config-provider/` and `joi`.
 
-Be aware you are also copying findings `N1`, `N2` and `N3` — a project lifting
-this module should plan to rename the module file, convert the error type to the
-plain-`Error` shape, and add `forRootAsync`.
+Be aware you are also copying finding `N3` — a project lifting this module
+should plan to add `forRootAsync`.
 
 ## Known gaps
 
 See `docs/audit/2026-09-11-template-audit.md` and `docs/audit/2026-09-18-modularity-audit.md`.
 
-- **`N1`** — `push-notification-abstract.module.ts.ts` has a doubled extension.
-- **`N2`** — `PUSH_NOTIFICATION_ERRORS` contains three entries whose codes are all
-  `CLOUD_STORAGE_*` copy-paste leftovers, and they describe file upload, not push.
+- **`N1`** — ~~`push-notification-abstract.module.ts.ts` has a doubled extension.~~
+  **Fixed on `chore/dead-code-and-error-model`.**
+- **`N2`** — ~~`PUSH_NOTIFICATION_ERRORS` contains three entries whose codes are all
+  `CLOUD_STORAGE_*` copy-paste leftovers, and they describe file upload, not push.~~
+  **Fixed on `chore/dead-code-and-error-model`:** the codes are now
+  `PUSH_NOTIFICATION_*` and describe push failures, in the `cache.error.ts`
+  shape.
 - **`N3`** — no `forRootAsync`; the file ends with `// TODO: Add forRootAsync`.
   Also, `forRoot` mutates the caller's `controllers` array with `push`.
 - **`D4`** — ~~`src/push-notification/README.md` teaches `@nestjs/config` and
@@ -106,7 +105,10 @@ See `docs/audit/2026-09-11-template-audit.md` and `docs/audit/2026-09-18-modular
   is `DOC9`'s installation-line defect
   (`docs/audit/2026-09-18-modularity-audit.md`), not `D4`'s — fixed separately
   in this same branch.
-- **`G1`**, **`N5`** — no tests, no mocks.
-- **`M15`** — `PushNotificationException` is defined but never constructed;
+- **`G1`**, **`N5`** — the send and chunking paths are still untested, and no mocks exist.
+- **`M15`** — ~~`PushNotificationException` is defined but never constructed;
   adapter failures escape as the raw SDK error or `InternalServerErrorException`
-  instead (Rule 6).
+  instead (Rule 6).~~ **Fixed on `chore/dead-code-and-error-model`:**
+  `PushNotificationException` is gone, `ExpoAdapterService` throws
+  `PushNotificationError` on every failure path, and the controller's mapping
+  is covered by a spec.

@@ -109,13 +109,12 @@ See `docs/audit/2026-09-11-template-audit.md`.
   README now describes the real tree and registration examples; the
   orchestrator/targets/tokens/IPFS sections were never-built design and were
   removed rather than described.
-- **`N2`** — `src/cloud-storage/abstract/cloud-storage.controller.ts` throws
-  `ApiException` at lines 43, 58 and 73. `ApiException` is a plain `Error`
-  carrying no HTTP status, so these three validation failures still answer
-  `500` where a `400` was intended. The global filter now catches them
-  (`C4` is closed) and answers a uniform generic `500` instead of letting them
-  escape, but the status is only right once the controller throws
-  `RequestException`. If you mount this controller, fix that first.
+- **`N2`** — ~~`src/cloud-storage/abstract/cloud-storage.controller.ts` throws
+  `ApiException`, a plain `Error` carrying no HTTP status, so three validation
+  failures answer `500` where `400` was intended.~~ **Fixed on
+  `chore/dead-code-and-error-model`:** the three throws are
+  `BadRequestException`, `ApiException` is deleted, and this module no longer
+  imports `src/common/exception/` or `src/common/enums.ts` at all.
 - **`N5`** — no `abstract/mocks/`.
 - **`C1`** — ~~`AWS_REGION` and `AWS_S3_EXPIRES_IN_SECONDS` are missing from
   `.env.example`.~~ **Fixed on `fix/security-defaults`:** both are declared.
