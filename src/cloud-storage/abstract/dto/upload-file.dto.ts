@@ -7,5 +7,5 @@ export class UploadFileDto {
     description: 'File',
     required: true,
   })
-  file: string;
+  file!: string;
 }

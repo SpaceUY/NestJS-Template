@@ -183,8 +183,15 @@ were measured green in `docs/audit/2026-09-18-modularity-audit.md`'s gate table;
   Still true, and deliberate: `pnpm run test:e2e` does not run —
   `test/app.e2e-spec.ts` is unmodified Nest boilerplate and needs a live
   database.
-- **`TS1`** — `tsconfig.json` is not in strict mode, contrary to the SpaceDev
-  standard.
+- **`TS1`** — ~~`tsconfig.json` is not in strict mode, contrary to the SpaceDev
+  standard.~~ **Fixed on `chore/typescript-strict`:** `"strict": true` is on,
+  `noImplicitAny` and `strictBindCallApply` no longer opt out, and
+  `pnpm exec tsc --noEmit` reports zero errors. `TS2` (untyped `validate`
+  parameters) and `TS3` (`typescript-eslint` under `dependencies`) closed with
+  it. **Still open, and separately scoped:** 46 explicit `any` annotations
+  remain, mostly `useFactory: (...args: any[])` in the dynamic modules and in
+  specs; `@typescript-eslint/no-explicit-any` is `'off'` in
+  `eslint.config.mjs`. Turning that rule on is its own branch.
 
 Do not fix these opportunistically as part of unrelated work. They are tracked;
 raise them, scope them, fix them deliberately.

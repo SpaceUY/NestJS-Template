@@ -13,7 +13,7 @@ export type AnalyticsScopeConfig = {
   posthogHost: string;
 };
 
-const validate = (raw) => {
+const validate = (raw: Record<string, unknown>): AnalyticsScopeConfig => {
   const schema = Joi.object<AnalyticsScopeConfig>({
     adapter: Joi.string()
       .valid(...Object.values(ANALYTICS_ADAPTERS))

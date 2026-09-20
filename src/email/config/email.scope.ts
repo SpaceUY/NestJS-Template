@@ -20,7 +20,7 @@ export type EmailScopeConfig = {
   sesSecretAccessKey: string;
 };
 
-const validate = (raw) => {
+const validate = (raw: Record<string, unknown>): EmailScopeConfig => {
   const schema = Joi.object<EmailScopeConfig>({
     adapter: Joi.string()
       .valid(...Object.values(EMAIL_ADAPTERS))

@@ -29,7 +29,7 @@ const originList = Joi.string().custom((value: string, helpers) => {
   return origins;
 });
 
-const validate = (raw) => {
+const validate = (raw: Record<string, unknown>): AppScopeConfig => {
   const schema = Joi.object<AppScopeConfig>({
     nodeEnv: Joi.string().valid('DEV', 'TEST', 'PROD').default('DEV'),
     port: Joi.number().integer().min(1024).max(65535).default(5000),

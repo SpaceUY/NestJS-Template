@@ -5,17 +5,17 @@ import { BaseEntity } from './base.entity';
 @Entity()
 export class User extends BaseEntity {
   @Column()
-  name: string;
+  name!: string;
 
   @Column({ unique: true })
-  email: string;
+  email!: string;
 
   @Column({ default: false })
-  verified: boolean;
+  verified!: boolean;
 
   @Column({ type: 'enum', enum: AuthType, default: AuthType.EMAIL })
-  authType: AuthType;
+  authType!: AuthType;
 
   @Column({ type: 'varchar', unique: true, nullable: true })
-  auth0Id: string | null;
+  auth0Id!: string | null;
 }

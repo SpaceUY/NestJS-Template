@@ -65,6 +65,7 @@ those too, or replace the `logger?:` parameter with a different default.
 
 - No adapter-level tests for `ConsoleAdapterService` or `PosthogAdapterService`
   — only the abstract module's wiring is covered.
-- `config/analytics.scope.ts`'s `validate` function takes an untyped `raw`
+- ~~`config/analytics.scope.ts`'s `validate` function takes an untyped `raw`
   parameter, relying on `tsconfig.json` not being in strict mode (`TS1`) to
-  avoid a `noImplicitAny` error.
+  avoid a `noImplicitAny` error.~~ **Fixed on `chore/typescript-strict`:** it
+  is `(raw: Record<string, unknown>): AnalyticsScopeConfig`.
