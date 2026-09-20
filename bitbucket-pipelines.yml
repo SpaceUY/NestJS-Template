@@ -36,7 +36,7 @@ definitions:
           - export AWS_ECR_REPO="${AWS_ACCOUNT_ID}.dkr.ecr.${AWS_DEFAULT_REGION}.amazonaws.com/${ECR_NAME}"
           - export EXECUTION_ROLE_ARN="arn:aws:iam::${AWS_ACCOUNT_ID}:role/${NAME_PREFIX}--ecs-task-exec-role"
           # Install envsubst
-          - apk update && apk add gettext
+          - apt-get update && apt-get install -y --no-install-recommends gettext-base
           # Set the name of the docker image we will be building.
           - export IMAGE_NAME="${ECR_NAME}"
           # Build the docker image

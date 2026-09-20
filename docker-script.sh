@@ -1,2 +1,2 @@
-pnpm exec prisma migrate deploy
+pnpm run db:migration:run
 dumb-init node ./dist/main.js
