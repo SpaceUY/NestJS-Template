@@ -226,7 +226,12 @@ describe('RabbitMqProducerAdapter', () => {
 
     it('throws SEND_FAILED when the broker nacks the message', async () => {
       mockChannel.sendToQueue.mockImplementation(
-        (_queue, _content, _options, confirm) => {
+        (
+          _queue: string,
+          _content: Buffer,
+          _options: unknown,
+          confirm: (err: Error | null) => void,
+        ) => {
           confirm(new Error('broker nack'));
           return true;
         },

@@ -8,7 +8,7 @@ export class PushNotificationDto {
   })
   @IsString()
   @Length(2, 50)
-  readonly title: string;
+  readonly title!: string;
 
   @ApiProperty({
     description: 'Notification Content',
@@ -16,7 +16,7 @@ export class PushNotificationDto {
   })
   @IsString()
   @Length(2, 250)
-  readonly body: string;
+  readonly body!: string;
 
   @ApiProperty({
     description:
@@ -24,12 +24,12 @@ export class PushNotificationDto {
   })
   @IsObject()
   @IsOptional()
-  readonly data: Record<string, string>;
+  readonly data!: Record<string, string>;
 
   @IsOptional()
   @IsUrl()
   @ApiProperty({
     description: 'Deep Link to redirect',
   })
-  readonly deepLink: string;
+  readonly deepLink!: string;
 }

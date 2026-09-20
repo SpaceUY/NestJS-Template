@@ -46,8 +46,9 @@ is not listed there is never resolved and its `KEY` will not inject.
 2. Validation is Joi, and it does the coercion: `Joi.number()` for ports,
    `Joi.boolean()` for flags, `Joi.string().valid(...)` for enums. The raw values
    arriving from any source are strings.
-3. Type the `validate` parameter — `(raw: Record<string, unknown>)`. Two existing
-   scopes leave it implicit (finding `TS2`); do not copy them.
+3. Type the `validate` parameter and its return — `(raw: Record<string,
+   unknown>): XScopeConfig`. `"strict": true` makes an implicit `any` here a
+   compile error, so there is nothing to copy wrong any more.
 4. `scope.KEY` is a plain string token (`CONFIG_SCOPE_<NAME>`). Inject with
    `@Inject(xScope.KEY) private readonly conf: XScopeConfig`. Always annotate the
    property with the scope's exported config type.
@@ -122,5 +123,7 @@ See `docs/audit/2026-09-11-template-audit.md`.
   by scope, and the dead `QUEUE_ADAPTER` entry is gone.
 - **`C2`** — ~~`jwtScope` defaults its secret to a public literal.~~ **Fixed on
   `fix/security-defaults`:** `JWT_SECRET` is required.
-- **`TS2`** — `src/app.scope.ts` and `src/email/config/email.scope.ts` take an
-  untyped `raw`.
+- **`TS2`** — ~~`src/app.scope.ts` and `src/email/config/email.scope.ts` take an
+  untyped `raw`.~~ **Fixed on `chore/typescript-strict`:** all three scopes
+  with an implicit `raw` — those two plus `src/analytics/config/analytics.scope.ts`
+  — are typed, and strict mode now rejects the shape.

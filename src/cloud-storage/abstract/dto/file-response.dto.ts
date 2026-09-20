@@ -6,12 +6,12 @@ export class FileResponseDto {
     description: 'File url from cloud storage',
     required: true,
   })
-  url: string;
+  url!: string;
 
   @ApiProperty({
     type: 'string',
     description: 'File key from cloud storage',
     required: true,
   })
-  id: string;
+  id!: string;
 }

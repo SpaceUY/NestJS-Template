@@ -29,7 +29,7 @@ export function createRedisClient(config: RedisAdapterConfig): Redis | Cluster {
     });
   }
 
-  const retryStrategy = (times: number) => {
+  const retryStrategy = (times: number): number | null => {
     if (times < reconnectionMaxRetries) return reconnectionDelayMs;
     return null;
   };
@@ -54,7 +54,7 @@ export async function verifyConnection(
   } catch (error) {
     logger.error({
       message: '❌ Redis connection failed:',
-      data: { error: error.message },
+      data: { error: error instanceof Error ? error.message : String(error) },
     });
     logger.error({
       message: '🚨 STOPPING APPLICATION - Redis is required for operation',

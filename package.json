@@ -78,7 +78,6 @@
     "rxjs": "^7.8.2",
     "swagger-ui-express": "^5.0.1",
     "typeorm": "^1.0.0",
-    "typescript-eslint": "^8.32.0",
     "uuid": "^14.0.0"
   },
   "devDependencies": {
@@ -93,6 +92,8 @@
     "@types/jest": "^29.5.14",
     "@types/ms": "^2.1.0",
     "@types/node": "^22.14.1",
+    "@types/passport-google-oauth20": "^2.0.17",
+    "@types/passport-jwt": "^4.0.1",
     "@types/passport-local": "^1.0.38",
     "@types/pug": "^2.0.10",
     "@types/supertest": "^6.0.3",
@@ -113,6 +114,7 @@
     "ts-node": "^10.9.2",
     "tsconfig-paths": "^4.2.0",
     "typescript": "^5.8.3",
+    "typescript-eslint": "^8.32.0",
     "winston": "^3.19.0"
   },
   "jest": {
