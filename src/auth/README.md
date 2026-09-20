@@ -27,10 +27,9 @@ with it.
 
 ## Configuration
 
-`jwtScope` (`src/auth/config/jwt.scope.ts`): `JWT_SECRET` — **defaults to the
-literal string `'Not A Safe Secret'` when unset (finding `C2`); always set
-this explicitly in every environment.** `JWT_EXPIRES_IN` (default `7d`),
-`JWT_IGNORE_EXPIRATION` (default `false`).
+`jwtScope` (`src/auth/config/jwt.scope.ts`): `JWT_SECRET` — **required, with
+no default. The app refuses to start without it.** `JWT_EXPIRES_IN` (default
+`7d`), `JWT_IGNORE_EXPIRATION` (default `false`).
 
 `googleScope` (`src/auth/google/config/google.scope.ts`): `GOOGLE_OAUTH_ENABLED`
 (default `false`). When `true`, `GOOGLE_OAUTH_CLIENT_ID`,
@@ -130,5 +129,5 @@ Copy them only as a naming convention to follow, not as working code.
 
 ## Known gaps
 
-See `src/auth/CLAUDE.md`'s "Known gaps" section (`C2`, `C5`, `R3`, `N6`,
-`G1`) and `docs/audit/2026-09-11-template-audit.md`.
+See `src/auth/CLAUDE.md`'s "Known gaps" section (`R3`, `N6`, `G1`; `C2` and
+`C5` are closed) and `docs/audit/2026-09-11-template-audit.md`.

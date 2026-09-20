@@ -9,7 +9,7 @@ export type JwtScopeConfig = {
 };
 
 const schema = Joi.object<JwtScopeConfig>({
-  secret: Joi.string().default('Not A Safe Secret'),
+  secret: Joi.string().required(),
   expiresIn: Joi.string().default('7d'),
   ignoreExpiration: Joi.boolean().default(false),
 });

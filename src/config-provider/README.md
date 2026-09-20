@@ -100,7 +100,9 @@ export type JwtScopeConfig = {
 };
 
 const schema = Joi.object<JwtScopeConfig>({
-  secret: Joi.string().default('Not A Safe Secret'),
+  // No default: a missing JWT_SECRET must stop the boot, not be papered
+  // over with a literal anyone can read in the repo.
+  secret: Joi.string().required(),
   expiresIn: Joi.string().default('7d'),
   ignoreExpiration: Joi.boolean().default(false),
 });

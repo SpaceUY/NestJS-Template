@@ -53,8 +53,11 @@ is not listed there is never resolved and its `KEY` will not inject.
    property with the scope's exported config type.
 5. Put a secret behind `from.sm(...)` and a non-secret behind `from.env(...)`.
    One scope may mix both; the module resolves each field independently.
-6. Never default a secret to a usable literal. `src/auth/config/jwt.scope.ts:12`
-   does exactly that (finding `C2`) — it is the anti-pattern, not the pattern.
+6. Never default a secret to a usable literal. Mark it `.required()` and let
+   the app refuse to boot, the way `src/auth/config/jwt.scope.ts` does for
+   `JWT_SECRET`. A config value that weakens security when absent belongs in
+   the same shape — see `corsOrigins` in `src/app.scope.ts`, which is required
+   and wildcard-free when `NODE_ENV=PROD`.
 7. Source adapters do not declare a logger. `ConfigProviderService` owns a
    `protected logger` defaulting to `new NestLoggerAdapter(<adapter class
    name>)`, and the module optionally injects the container's `LoggerService`
@@ -67,8 +70,10 @@ is not listed there is never resolved and its `KEY` will not inject.
 8. `{ live: true }` opts a scope into hot reload via a `Proxy`. Reserve it for
    values that genuinely change at runtime (feature flags, rate limits, rotating
    credentials). Application config must stay static.
-9. Every key a scope reads must appear in `.env.example`. Most currently do not
-   (finding `C1`) — add yours.
+9. Every key a scope reads must appear in `.env.example`, and no key that
+   nothing reads may stay there. The file was reconciled against the code on
+   `fix/security-defaults` (finding `C1`) — keep it that way when you add a
+   field.
 10. Misconfiguration must fail at startup, not at first use. Unknown source names
    and duplicate scope keys already throw during module construction; keep new
    checks in the same place.
@@ -112,7 +117,10 @@ See `docs/audit/2026-09-11-template-audit.md`.
 - **`D3`** — ~~`src/config-provider/README.md` names a `config-provider-error-codes.ts`
   that does not exist; the real file is `abstract/config-provider.error.ts`.~~
   **Fixed:** the README now names the real `abstract/config-provider.error.ts`.
-- **`C1`** — `.env.example` is missing most keys the scopes read.
-- **`C2`** — `jwtScope` defaults its secret to a public literal.
+- **`C1`** — ~~`.env.example` is missing most keys the scopes read.~~ **Fixed
+  on `fix/security-defaults`:** every key the code reads is declared, grouped
+  by scope, and the dead `QUEUE_ADAPTER` entry is gone.
+- **`C2`** — ~~`jwtScope` defaults its secret to a public literal.~~ **Fixed on
+  `fix/security-defaults`:** `JWT_SECRET` is required.
 - **`TS2`** — `src/app.scope.ts` and `src/email/config/email.scope.ts` take an
   untyped `raw`.

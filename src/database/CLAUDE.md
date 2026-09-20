@@ -101,4 +101,6 @@ See `docs/audit/2026-09-11-template-audit.md`.
 - **`R4`** — `src/database/migrations/` holds only `.gitkeep`; the template ships
   no baseline migration.
 - **`G1`** — the connection factory's URL/host branching is untested.
-- **`C1`** — no `DB_*` key appears in `.env.example`.
+- **`C1`** — ~~no `DB_*` key appears in `.env.example`.~~ **Fixed on
+  `fix/security-defaults`:** the full `DB_*` set is declared alongside
+  `DATABASE_URL`.

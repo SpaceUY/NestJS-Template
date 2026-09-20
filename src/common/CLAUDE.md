@@ -32,10 +32,10 @@ instead. A helper used by exactly one module belongs in that module.
 `src/common/exception/api.exception.ts` (`ApiException`) is a plain `Error` and
 carries no HTTP status. Its only callers are three throws in the cloud-storage
 default controller (`src/cloud-storage/abstract/cloud-storage.controller.ts:43`,
-`:58`, `:73`), and since `RequestExceptionFilter` catches only `HttpException`,
-every one of them escapes the filter and becomes an unhandled `500` where a `400`
-was intended (findings `N2`, `C4`). Do not import it and do not add callers —
-throw `RequestException` instead.
+`:58`, `:73`). `RequestExceptionFilter` now catches them — it is `@Catch()` —
+but with no status to read it answers a generic `500` where a `400` was
+intended (finding `N2`). Do not import it and do not add callers — throw
+`RequestException` instead.
 
 ## Rules
 
@@ -53,11 +53,14 @@ throw `RequestException` instead.
    `{ success: true, data }`, except when the handler already returned a `data`
    key or the response is `text/html`. Handlers return plain values and must not
    wrap themselves.
-4. `RequestExceptionFilter` only catches `HttpException`. Module errors reaching
-   the controller layer are currently unmapped (finding `C4`) — catch them in the
-   service and rethrow a `RequestException`.
+4. `RequestExceptionFilter` is `@Catch()` — everything reaches it, so no
+   failure answers with a body shaped differently from the rest. A module
+   error that arrives unmapped still answers `500`: catch it in the service
+   and rethrow a `RequestException` with the status you mean.
 5. A response body must never carry internal detail — no stack, no provider
-   message, no SQL. Finding `C4` records where the filter is loose about this.
+   message, no SQL. The filter enforces this by building the body field by
+   field (`success`, `statusCode`, `message`) and reading only `message` out
+   of the exception's payload; it never spreads it.
 6. `validateAdapterModule(adapter, 'XModule.forRoot')` goes at the top of any
    `forRoot` that accepts an adapter *module*. Style-A modules that accept an
    adapter *class* do not need it.
@@ -92,9 +95,12 @@ destination project's `tsconfig.json` leaves it failing to compile (`EXT7`).
 
 See `docs/audit/2026-09-11-template-audit.md` and `docs/audit/2026-09-18-modularity-audit.md`.
 
-- **`N2`** — four competing error models across the template, and `ApiException`'s
-  three callers in the cloud-storage default controller escape the global filter
-  as `500`s.
-- **`C4`** — the filter spreads `exception.getResponse()` into the body and
-  catches only `HttpException`.
+- **`N2`** — four competing error models across the template, and
+  `ApiException`'s three callers in the cloud-storage default controller still
+  answer `500` where `400` was intended, because `ApiException` carries no
+  status for the filter to read.
+- **`C4`** — ~~the filter spreads `exception.getResponse()` into the body and
+  catches only `HttpException`.~~ **Fixed on `fix/security-defaults`:**
+  `@Catch()` with a body built field by field, covered by
+  `request-exception.filter.unit.spec.ts`.
 - **`G1`** — no tests for the middleware, the utils or the decorators.
