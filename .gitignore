@@ -42,3 +42,6 @@ lerna-debug.log*
 # Per-developer agent scratch space. Shared agent config (.claude/agents,
 # .claude/commands, ...) stays tracked; the daily hand-off log does not.
 /.claude/daily-update.md
+# Per-plan agent scratch space for the superpowers SDD workflow (ledgers,
+# briefs, review packages, evidence). Never committed.
+/.superpowers/

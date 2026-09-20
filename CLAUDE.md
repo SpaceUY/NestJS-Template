@@ -52,6 +52,7 @@ pnpm run build                # nest build
 pnpm test                     # jest, rootDir src, testRegex .*\.spec\.ts$
 pnpm run test:e2e             # jest --config ./test/jest-e2e.json
 pnpm run lint                 # eslint --fix
+pnpm run lint:ci              # eslint, no --fix — what CI runs
 pnpm run docs:check           # validates every CLAUDE.md
 pnpm run modularity:check     # module import graph vs. the recorded baseline
 pnpm run db:migration:generate -- src/database/migrations/<Name>
@@ -161,14 +162,23 @@ were measured green in `docs/audit/2026-09-18-modularity-audit.md`'s gate table;
   every PR. `eslint.config.mjs` spreads the recommended configs *after* its own
   rules block, which silently re-enables `@typescript-eslint/no-explicit-any`.~~ **Fixed on `fix/build-and-lint`.**
 - **`L3`** — ~~the `lint` script runs with `--fix`, so invoking it rewrites 20
-  files with Prettier formatting. **Check `git status` after linting** and do not
-  commit that reformat alongside unrelated work.~~ **Partially fixed:** the tree is Prettier-clean now, so linting no longer hands you a 20-file diff. Still open: `lint` keeps `--fix` and CI runs it, so CI cannot detect future drift.
+  files with Prettier formatting, and CI runs that script — so CI cannot detect
+  formatting drift.~~ **Fixed on `chore/ci-test-gate`:** the tree is
+  Prettier-clean, `lint` keeps `--fix` for local use, and CI now runs the new
+  `lint:ci` script (`eslint` without `--fix`), which fails on drift instead of
+  silently repairing it.
 - **`B2`** — ~~`package.json` declares `dotenv` twice.~~ **Fixed** — declared
   once; verified in `docs/audit/2026-09-18-modularity-audit.md` (`DOC5`).
 - **`B3`** — `Dockerfile` uses `apk` on a Debian image and runs `prisma generate`
   in a TypeORM project.
-- **`G2`** — CI runs `docs:check`, `modularity:check`, `lint` and `build`;
-  `pnpm test` never runs in the pipeline.
+- **`G2`** — ~~CI runs `docs:check`, `modularity:check`, `lint` and `build`;
+  `pnpm test` never runs in the pipeline.~~ **Fixed on `chore/ci-test-gate`:**
+  the `test-build` step runs `pnpm test` between `lint:ci` and `build`, and that
+  step now also runs on the `staging` and `master` branches before their deploy
+  step — a pull-request build proves the merge source, not the merged result.
+  Still true, and deliberate: `pnpm run test:e2e` does not run —
+  `test/app.e2e-spec.ts` is unmodified Nest boilerplate and needs a live
+  database.
 - **`TS1`** — `tsconfig.json` is not in strict mode, contrary to the SpaceDev
   standard.
 
