@@ -201,6 +201,14 @@ were measured green in `docs/audit/2026-09-18-modularity-audit.md`'s gate table;
   Still true, and deliberate: `pnpm run test:e2e` does not run —
   `test/app.e2e-spec.ts` is unmodified Nest boilerplate and needs a live
   database.
+- **`H4`** — `test/app.e2e-spec.ts` is 24 lines of Nest scaffold: it boots the
+  whole `AppModule` and expects `'Hello World!'` on `GET /`. It needs a live
+  database and Redis, so it runs nowhere. **Accepted as debt on 2026-09-21**,
+  deliberately: the template keeps promising a suite that proves nothing, and
+  that is the known cost. Closing it means either writing real e2e specs with
+  `postgres` and `redis` services in `bitbucket-pipelines.yml`, or deleting the
+  file, `test/jest-e2e.json` and the `test:e2e` script. Do not half-fix it — a
+  green boilerplate e2e run is worse than none.
 - **`TS1`** — ~~`tsconfig.json` is not in strict mode, contrary to the SpaceDev
   standard.~~ **Fixed on `chore/typescript-strict`:** `"strict": true` is on,
   `noImplicitAny` and `strictBindCallApply` no longer opt out, and
