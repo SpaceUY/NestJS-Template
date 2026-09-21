@@ -7,8 +7,8 @@
 ## Scope
 
 Cross-cutting primitives with no domain of their own: the HTTP exception
-vocabulary, the global response interceptor and exception filter, shared
-decorators, and the dynamic-module validation helper.
+vocabulary, the global response interceptor and exception filter, the global
+rate-limit guard, shared decorators, and the dynamic-module validation helper.
 `src/common/observability/` groups the logging and tracing
 modules — `logger/` and `telemetry/` are each a full module in
 their own right and each has its own guide.
@@ -25,6 +25,8 @@ instead. A helper used by exactly one module belongs in that module.
 | `MiddlewareModule` | `src/common/middleware/middleware.module.ts` | Registers the global interceptor and filter; imported by `src/app.module.ts` |
 | `validateAdapterModule`, `AdapterModuleLike` | `src/common/utils/nest-module-validation.ts` | Fail-fast guard for `forRoot` adapter arguments |
 | `Html` | `src/common/decorators/html-content-type.ts` | Sets `Content-Type: text/html` on a handler |
+| `RateLimitModule` | `src/common/rate-limit/rate-limit.module.ts` | Binds `ThrottlerGuard` as `APP_GUARD`; imported by `src/app.module.ts` |
+| `skipUnthrottledPath`, `UNTHROTTLED_PATH_PREFIXES` | `src/common/rate-limit/rate-limit-skip.util.ts` | The throttler's `skipIf`, and the prefixes it exempts |
 
 ## Internal
 
@@ -79,12 +81,21 @@ its spec covers the four accepted shapes and the throwing case directly.
 `ResponseInterceptor` and `RequestExceptionFilter` are tested by constructing a
 fake `ArgumentsHost` / `ExecutionContext`, not by booting the app.
 
-Two exceptions boot a real Nest app on purpose, because what they assert is the
-wiring rather than the unit: `middleware.module.unit.spec.ts` proves
+Three exceptions boot a real Nest app on purpose, because what they assert is
+the wiring rather than the unit: `middleware.module.unit.spec.ts` proves
 `MiddlewareModule` actually binds the interceptor and the filter as
-`APP_INTERCEPTOR`/`APP_FILTER` (and that a 500 carries no internal detail), and
+`APP_INTERCEPTOR`/`APP_FILTER` (and that a 500 carries no internal detail),
 `decorators/html-content-type.unit.spec.ts` proves `@Html()` sets the header on
-the decorated handler only.
+the decorated handler only, and `rate-limit/rate-limit.module.unit.spec.ts`
+drives a real app until a route 429s while the exempt probe paths keep
+answering 200 well past the limit.
+
+That last one mounts stand-in controllers at `/health` and `/health/live`
+rather than importing `HealthController`: `src/common/` must not depend on a
+feature module, and the assertion is about the guard's path matching, not
+about health. `rate-limit/rate-limit-skip.util.unit.spec.ts` covers the pure
+function, including that `/healthcheck-admin` is *not* exempt and that a
+non-HTTP context is not either.
 
 That first spec boots twice, which is the point: once with no
 `LoggerAbstractModule` — the state a project copying `src/common/middleware/`

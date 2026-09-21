@@ -29,6 +29,7 @@ Before changing anything under `src/<module>/`, read `src/<module>/CLAUDE.md`.
 | `src/cache` | `src/cache/CLAUDE.md` | `src/cache/README.md` |
 | `src/cloud-storage` | `src/cloud-storage/CLAUDE.md` | `src/cloud-storage/README.md` |
 | `src/email` | `src/email/CLAUDE.md` | `src/email/README.md` |
+| `src/health` | `src/health/CLAUDE.md` | `src/health/README.md` |
 | `src/push-notification` | `src/push-notification/CLAUDE.md` | `src/push-notification/README.md` |
 | `src/templating` | `src/templating/CLAUDE.md` | `src/templating/README.md` |
 | `src/templates` | `src/templates/CLAUDE.md` | `src/templates/README.md` |
@@ -47,6 +48,7 @@ pnpm install                  # pnpm 10.15.1, Node 24.15.0 — never npm or yarn
 pnpm run start:dev            # watch mode
 pnpm run build                # nest build
 pnpm test                     # jest, rootDir src, testRegex .*\.spec\.ts$
+pnpm run test:cov             # jest + coverageThreshold — what CI runs
 pnpm run test:e2e             # jest --config ./test/jest-e2e.json
 pnpm run lint                 # eslint --fix
 pnpm run lint:ci              # eslint, no --fix — what CI runs
@@ -84,9 +86,12 @@ register it in `src/app.module.ts`, inject it with `@Inject(xScope.KEY)`. See
 
 **T3 — Every module owns its error type.** An adapter catches the provider SDK's
 error and rethrows the module's own error class, so no caller ever depends on
-`ioredis`, `@aws-sdk/*` or `resend` internals. The template currently has four
-competing error shapes — finding `N2`; the POJO-constant + `Error`-subclass form
-used by `src/cache/abstract/cache.error.ts` is the one to follow for new work.
+`ioredis`, `@aws-sdk/*` or `resend` internals. Two shapes remain, and they are
+the two the template wants (finding `N2`, closed on
+`chore/dead-code-and-error-model`; `ApiException` and
+`PushNotificationException` are gone): the POJO-constant + `Error`-subclass
+form used by `src/cache/abstract/cache.error.ts` for infrastructure, and
+`RequestException` for the HTTP layer. Follow the first for a new module.
 
 **T4 — No secrets in code, no secrets in logs.** Secrets come from a config
 scope backed by `env` or `sm`. Never log a token, key, password, or raw provider
@@ -170,71 +175,126 @@ migration file, never rely on `DB_SYNCHRONIZE` outside local development. See
    crosses a top-level `src/` directory
 6. Confirm the diff is minimal and touches no module you were not asked to change.
 
-Those are the same five gates CI runs, with one difference: CI runs `lint:ci`,
-not `lint`. `lint` carries `--fix`, so it repairs formatting instead of failing
-on it. Run `pnpm run lint:ci` when you want to know what the pipeline will say.
+Those are the same five gates CI runs, with two differences. CI runs `lint:ci`,
+not `lint` — `lint` carries `--fix`, so it repairs formatting instead of
+failing on it. And CI runs `test:cov`, not `test`: the `coverageThreshold` in
+`package.json` only fails the build when coverage is collected, so under plain
+`pnpm test` the floor is inert. Run `pnpm run lint:ci` and `pnpm run test:cov`
+when you want to know what the pipeline will say.
 
 ## Known template-wide gaps
 
-Recorded in `docs/audit/2026-09-11-template-audit.md`. The ones that will bite
-you first:
+Recorded in `docs/audit/2026-09-11-template-audit.md` (the
+`B`/`N`/`D`/`C`/`TS`/`L`/`R`/`G` series) and
+`docs/audit/2026-09-18-modularity-audit.md` (the `M`/`EXT`/`DOC` series).
+**Read `## Status as of 2026-09-21` at the top of the second file first** — it
+is the one place that says what is actually open today. Both audit bodies are
+frozen records of the day they were written, annotated in place since.
 
-**Every gate passes on `master`.** `docs:check`, `modularity:check`, `lint:ci`,
-`test` and `build` were re-measured green on 2026-09-21, along with
-`tsc --noEmit`; the test suite is 519 specs across 65 suites. The gate table in
-`docs/audit/2026-09-18-modularity-audit.md` records the earlier measurement.
-The `fix/build-and-lint` branch this section used to point at has landed.
+Every finding in both audits was re-verified against the tree on 2026-09-21:
+**51 of 69 are closed.** Of the 2026-09-11 audit's 32, 31 are closed and `N5`
+is narrowed but open. Of the 2026-09-18 audit's 37, 20 are closed, 12 remain
+(ten of them code defects in one module each, plus `EXT7` and `EXT9`), and
+five `EXT` rows are reference measurements rather than defects. The ones that
+will bite you first are below.
 
-- **`B1`** — ~~`src/app.module.ts` does not compile: `emailConfig`, `awsConfig` and
-  `ConfigType` are referenced but never imported. Six TypeScript errors.~~ **Fixed on `fix/build-and-lint`.**
-- **`L1`** — ~~`pnpm run lint` exits 1 with 23 errors, so the pipeline is red on
-  every PR. `eslint.config.mjs` spreads the recommended configs *after* its own
-  rules block, which silently re-enables `@typescript-eslint/no-explicit-any`.~~
-  **Fixed on `fix/build-and-lint`** for the 23 errors. The ordering half
-  outlived it and was only fixed on `chore/eslint-flat-config` (see `H1`): the
-  shared configs now come first and the project block last, so what the file
-  says is what ESLint does.
-- **`L3`** — ~~the `lint` script runs with `--fix`, so invoking it rewrites 20
-  files with Prettier formatting, and CI runs that script — so CI cannot detect
-  formatting drift.~~ **Fixed on `chore/ci-test-gate`:** the tree is
-  Prettier-clean, `lint` keeps `--fix` for local use, and CI now runs the new
-  `lint:ci` script (`eslint` without `--fix`), which fails on drift instead of
-  silently repairing it.
-- **`B2`** — ~~`package.json` declares `dotenv` twice.~~ **Fixed** — declared
-  once; verified in `docs/audit/2026-09-18-modularity-audit.md` (`DOC5`).
-- **`B3`** — ~~`Dockerfile` uses `apk` on a Debian image and runs `prisma generate`
-  in a TypeORM project.~~ **Fixed on `fix/container-and-deploy-build`:** the
-  image installs `dumb-init` with `apt-get`, the Prisma calls are gone from
-  both `Dockerfile` and `docker-script.sh` (the entrypoint now runs
-  `pnpm run db:migration:run`), and `bitbucket-pipelines.yml`'s deploy step
-  installs `gettext-base` with `apt-get` too. Verified by building the image.
-- **`G2`** — ~~CI runs `docs:check`, `modularity:check`, `lint` and `build`;
-  `pnpm test` never runs in the pipeline.~~ **Fixed on `chore/ci-test-gate`:**
-  the `test-build` step runs `pnpm test` between `lint:ci` and `build`, and that
-  step now also runs on the `staging` and `master` branches before their deploy
-  step — a pull-request build proves the merge source, not the merged result.
-  Still true, and deliberate: `pnpm run test:e2e` does not run —
-  `test/app.e2e-spec.ts` is unmodified Nest boilerplate and needs a live
-  database.
+**Every gate passes.** `docs:check`, `modularity:check`, `lint:ci`, `test:cov`
+and `build` were measured green on 2026-09-21, along with `tsc --noEmit`: 706
+specs across 85 suites, coverage 96.13% statements / 88.61% branches against a
+floor of 95 / 88. `pnpm run modularity:check` runs against a zero-violation
+baseline (`docs/audit/module-independence-baseline.json`), so it fails on the
+first new cross-module violation instead of freezing a known set.
+
+### Open today
+
 - **`H4`** — `test/app.e2e-spec.ts` is 24 lines of Nest scaffold: it boots the
   whole `AppModule` and expects `'Hello World!'` on `GET /`. It needs a live
-  database and Redis, so it runs nowhere. **Accepted as debt on 2026-09-21**,
-  deliberately: the template keeps promising a suite that proves nothing, and
-  that is the known cost. Closing it means either writing real e2e specs with
-  `postgres` and `redis` services in `bitbucket-pipelines.yml`, or deleting the
-  file, `test/jest-e2e.json` and the `test:e2e` script. Do not half-fix it — a
-  green boilerplate e2e run is worse than none.
-- **`TS1`** — ~~`tsconfig.json` is not in strict mode, contrary to the SpaceDev
-  standard.~~ **Fixed on `chore/typescript-strict`:** `"strict": true` is on,
-  `noImplicitAny` and `strictBindCallApply` no longer opt out, and
-  `pnpm exec tsc --noEmit` reports zero errors. `TS2` (untyped `validate`
-  parameters) and `TS3` (`typescript-eslint` under `dependencies`) closed with
-  it. The `any` half closed separately on `refactor/no-explicit-any`: the 46
-  annotations are down to 2, both documented exceptions in
-  `src/email/abstract/` (see `T6`). The rule was never actually `'off'` —
-  `eslint.config.mjs` said so in a block the recommended config overrode, which
-  is why the tree carried 31 `eslint-disable` directives for a rule its own
-  config claimed to have disabled. Both are gone.
+  database and Redis, so it runs nowhere and CI does not call `test:e2e`.
+  **Accepted as debt on 2026-09-21**, deliberately: the template keeps
+  promising a suite that proves nothing, and that is the known cost. Closing it
+  means either writing real e2e specs with `postgres` and `redis` services in
+  `bitbucket-pipelines.yml`, or deleting the file, `test/jest-e2e.json` and the
+  `test:e2e` script. Do not half-fix it — a green boilerplate e2e run is worse
+  than none.
+- **`N5`** — reusable test doubles are still missing from five modules.
+  `src/cache/abstract/mocks/`, `src/cloud-storage/abstract/mocks/`,
+  `src/email/abstract/mocks/` and `src/push-notification/abstract/mocks/`
+  exist; `config-provider`, `queues`, `templating`,
+  `common/observability/logger` and `analytics` ship none, so a consumer of any
+  of those hand-rolls the double.
+- **Rule 4 of the adapter contract is unmet in four modules.** An adapter must
+  translate the provider SDK's error into the module's own (`T3`), and these do
+  not: `M18` — `src/email/aws-ses-adapter/aws-ses-adapter.service.ts` re-throws
+  the raw `@aws-sdk/client-ses` rejection and never imports `EmailError`;
+  `M17` — `src/cloud-storage/local-adapter/local-adapter.service.ts` wraps
+  neither `mkdir` nor `writeFile` and re-throws every non-`ENOENT` error raw;
+  `M12` — `src/templating/pug-adapter/pug-adapter.service.ts` has no
+  `try`/`catch` at all, and `templating` ships no error type to translate into;
+  `M13`/`M16` — `common/observability/logger` and `analytics` ship no error
+  class either, `analytics` by documented fire-and-forget design.
+- **Shape deviations, no proven extraction cost.** `M11` — `templating`'s
+  `abstract/` holds only the service and a const, with the dynamic module at
+  `src/templating/template.module.ts`. `M10` — `queues` splits the contract
+  across `abstract/producer/` and `abstract/consumer/`; deliberate, documented
+  in `src/queues/CLAUDE.md`, and the bespoke root module it used to carry is
+  gone. `M14` — `src/push-notification/expo-adapter/expo-adapter.service.ts` is
+  the one adapter decorating its config parameter with `@Inject`. `M8` — the
+  `TIERS` map in `scripts/check-module-independence.mjs` tiers `database` as
+  `infrastructure` and `templates` as `feature`; both calls are disputed and
+  neither currently masks a violation.
+- **`EXT7` — `common` has an extraction dependency no import graph can see.**
+  `src/common/middleware/response.interceptor.ts` reads `user.id`, which type-
+  checks only because the repo root ships `@types/express/index.d.ts` and
+  `tsconfig.json` loads it through `typeRoots`. Copying `common` elsewhere
+  means copying that file and that setting. `src/common/CLAUDE.md` and
+  `src/common/README.md` both say so now. `EXT9` is the general form: a green
+  `modularity:check` is not proof a module extracts cleanly.
+- **RabbitMQ and SQS are complete but unwired.** Only BullMQ is registered in
+  `src/app.module.ts`. Deliberate — three brokers registered at once means
+  three live connections for one queue. `src/queues/README.md`'s *Switching the
+  template's broker* has the exact edit for each.
+- **Extraction cost is measured for one module only.** `queues` was re-measured
+  on 2026-09-19 after the discovery that a fresh `@nestjs/cli` scaffold is ESM
+  while this template is CommonJS — which is what made the earlier probes
+  measure the wrong thing. It closes at two companions,
+  `src/common/observability/logger/` and `src/config-provider/`
+  (`docs/audit/evidence/extract-queues-closure-2026-09-19.txt`). `cache`
+  (`EXT1`, `EXT6`) and `email` (`EXT2`, `EXT5`) date from 2026-09-18 and
+  predate that correction; the other twelve top-level directories have never
+  been copied into a clean project and compiled. **Left open knowingly, by team
+  decision on 2026-09-21.** Do not quote a per-module extraction cost outside
+  `queues` as measured.
 
-Do not fix these opportunistically as part of unrelated work. They are tracked;
-raise them, scope them, fix them deliberately.
+### Closed, kept here because they are cited
+
+- **`B1`** — ~~`src/app.module.ts` does not compile: `emailConfig`, `awsConfig` and
+  `ConfigType` are referenced but never imported.~~ **Fixed on `fix/build-and-lint`.**
+- **`B2`** — ~~`package.json` declares `dotenv` twice.~~ **Fixed** — declared once.
+- **`B3`** — ~~`Dockerfile` uses `apk` on a Debian image and runs `prisma generate`
+  in a TypeORM project.~~ **Fixed on `fix/container-and-deploy-build`:** the image
+  installs `dumb-init` with `apt-get` and no Prisma call remains in `Dockerfile`
+  or `docker-script.sh`.
+- **`L1`** — ~~`pnpm run lint` exits 1 with 23 errors, so the pipeline is red on
+  every PR, because `eslint.config.mjs` spreads the recommended configs *after*
+  its own rules block.~~ **Fixed on `fix/build-and-lint`** for the 23 errors;
+  the ordering half was fixed on `chore/eslint-flat-config` (`H1`).
+- **`L3`** — ~~the `lint` script runs with `--fix` and CI runs that script, so CI
+  cannot detect formatting drift.~~ **Fixed on `chore/ci-test-gate`:** the tree
+  is Prettier-clean, `lint` keeps `--fix` for local use, and CI runs `lint:ci`.
+- **`G2`** — ~~CI never runs `pnpm test`.~~ **Fixed on `chore/ci-test-gate`:** the
+  `test-build` step runs `pnpm test` between `lint:ci` and `build`, and runs on
+  `staging` and `master` before their deploy step as well as on pull requests.
+  `test:e2e` is still not in the pipeline — that is `H4`, above.
+- **`TS1`** — ~~`tsconfig.json` is not in strict mode.~~ **Fixed on
+  `chore/typescript-strict`:** `"strict": true` is on and `tsc --noEmit` is
+  clean. `TS2` and `TS3` closed with it; the `any` half closed on
+  `refactor/no-explicit-any` — two remain, both documented (`T6`).
+- **`M1`-`M7`, `N6`** — ~~absolute `src/...` imports, the `(app)`/`queues`/`spaceship`
+  cycle, and the `auth`/`database` and `common`/`config-provider` cycles.~~
+  **Fixed on `feature/queues-decoupling` (2026-09-19):** the graph has zero
+  violations and zero cycles.
+- **`C1`-`C5`, `D1`-`D5`, `N1`-`N4`, `N7`, `R1`-`R4`, `G1`, `M15`, `DOC1`-`DOC10`**
+  — all closed; each is struck with its own evidence in the audit files.
+
+Do not fix the open ones opportunistically as part of unrelated work. They are
+tracked; raise them, scope them, fix them deliberately.

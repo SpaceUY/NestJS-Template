@@ -24,7 +24,7 @@ Run `pnpm run docs:check` after editing any `CLAUDE.md`.
 
 ## What is in here
 
-Fourteen modules. "Companions" are the other `src/` directories that module's
+Fifteen modules. "Companions" are the other `src/` directories that module's
 imports reach into — the narrowest subtree that has to travel with it, taken
 from `pnpm run modularity:check -- --report`, which is the source of truth when
 this table drifts. Each module's own `README.md` has the recipes and its
@@ -42,15 +42,16 @@ this table drifts. Each module's own `README.md` has the recipes and its
 | [`config-provider`](src/config-provider/README.md) | Config resolution for the whole app: source adapters, the dynamic module, `defineConfigScope` | `env`, `secrets-manager` | logger |
 | [`database`](src/database/README.md) | TypeORM connection, entities, base entity, migrations | — | `config-provider` |
 | [`email`](src/email/README.md) | Email delivery of **pre-rendered** content | `aws-ses`, `sendgrid`, `resend`, `console` | logger, `config-provider` |
+| [`health`](src/health/README.md) | Readiness (`GET /health`) and liveness (`GET /health/live`) for load balancers and container runtimes | — | logger, `cache` — both optional |
 | [`push-notification`](src/push-notification/README.md) | Push delivery | `expo` | logger, `config-provider` |
 | [`queues`](src/queues/README.md) | Producer and consumer abstractions for message queues | `bullmq`, `rabbitmq`, `sqs` | logger, `config-provider` |
 | [`templates`](src/templates/README.md) | The template files and the typed registry naming them — no executable code | — | none |
 | [`templating`](src/templating/README.md) | Compiling a template to HTML | `pug` | `common/utils/` |
 
 "logger" above means `src/common/observability/logger/` specifically, not all
-of `src/common/`. Eight modules have an edge into `common`; six of them reach
+of `src/common/`. Nine modules have an edge into `common`; seven of them reach
 only into that subtree, `auth` also uses `common/exception/`, and `templating`
-uses only `common/utils/` — one import, `nest-module-validation`. Three things
+uses only `common/utils/` — one import, `nest-module-validation`. Four things
 the table cannot show:
 
 - **Config scopes live with their consumer, not with `config-provider`.** So a
@@ -60,6 +61,10 @@ the table cannot show:
   `src/app.module.ts` feeds it from `src/redis.scope.ts`, an application-level
   scope shared with `src/queues/bullmq-adapter/`. Bring that file or hand the
   adapter a plain object — see `src/cache/CLAUDE.md`'s `## Reuse`.
+- **`health`'s two companions are both `@Optional()`.** It boots with neither
+  `CacheService` nor `LoggerService` registered — the cache simply drops out of
+  the readiness check instead of being reported healthy. The imports still have
+  to resolve, which is why they are listed.
 - **`common` has a companion that is not a directory under `src/`.** Its
   middleware only type-checks because of the ambient `Express.User`
   augmentation in the repo-root `@types/` directory, which no import statement
@@ -235,8 +240,12 @@ One directory fits neither list, having no registration and no config scope in
 
 - `src/templates/` holds two generic templates, `WELCOME` and `VERIFICATION`,
   registered in `src/templates/template.const.ts`. Both are starting points, not
-  demo content — there is nothing here to strip. No module imports it; only
-  `src/app.controller.ts` does, for `TEMPLATE_PATHS`.
+  demo content — there is nothing here to strip. **Nothing imports it.** The
+  demo route that did, `GET /email`, was removed: unguarded, it sent a real
+  message to a hardcoded address from whatever provider the environment had
+  configured. The render-then-send pattern it showed is written up in
+  `src/email/README.md`. So this directory is free-standing today — take it or
+  delete it without touching anything else.
 
 Run `pnpm run modularity:check -- --report` for the current dependency graph
 before deleting anything, rather than trusting a copy of it that will drift.
@@ -261,7 +270,8 @@ adapter for development — `EMAIL_ADAPTER=CONSOLE` and
 This project needs PostgreSQL and Redis running locally. Start both with:
 
 ```bash
-docker-compose up -d
+docker-compose up -d          # postgres, redis and jaeger
+pnpm run db:migration:run     # creates the schema on a fresh database
 ```
 
 Redis backs the BullMQ background job queues: `src/app.module.ts` wires both
@@ -269,6 +279,23 @@ the producer and the consumer adapter against it, even though the template
 ships no queue handlers of its own. See `REDIS_HOST` / `REDIS_PORT` /
 `REDIS_PASSWORD` in `.env.example`. The app depends on Redis at runtime, not
 just in tests.
+
+Once it is up, `GET /health` tells you whether it found both:
+
+```bash
+$ curl -s localhost:5000/health | jq .data.info
+{ "database": { "status": "up" }, "cache": { "status": "up" } }
+```
+
+A `503` there means a dependency is missing, not that the app is broken — see
+`src/health/README.md`.
+
+Swagger is at `/api`, and it is **gated**: `SWAGGER_ENABLED` defaults to false
+when `NODE_ENV=PROD` and true everywhere else, so the full API surface is not
+published in production by default. Set it explicitly to serve docs from a
+prod-like environment — that is why it is a flag rather than a bare `NODE_ENV`
+check, since the alternative is lying about `NODE_ENV`, which would also
+re-enable the `CORS_ORIGINS` wildcard.
 
 ## Running the app
 
@@ -289,12 +316,18 @@ $ pnpm run start:prod
 # unit tests
 $ pnpm run test
 
-# e2e tests
-$ pnpm run test:e2e
-
-# test coverage
+# unit tests + the coverage floor — what CI runs
 $ pnpm run test:cov
 ```
+
+**`pnpm run test:e2e` exists but proves nothing.** `test/app.e2e-spec.ts` is
+24 lines of unmodified Nest scaffold: it boots the whole `AppModule` and
+expects `'Hello World!'` on `GET /`, so it needs a live database and Redis and
+runs nowhere — not locally by default, and not in CI. This is **accepted debt**
+(`H4`), recorded deliberately rather than papered over: a green boilerplate
+e2e run would be worse than none. Closing it means either writing real e2e
+specs with `postgres` and `redis` services in `bitbucket-pipelines.yml`, or
+deleting the file, `test/jest-e2e.json` and the script. Do not half-fix it.
 
 ## Gates CI runs on every PR
 
@@ -306,10 +339,25 @@ so a merge is proved as merged, not just as a pull-request source.
 $ pnpm run docs:check          # every CLAUDE.md: map entry, sections, README sibling
 $ pnpm run modularity:check    # module import graph vs. the recorded baseline
 $ pnpm run lint:ci             # eslint WITHOUT --fix, so formatting drift fails
-$ pnpm test                    # jest
+$ pnpm run test:cov            # jest + the coverage floor
 $ pnpm run build               # nest build
 ```
 
-CI runs `lint:ci`, never `lint`. They are not interchangeable: `lint` carries
-`--fix`, so running it in a pipeline repairs formatting drift instead of
-failing on it. Use `pnpm run lint` locally, `pnpm run lint:ci` to predict CI.
+Two of those differ from what you would reach for locally, and both
+differences are the point:
+
+- **`lint:ci`, never `lint`.** `lint` carries `--fix`, so running it in a
+  pipeline repairs formatting drift instead of failing on it — that was
+  finding `L3`. Use `pnpm run lint` while you work, `pnpm run lint:ci` to
+  predict CI.
+- **`test:cov`, never `test`.** The `coverageThreshold` in `package.json` is a
+  floor, and Jest only enforces it when coverage is actually collected. Under
+  plain `pnpm test` the threshold is inert. The floor today is 95% statements,
+  88% branches, 94% functions, 95% lines, measured just under the real numbers
+  so it fails on a regression rather than on ambition.
+
+`collectCoverageFrom` excludes `main.ts`, `app.module.ts`,
+`src/database/data-source.ts`, the migrations and every `mocks/` directory —
+bootstrap, composition root, the TypeORM CLI entry point, generated schema and
+test doubles respectively. Everything else counts, including files that sit at
+0% and drag the average down; that is information, not noise.
