@@ -182,6 +182,22 @@ describe('ExpoAdapterService send paths', () => {
       expect(thrown.code).toBe(PUSH_NOTIFICATION_ERRORS.SEND_FAILED);
     });
 
+    // A thrown SDK error can quote the request it was handed, and the request
+    // carries the token — so the SDK's message is dropped, not forwarded.
+    it('keeps the token out of the error it throws when the SDK quotes it', async () => {
+      sendPushNotificationsAsync.mockRejectedValue(
+        new Error(`Request failed: {"to":"${TOKEN_A}"}`),
+      );
+
+      const thrown = (await rejection(
+        adapter.sendPushNotification(TOKEN_A, notification),
+      )) as PushNotificationError;
+
+      expect(thrown.code).toBe(PUSH_NOTIFICATION_ERRORS.SEND_FAILED);
+      expect(thrown.message).not.toContain(TOKEN_A);
+      expect(logged.join('\n')).not.toContain(TOKEN_A);
+    });
+
     // Rule 5: a device token is a credential.
     it('never writes the device token to the log', async () => {
       sendPushNotificationsAsync.mockRejectedValue(new Error('network down'));

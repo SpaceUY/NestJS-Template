@@ -137,16 +137,19 @@ export class ExpoAdapterService extends PushNotificationService {
   /**
    * No `expo-server-sdk` failure leaves this adapter raw: callers depend on
    * `PushNotificationError` and nothing below it (invariant `T3`).
+   *
+   * The SDK's own message is dropped rather than forwarded, for the same
+   * reason `_providerErrorOf` exists: a thrown `expo-server-sdk` error can
+   * quote the request it was given, and that request carries the device token
+   * (rule 5). The error's *kind* is what the failure log records; the caller
+   * gets the code, which is what it branches on.
    */
   private _asModuleError(
     error: unknown,
     code: (typeof PUSH_NOTIFICATION_ERRORS)[keyof typeof PUSH_NOTIFICATION_ERRORS],
   ): PushNotificationError {
     if (error instanceof PushNotificationError) return error;
-    return new PushNotificationError(
-      code,
-      error instanceof Error ? error.message : 'Push notification failed',
-    );
+    return new PushNotificationError(code, 'Push notification failed');
   }
 
   /**
