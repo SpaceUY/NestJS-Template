@@ -15,14 +15,14 @@ export interface CacheModuleOptions {
   extensions?: CacheExtensionOptions;
 }
 
-export interface CacheModuleAsyncOptions {
+// `TArgs` is the tuple of values the `inject` tokens resolve to. It is inferred
+// from the factory at the call site, which is what keeps a typed factory —
+// `(config: SomeScopeConfig) => ...` — assignable here. A plain `unknown[]`
+// would reject it: function parameters are contravariant.
+export interface CacheModuleAsyncOptions<TArgs extends unknown[] = unknown[]> {
   imports?: ModuleMetadata['imports'];
-  // eslint-disable-next-line @typescript-eslint/no-explicit-any
-  inject?: any[];
-  useFactory: (
-    // eslint-disable-next-line @typescript-eslint/no-explicit-any
-    ...args: any[]
-  ) => Promise<CacheService> | CacheService;
+  inject?: InjectionToken[];
+  useFactory: (...args: TArgs) => Promise<CacheService> | CacheService;
   isGlobal?: boolean;
   extensions?: CacheExtensionOptions;
 }

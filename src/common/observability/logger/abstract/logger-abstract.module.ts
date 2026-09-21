@@ -15,11 +15,14 @@ interface LoggerModuleOptions {
   telemetryHook?: LogTelemetryHook;
 }
 
-interface LoggerModuleAsyncOptions {
+// `TArgs` is the tuple of values the `inject` tokens resolve to. It is inferred
+// from the factory at the call site, which is what keeps a typed factory —
+// `(config: SomeScopeConfig) => ...` — assignable here. A plain `unknown[]`
+// would reject it: function parameters are contravariant.
+interface LoggerModuleAsyncOptions<TArgs extends unknown[] = unknown[]> {
   imports?: ModuleMetadata['imports'];
   inject?: InjectionToken[];
-  // eslint-disable-next-line @typescript-eslint/no-explicit-any
-  useFactory: (...args: any[]) => Promise<LoggerService> | LoggerService;
+  useFactory: (...args: TArgs) => Promise<LoggerService> | LoggerService;
   isGlobal?: boolean;
   telemetryHook?: LogTelemetryHook;
 }
@@ -47,7 +50,9 @@ export class LoggerAbstractModule {
     };
   }
 
-  static forRootAsync(options: LoggerModuleAsyncOptions): DynamicModule {
+  static forRootAsync<TArgs extends unknown[]>(
+    options: LoggerModuleAsyncOptions<TArgs>,
+  ): DynamicModule {
     const { isGlobal = false, telemetryHook } = options;
 
     return {
@@ -58,8 +63,7 @@ export class LoggerAbstractModule {
         {
           provide: LoggerService,
           scope: Scope.TRANSIENT,
-          // eslint-disable-next-line @typescript-eslint/no-explicit-any
-          useFactory: async (...args: any[]) => {
+          useFactory: async (...args: TArgs) => {
             const instance = await options.useFactory(...args);
             if (telemetryHook) instance.withTelemetry(telemetryHook);
             return instance;

@@ -278,7 +278,14 @@ export class ConfigProviderAbstractModule {
           logger: LoggerService | undefined,
           ...args: unknown[]
         ) => {
-          const instance = await src.useFactory(...args);
+          // `ConfigProviderSourceAsync.useFactory` is declared with `never[]`
+          // parameters so any typed factory is assignable to it; the values
+          // actually handed over come from Nest resolving `inject`, which no
+          // signature here can check. See that interface.
+          const factory = src.useFactory as (
+            ...factoryArgs: unknown[]
+          ) => Promise<ConfigProviderService> | ConfigProviderService;
+          const instance = await factory(...args);
           if (logger) instance.setLogger(logger);
           return instance;
         },

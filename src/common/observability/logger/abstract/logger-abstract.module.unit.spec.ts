@@ -10,6 +10,14 @@ class MockAdapter extends LoggerService {
   debug = jest.fn();
 }
 
+/**
+ * `telemetryHook` is protected on `LoggerService`; the module is what is under
+ * test, so the assertions read it through a narrowing view rather than adding
+ * an accessor to production code.
+ */
+const withHook = (instance: LoggerService): { telemetryHook?: unknown } =>
+  instance as unknown as { telemetryHook?: unknown };
+
 describe('LoggerAbstractModule', () => {
   describe('forRoot', () => {
     it('should bind the adapter class to LoggerService', () => {
@@ -62,8 +70,7 @@ describe('LoggerAbstractModule', () => {
       ).find((p) => p.provide === LoggerService);
 
       const instance = provider!.useFactory();
-      // eslint-disable-next-line @typescript-eslint/no-explicit-any
-      expect((instance as any).telemetryHook).toBe(hook);
+      expect(withHook(instance).telemetryHook).toBe(hook);
     });
 
     it('should not set telemetryHook when none is provided', () => {
@@ -77,8 +84,7 @@ describe('LoggerAbstractModule', () => {
       ).find((p) => p.provide === LoggerService);
 
       const instance = provider!.useFactory();
-      // eslint-disable-next-line @typescript-eslint/no-explicit-any
-      expect((instance as any).telemetryHook).toBeUndefined();
+      expect(withHook(instance).telemetryHook).toBeUndefined();
     });
   });
 
@@ -145,8 +151,7 @@ describe('LoggerAbstractModule', () => {
       ).find((p) => p.provide === LoggerService);
 
       const resolved = await provider!.useFactory();
-      // eslint-disable-next-line @typescript-eslint/no-explicit-any
-      expect((resolved as any).telemetryHook).toBe(hook);
+      expect(withHook(resolved).telemetryHook).toBe(hook);
     });
 
     it('should default imports and inject to empty arrays when omitted', () => {

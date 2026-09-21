@@ -1,13 +1,22 @@
-/* eslint-disable @typescript-eslint/no-explicit-any */
 import { UnrecoverableError, Worker } from 'bullmq';
 import { BullMqConsumerAdapter } from '../bullmq-consumer.adapter';
 import { BullMqMessageContext } from '../bullmq-message.context';
 import { MessageContext } from '../../abstract/consumer/queue-consumer.interfaces';
 import { QUEUE_CONSUMER_ERRORS } from '../../abstract/consumer/queue-consumer.error';
 
+/** The slice of a BullMQ `Job` this adapter reads. */
+type JobLike = {
+  id: string;
+  name?: string;
+  attemptsMade?: number;
+  data: { payload: unknown; headers?: Record<string, string> };
+};
+
+type WorkerLike = { on: jest.Mock; close: jest.Mock };
+
 const mockWorkerClose = jest.fn().mockResolvedValue(undefined);
-let capturedProcessor: (job: any) => Promise<void>;
-let workerInstance: any;
+let capturedProcessor: (job: JobLike) => Promise<void>;
+let workerInstance: WorkerLike;
 
 jest.mock('bullmq', () => ({
   Worker: jest.fn().mockImplementation((_name, processor) => {
@@ -30,20 +39,30 @@ function makeAdapter(
     ConstructorParameters<typeof BullMqConsumerAdapter>[0]
   > = {},
 ): BullMqConsumerAdapter {
-  return new BullMqConsumerAdapter({ connection, ...overrides } as any);
+  return new BullMqConsumerAdapter({
+    connection,
+    ...overrides,
+  } as ConstructorParameters<typeof BullMqConsumerAdapter>[0]);
 }
 
-const job = {
+const job: JobLike = {
   id: 'j1',
   name: 'message',
   attemptsMade: 0,
   data: { payload: { id: 1 }, headers: { traceId: 'abc' } },
-} as any;
+};
 
-async function startWith(callback: any, overrides = {}): Promise<void> {
+async function startWith(
+  callback: (payload: unknown, ctx: MessageContext) => Promise<void>,
+  overrides = {},
+): Promise<void> {
   const adapter = makeAdapter(overrides);
   await adapter.startConsuming('orders', callback);
 }
+
+/** `workers` is private; its contents are what stopConsuming is about. */
+const workersOf = (adapter: BullMqConsumerAdapter): Map<string, unknown> =>
+  (adapter as unknown as { workers: Map<string, unknown> }).workers;
 
 describe('BullMqConsumerAdapter', () => {
   beforeEach(() => jest.clearAllMocks());
@@ -148,7 +167,10 @@ describe('BullMqConsumerAdapter', () => {
       const callback = jest.fn(async () => {});
       await startWith(callback);
 
-      await capturedProcessor({ id: 'j2', data: { id: 9 } } as any);
+      await capturedProcessor({
+        id: 'j2',
+        data: { id: 9 },
+      } as unknown as JobLike);
 
       const [payload, ctx] = callback.mock.calls[0] as unknown as [
         unknown,
@@ -170,7 +192,7 @@ describe('BullMqConsumerAdapter', () => {
       await adapter.stopConsuming('orders');
 
       expect(mockWorkerClose).toHaveBeenCalledTimes(1);
-      expect((adapter as any).workers.has('orders')).toBe(false);
+      expect(workersOf(adapter).has('orders')).toBe(false);
     });
 
     it('stopConsuming on an unknown queue is a no-op', async () => {

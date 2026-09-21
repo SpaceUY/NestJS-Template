@@ -1,4 +1,3 @@
-/* eslint-disable @typescript-eslint/no-explicit-any */
 import { Injectable, Module } from '@nestjs/common';
 import { Test } from '@nestjs/testing';
 import { QueueConsumerModule } from '../consumer/queue-consumer.module';
@@ -50,10 +49,29 @@ const ctx: MessageContext = {
   nack: jest.fn(async () => {}),
 };
 
-function findAdapterProvider(moduleRef: any): any {
-  return (moduleRef.providers as any[]).find(
+/** A provider entry as these tests read it back off a DynamicModule. */
+type ProviderEntry = {
+  provide?: unknown;
+  inject?: unknown[];
+  useFactory: (...args: unknown[]) => unknown;
+};
+
+/** The consumer adapter as the container hands it back: every method a mock. */
+type ResolvedMockAdapter = {
+  startConsuming: jest.Mock;
+  stopConsuming: jest.Mock;
+};
+
+/** Reads the private `logger` the module hands the adapter. */
+const loggerOf = (instance: unknown): unknown =>
+  (instance as { logger?: unknown }).logger;
+
+function findAdapterProvider(moduleRef: {
+  providers?: unknown[];
+}): ProviderEntry {
+  return ((moduleRef.providers ?? []) as ProviderEntry[]).find(
     (p) => p.provide === QueueConsumerAdapter,
-  );
+  ) as ProviderEntry;
 }
 
 describe('QueueConsumerModule', () => {
@@ -93,7 +111,7 @@ describe('QueueConsumerModule', () => {
         ],
       });
 
-      const handlerProviders = (moduleRef.providers as any[]).filter(
+      const handlerProviders = (moduleRef.providers ?? []).filter(
         (p) => p === OrdersHandler,
       );
       expect(handlerProviders).toHaveLength(1);
@@ -117,7 +135,7 @@ describe('QueueConsumerModule', () => {
       const instance = findAdapterProvider(moduleRef).useFactory(mockLogger);
 
       expect(instance).toBeInstanceOf(MockConsumerAdapter);
-      expect((instance as any).logger).toBe(mockLogger);
+      expect(loggerOf(instance)).toBe(mockLogger);
     });
 
     it('falls back to NestLoggerAdapter when no logger is provided', () => {
@@ -128,7 +146,7 @@ describe('QueueConsumerModule', () => {
 
       const instance = findAdapterProvider(moduleRef).useFactory(undefined);
 
-      expect((instance as any).logger).toBeInstanceOf(NestLoggerAdapter);
+      expect(loggerOf(instance)).toBeInstanceOf(NestLoggerAdapter);
     });
 
     it('forRootAsync prepends the optional LoggerService to user inject tokens', () => {
@@ -162,16 +180,19 @@ describe('QueueConsumerModule', () => {
 
       await app.init();
 
-      const adapter = app.get(QueueConsumerAdapter) as any;
+      const adapter = app.get(
+        QueueConsumerAdapter,
+      ) as unknown as ResolvedMockAdapter;
       expect(adapter.startConsuming).toHaveBeenCalledTimes(2);
-      expect(adapter.startConsuming.mock.calls.map((c: any[]) => c[0])).toEqual(
-        ['orders', 'notifications'],
-      );
+      expect(adapter.startConsuming.mock.calls.map((call) => call[0])).toEqual([
+        'orders',
+        'notifications',
+      ]);
 
       await app.close();
 
       expect(adapter.stopConsuming).toHaveBeenCalledTimes(2);
-      expect(adapter.stopConsuming.mock.calls.map((c: any[]) => c[0])).toEqual([
+      expect(adapter.stopConsuming.mock.calls.map((call) => call[0])).toEqual([
         'orders',
         'notifications',
       ]);
@@ -189,9 +210,14 @@ describe('QueueConsumerModule', () => {
 
       await app.init();
 
-      const adapter = app.get(QueueConsumerAdapter) as any;
+      const adapter = app.get(
+        QueueConsumerAdapter,
+      ) as unknown as ResolvedMockAdapter;
       const handler = app.get(OrdersHandler);
-      const callback = adapter.startConsuming.mock.calls[0][1];
+      const callback = adapter.startConsuming.mock.calls[0][1] as (
+        payload: unknown,
+        ctx: MessageContext,
+      ) => Promise<void>;
 
       await callback({ id: 1 }, ctx);
 
@@ -304,11 +330,12 @@ describe('QueueConsumerModule', () => {
       expect(handler.dep.value).toBe('injected');
 
       // The callback handed to the adapter is bound to that same instance.
-      // Cast through the mock type: `adapter` is declared as
+      // Read through the mock view: `adapter` is declared as
       // `MockConsumerAdapter`, whose `startConsuming` field infers a
       // zero-argument mock signature from its own initializer, not the
       // two-argument signature `QueueConsumerAdapter` actually declares.
-      const callback = (adapter.startConsuming as any).mock.calls[0][1] as (
+      const callback = (adapter as unknown as ResolvedMockAdapter)
+        .startConsuming.mock.calls[0][1] as (
         payload: unknown,
         ctx: MessageContext,
       ) => Promise<void>;

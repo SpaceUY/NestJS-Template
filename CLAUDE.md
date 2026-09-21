@@ -103,8 +103,22 @@ that way — `pnpm run modularity:check` fails on the first absolute specifier.
 
 **T6 — Named exports, explicit return types, no `any`.** No default exports.
 Every function and method declares its return type.
-`@typescript-eslint/no-explicit-any` is enforced and the tree is clean: no new
-`any` without a per-line disable that explains why, following the precedent in
+`@typescript-eslint/no-explicit-any` is enforced (it comes from
+`tseslint.configs.recommended`, which `eslint.config.mjs` no longer overrides)
+and the tree is clean: two `any`s remain in the whole of `src/`, both in
+`src/email/abstract/` and both carrying a per-line disable that explains why —
+`Record<string, unknown>` rejects interface-typed template params, which have no
+implicit index signature. That is the precedent for a new one: a per-line
+disable that says what breaks without it, never a file-level disable.
+
+A `forRoot`/`forRootAsync` factory is **not** such a case, even though NestJS's
+own `*ModuleAsyncOptions` use `any[]` there. Every abstract module here takes
+`<TArgs extends unknown[]>` on the method and threads it into the options
+interface, so the tuple is inferred from the factory at the call site and a
+typed factory stays assignable — see
+`src/analytics/abstract/analytics-abstract.module.ts`. Where there is no call
+site to infer from, because the factories sit inside a `Record`, the parameters
+are `never[]` and the one place that calls them widens back — see
 `src/config-provider/abstract/config-provider.interfaces.ts`.
 
 **T7 — Every module carries its own `CLAUDE.md`.** A new top-level directory
@@ -160,7 +174,11 @@ were measured green in `docs/audit/2026-09-18-modularity-audit.md`'s gate table;
   `ConfigType` are referenced but never imported. Six TypeScript errors.~~ **Fixed on `fix/build-and-lint`.**
 - **`L1`** — ~~`pnpm run lint` exits 1 with 23 errors, so the pipeline is red on
   every PR. `eslint.config.mjs` spreads the recommended configs *after* its own
-  rules block, which silently re-enables `@typescript-eslint/no-explicit-any`.~~ **Fixed on `fix/build-and-lint`.**
+  rules block, which silently re-enables `@typescript-eslint/no-explicit-any`.~~
+  **Fixed on `fix/build-and-lint`** for the 23 errors. The ordering half
+  outlived it and was only fixed on `chore/eslint-flat-config` (see `H1`): the
+  shared configs now come first and the project block last, so what the file
+  says is what ESLint does.
 - **`L3`** — ~~the `lint` script runs with `--fix`, so invoking it rewrites 20
   files with Prettier formatting, and CI runs that script — so CI cannot detect
   formatting drift.~~ **Fixed on `chore/ci-test-gate`:** the tree is
@@ -188,10 +206,12 @@ were measured green in `docs/audit/2026-09-18-modularity-audit.md`'s gate table;
   `noImplicitAny` and `strictBindCallApply` no longer opt out, and
   `pnpm exec tsc --noEmit` reports zero errors. `TS2` (untyped `validate`
   parameters) and `TS3` (`typescript-eslint` under `dependencies`) closed with
-  it. **Still open, and separately scoped:** 46 explicit `any` annotations
-  remain, mostly `useFactory: (...args: any[])` in the dynamic modules and in
-  specs; `@typescript-eslint/no-explicit-any` is `'off'` in
-  `eslint.config.mjs`. Turning that rule on is its own branch.
+  it. The `any` half closed separately on `refactor/no-explicit-any`: the 46
+  annotations are down to 2, both documented exceptions in
+  `src/email/abstract/` (see `T6`). The rule was never actually `'off'` —
+  `eslint.config.mjs` said so in a block the recommended config overrode, which
+  is why the tree carried 31 `eslint-disable` directives for a rule its own
+  config claimed to have disabled. Both are gone.
 
 Do not fix these opportunistically as part of unrelated work. They are tracked;
 raise them, scope them, fix them deliberately.

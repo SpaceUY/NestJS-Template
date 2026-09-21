@@ -1,4 +1,3 @@
-/* eslint-disable @typescript-eslint/no-explicit-any */
 import { QueueProducerModule } from '../producer/queue-producer.module';
 import { QueueProducerService } from '../producer/queue-producer.service';
 import { LoggerService } from '../../../common/observability/logger/abstract/logger.service';
@@ -18,10 +17,23 @@ const mockLogger = {
   withTelemetry: jest.fn(),
 } as unknown as LoggerService;
 
-function findProducerProvider(moduleRef: any): any {
-  return (moduleRef.providers as any[]).find(
+/** A provider entry as these tests read it back off a DynamicModule. */
+type ProviderEntry = {
+  provide?: unknown;
+  inject?: unknown[];
+  useFactory: (...args: unknown[]) => unknown;
+};
+
+/** Reads the private `logger` the module hands the adapter. */
+const loggerOf = (instance: unknown): unknown =>
+  (instance as { logger?: unknown }).logger;
+
+function findProducerProvider(moduleRef: {
+  providers?: unknown[];
+}): ProviderEntry {
+  return ((moduleRef.providers ?? []) as ProviderEntry[]).find(
     (p) => p.provide === QueueProducerService,
-  );
+  ) as ProviderEntry;
 }
 
 describe('QueueProducerModule', () => {
@@ -54,7 +66,7 @@ describe('QueueProducerModule', () => {
       const instance = findProducerProvider(moduleRef).useFactory(mockLogger);
 
       expect(instance).toBeInstanceOf(MockProducerAdapter);
-      expect((instance as any).logger).toBe(mockLogger);
+      expect(loggerOf(instance)).toBe(mockLogger);
     });
 
     it('falls back to NestLoggerAdapter when no logger is provided', () => {
@@ -64,7 +76,7 @@ describe('QueueProducerModule', () => {
 
       const instance = findProducerProvider(moduleRef).useFactory(undefined);
 
-      expect((instance as any).logger).toBeInstanceOf(NestLoggerAdapter);
+      expect(loggerOf(instance)).toBeInstanceOf(NestLoggerAdapter);
     });
 
     it('injects an optional LoggerService', () => {
@@ -98,7 +110,7 @@ describe('QueueProducerModule', () => {
         await findProducerProvider(moduleRef).useFactory(mockLogger);
 
       expect(instance).toBeInstanceOf(MockProducerAdapter);
-      expect((instance as any).logger).toBe(mockLogger);
+      expect(loggerOf(instance)).toBe(mockLogger);
     });
 
     it('falls back to NestLoggerAdapter when no logger is provided', async () => {
@@ -109,7 +121,7 @@ describe('QueueProducerModule', () => {
       const instance =
         await findProducerProvider(moduleRef).useFactory(undefined);
 
-      expect((instance as any).logger).toBeInstanceOf(NestLoggerAdapter);
+      expect(loggerOf(instance)).toBeInstanceOf(NestLoggerAdapter);
     });
 
     it('prepends the optional LoggerService to user inject tokens', () => {

@@ -36,16 +36,17 @@ export interface QueueProducerModuleOptions {
   isGlobal?: boolean;
 }
 
-export interface QueueProducerModuleAsyncOptions {
+// `TArgs` is the tuple of values the `inject` tokens resolve to. It is inferred
+// from the factory at the call site, which is what keeps a typed factory —
+// `(config: SomeScopeConfig) => ...` — assignable here. A plain `unknown[]`
+// would reject it: function parameters are contravariant.
+export interface QueueProducerModuleAsyncOptions<
+  TArgs extends unknown[] = unknown[],
+> {
   imports?: ModuleMetadata['imports'];
   inject?: InjectionToken[];
-  // `any[]` mirrors NestJS's own *ModuleAsyncOptions: the factory's args are the
-  // resolved `inject` tokens, whose types this interface can't know. `unknown[]`
-  // would reject typed factories like `(config: Config) => ...` under strict
-  // mode (parameter contravariance), so the explicit-any exception stays.
   useFactory: (
-    // eslint-disable-next-line @typescript-eslint/no-explicit-any
-    ...args: any[]
+    ...args: TArgs
   ) => Promise<QueueProducerService> | QueueProducerService;
   isGlobal?: boolean;
 }

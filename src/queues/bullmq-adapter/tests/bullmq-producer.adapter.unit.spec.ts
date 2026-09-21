@@ -1,4 +1,3 @@
-/* eslint-disable @typescript-eslint/no-explicit-any */
 import { Queue } from 'bullmq';
 import { BullMqProducerAdapter } from '../bullmq-producer.adapter';
 import { QUEUE_PRODUCER_ERRORS } from '../../abstract/producer/queue-producer.error';
@@ -21,7 +20,10 @@ function makeAdapter(
     ConstructorParameters<typeof BullMqProducerAdapter>[0]
   > = {},
 ): BullMqProducerAdapter {
-  return new BullMqProducerAdapter({ connection, ...overrides } as any);
+  return new BullMqProducerAdapter({
+    connection,
+    ...overrides,
+  } as ConstructorParameters<typeof BullMqProducerAdapter>[0]);
 }
 
 describe('BullMqProducerAdapter', () => {

@@ -18,8 +18,9 @@ describe('NestLoggerAdapter', () => {
   beforeEach(() => {
     jest.clearAllMocks();
     adapter = new NestLoggerAdapter('TestContext');
-    // eslint-disable-next-line @typescript-eslint/no-explicit-any
-    mockLogger = (adapter as any).logger;
+    // `logger` is private on the adapter; the mock behind it is what these
+    // assertions are about.
+    mockLogger = (adapter as unknown as { logger: jest.Mocked<Logger> }).logger;
   });
 
   describe('log', () => {

@@ -1,4 +1,3 @@
-/* eslint-disable @typescript-eslint/no-explicit-any */
 import { connect } from 'amqplib';
 import { RabbitMqProducerAdapter } from '../rabbitmq-producer.adapter';
 import { RABBITMQ_RESERVED_HEADERS } from '../rabbitmq-adapter.interfaces';
@@ -8,8 +7,12 @@ jest.mock('amqplib', () => ({ connect: jest.fn() }));
 
 const mockConnect = connect as jest.Mock;
 
-let mockChannel: any;
-let mockConnection: any;
+/** The amqplib surface these tests stand in for; every method a jest mock. */
+type MockChannel = Record<string, jest.Mock>;
+type MockConnection = Record<string, jest.Mock>;
+
+let mockChannel: MockChannel;
+let mockConnection: MockConnection;
 
 function wireHappyPath(): void {
   // Confirm-channel publishes take a callback that the broker invokes on
@@ -253,7 +256,7 @@ describe('RabbitMqProducerAdapter', () => {
 
       // A channel-level close while the connection stays up.
       const closeHandler = mockChannel.on.mock.calls.find(
-        (call: any[]) => call[0] === 'close',
+        (call: unknown[]) => call[0] === 'close',
       )?.[1];
       closeHandler();
 
@@ -266,7 +269,7 @@ describe('RabbitMqProducerAdapter', () => {
       await adapter.send('orders', { id: 1 });
 
       const errorHandler = mockChannel.on.mock.calls.find(
-        (call: any[]) => call[0] === 'error',
+        (call: unknown[]) => call[0] === 'error',
       )?.[1];
       expect(() => errorHandler(new Error('channel boom'))).not.toThrow();
     });

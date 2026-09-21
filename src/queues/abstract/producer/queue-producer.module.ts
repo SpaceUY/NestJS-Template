@@ -43,7 +43,9 @@ export class QueueProducerModule {
    * @param {QueueProducerModuleAsyncOptions} options - Factory, its injected dependencies, imports, and global flag.
    * @returns {DynamicModule} A dynamic module that provides and exports the producer.
    */
-  static forRootAsync(options: QueueProducerModuleAsyncOptions): DynamicModule {
+  static forRootAsync<TArgs extends unknown[]>(
+    options: QueueProducerModuleAsyncOptions<TArgs>,
+  ): DynamicModule {
     const { isGlobal = false } = options;
 
     return {
@@ -55,7 +57,7 @@ export class QueueProducerModule {
           provide: QueueProducerService,
           useFactory: async (
             logger: LoggerService | undefined,
-            ...args: unknown[]
+            ...args: TArgs
           ) => {
             const instance = await options.useFactory(...args);
             if (logger) instance.setLogger(logger);

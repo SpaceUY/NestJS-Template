@@ -11,7 +11,7 @@ import { PushNotificationController } from './push-notification.controller';
 import { PUSH_NOTIFICATION_PROVIDER } from './push-notification-provider.const';
 
 type AdapterModule =
-  | Type<any> // eslint-disable-line @typescript-eslint/no-explicit-any
+  | Type<unknown>
   | DynamicModule
   | Promise<DynamicModule>
   | ForwardReference;
@@ -20,38 +20,37 @@ interface PushNotificationModuleOptions {
   adapter: AdapterModule;
   useDefaultController?: boolean;
   isGlobal?: boolean;
-  // eslint-disable-next-line @typescript-eslint/no-explicit-any
-  controllers?: Type<any>[];
+  controllers?: Type<unknown>[];
 }
 
-interface PushNotificationModuleAsyncOptions {
+// `TArgs` is the tuple of values the `inject` tokens resolve to. It is inferred
+// from the factory at the call site, which is what keeps a typed factory —
+// `(config: SomeScopeConfig) => ...` — assignable here. A plain `unknown[]`
+// would reject it: function parameters are contravariant.
+interface PushNotificationModuleAsyncOptions<
+  TArgs extends unknown[] = unknown[],
+> {
   imports?: ModuleMetadata['imports'];
   inject?: InjectionToken[];
-  // `any[]` mirrors NestJS's own *ModuleAsyncOptions: the factory's args are the
-  // resolved `inject` tokens, whose types this interface can't know.
   useFactory: (
-    // eslint-disable-next-line @typescript-eslint/no-explicit-any
-    ...args: any[]
+    ...args: TArgs
   ) => Promise<PushNotificationService> | PushNotificationService;
   useDefaultController?: boolean;
   isGlobal?: boolean;
-  // eslint-disable-next-line @typescript-eslint/no-explicit-any
-  controllers?: Type<any>[];
+  controllers?: Type<unknown>[];
 }
 
 /**
  * Builds the controller list without touching the caller's array.
  *
- * @param {Type<any>[]} controllers - Controllers supplied by the caller.
+ * @param {Type<unknown>[]} controllers - Controllers supplied by the caller.
  * @param {boolean} useDefaultController - Whether to add the module's own controller.
- * @returns {Type<any>[]} A new array; the caller's is never mutated.
+ * @returns {Type<unknown>[]} A new array; the caller's is never mutated.
  */
 function buildControllers(
-  // eslint-disable-next-line @typescript-eslint/no-explicit-any
-  controllers: Type<any>[],
+  controllers: Type<unknown>[],
   useDefaultController: boolean,
-  // eslint-disable-next-line @typescript-eslint/no-explicit-any
-): Type<any>[] {
+): Type<unknown>[] {
   return useDefaultController
     ? [...controllers, PushNotificationController]
     : [...controllers];
@@ -107,8 +106,8 @@ export class PushNotificationAbstractModule {
    * @param {PushNotificationModuleAsyncOptions} options - Factory, its injected dependencies, imports, controller and global flags.
    * @returns {DynamicModule} A dynamic module that provides and exports the service.
    */
-  static forRootAsync(
-    options: PushNotificationModuleAsyncOptions,
+  static forRootAsync<TArgs extends unknown[]>(
+    options: PushNotificationModuleAsyncOptions<TArgs>,
   ): DynamicModule {
     const {
       isGlobal = false,
