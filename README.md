@@ -283,13 +283,22 @@ before the first `pnpm test`: every Nest 12 package is ESM-only, so
 an ESM dependency. Run `pnpm test`, never a bare `jest`. `CLAUDE.md`'s
 `## Toolchain` has the rest.
 
-`.env.example` lists every key the code actually reads, grouped by the config
-scope that reads it, and marks which ones are required. Two of them have no
-default and the app refuses to boot without them: `JWT_SECRET`, and a database
-address as either `DATABASE_URL` or the full `DB_*` set. Everything else has a
-working local default, and the provider-backed modules all ship a no-network
-adapter for development — `EMAIL_ADAPTER=CONSOLE` and
-`ANALYTICS_ADAPTER=CONSOLE` are the defaults in that file.
+`.env.example` lists every key the code actually reads, grouped by the module
+that reads it, and marks which ones are required. Copied as it ships, it boots
+against the containers below with exactly one thing to fill in: `JWT_SECRET`,
+left blank on purpose so the app refuses to start rather than sign tokens with
+a shared constant. The database address has no default either — `DATABASE_URL`
+or the full `DB_*` set — but the value in the file is the one
+`docker-compose.yml` creates. Everything else has a working local default, and
+the provider-backed modules all ship a no-network adapter for development:
+`EMAIL_ADAPTER=CONSOLE` and `ANALYTICS_ADAPTER=CONSOLE`, with both OAuth
+providers off.
+
+One rule that file states and that is easy to get wrong: a blank value is a
+value, not an omission. `KEY=` hands the config scope an empty string, and Joi
+rejects an empty string for every key but eight. To leave something unset,
+comment the line out — which is why the optional blocks in that file ship
+commented rather than empty.
 
 ## Local development
 
