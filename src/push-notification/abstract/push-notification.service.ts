@@ -1,4 +1,6 @@
 import { IPushNotification } from './push-notification.interface';
+import { LoggerService } from '../../common/observability/logger/abstract/logger.service';
+import { NestLoggerAdapter } from '../../common/observability/logger/nest-adapter/nest-logger.adapter';
 
 export const PUSH_NOTIFICATION_STATUSES = {
   SUCCESS: 'SUCCESS',
@@ -41,6 +43,23 @@ export interface PushNotificationChunkReport {
  * Interface for adapters to implement to work alongside the `PushNotificationModule.`
  */
 export abstract class PushNotificationService {
+  protected logger: LoggerService = new NestLoggerAdapter(
+    this.constructor.name,
+  );
+
+  /**
+   * Replaces the default logger, letting the container's `LoggerService` reach
+   * an adapter that was constructed without one. `LoggerService` is registered
+   * as `Scope.TRANSIENT`, so re-tagging the context here affects only this
+   * adapter's instance. Same contract as `EmailService.setLogger`.
+   *
+   * @param {LoggerService} logger - Logger the adapter should use from now on.
+   */
+  setLogger(logger: LoggerService): void {
+    logger.setContext(this.constructor.name);
+    this.logger = logger;
+  }
+
   /**
    * Send a push notification to a specific mobile device.
    * @param {string} pushToken - The push notification token of the target device.

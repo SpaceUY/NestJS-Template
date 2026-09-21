@@ -50,7 +50,13 @@ domain concern; the template does not model it.
    Expo rate-limits large sends; do not loop over `sendPushNotification`, the
    single-send method.
 5. A device token is a credential. Never log it, never return it in a response.
-6. Failures throw `PushNotificationError` with a code from
+6. Log through `this.logger`, inherited from `PushNotificationService` —
+   never `console`. An adapter takes `@Optional() logger?: LoggerService` last
+   and the base falls back to a `NestLoggerAdapter`, so the module registers
+   with or without `LoggerAbstractModule`. Rule 5 still binds every line: no
+   device token, and no `error:` field on a provider rejection, because an Expo
+   error can quote the token it was given.
+7. Failures throw `PushNotificationError` with a code from
    `PUSH_NOTIFICATION_ERRORS` — never a raw `expo-server-sdk` error and never
    an `HttpException` (invariant `T3`). An adapter has no business naming an
    HTTP status; mapping the code to one is the controller's job, and
@@ -86,6 +92,10 @@ error-ticket and thrown-failure translations, the dropping of invalid tokens
 before chunking, the success/failure split of a chunk report, and rule 5 on
 both paths: no device token reaches the log.
 
+That last assertion reads the whole serialized `LogInput`, message and data
+together, through a recording `LoggerService` handed to the adapter — not one
+field of it, and not `console`, which is what the adapter used to write to.
+
 `src/push-notification/abstract/mocks/push-notification.service.mock.ts` gives
 `MockPushNotificationService` — every method a `jest.fn()` with a sane default,
 the same shape `src/cache/abstract/mocks/` uses.
@@ -93,7 +103,11 @@ the same shape `src/cache/abstract/mocks/` uses.
 ## Reuse
 
 Copy `src/push-notification/` whole; `expo-adapter/` needs `expo-server-sdk`.
-`config/expo.scope.ts` depends on `src/config-provider/` and `joi`.
+Two companions: `src/config-provider/` (plus `joi`) for
+`config/expo.scope.ts`, and `src/common/observability/logger/` for the
+`LoggerService` the abstract service defaults and the adapter optionally takes.
+The logger is `@Optional()`, so the module registers without
+`LoggerAbstractModule`; the import still has to resolve.
 
 You are also copying registration style B — the adapter ships its own
 `register`/`registerAsync` module and the abstract module aliases its token.
@@ -135,9 +149,19 @@ See `docs/audit/2026-09-11-template-audit.md` and `docs/audit/2026-09-18-modular
   is still returned in the report, which is where the caller needs it.
 - **`N5`** — ~~no `abstract/mocks/`.~~ **Fixed on `chore/module-gaps`:**
   `src/push-notification/abstract/mocks/push-notification.service.mock.ts`.
+- ~~`ExpoAdapterService` wrote seven `console.*` lines and carried a
+  `// TODO: Integrate log provider in this service`, so the one module that
+  handles device credentials was the one module outside the logging contract —
+  no context, no trace id, no telemetry hook.~~ **Fixed on
+  `refactor/push-notification-logger`:** `PushNotificationService` now owns a
+  `logger` and a `setLogger` the same way `EmailService` does, and the adapter
+  takes `@Optional() LoggerService`. That adds `src/common/observability/logger/`
+  as a second companion directory for reuse — a deliberate trade, taken because
+  four sibling infrastructure modules already depend on it and a second bespoke
+  logger port (the `cache` route) would fragment the contract further.
 - **`M15`** — ~~`PushNotificationException` is defined but never constructed;
   adapter failures escape as the raw SDK error or `InternalServerErrorException`
-  instead (Rule 6).~~ **Fixed on `chore/dead-code-and-error-model`:**
+  instead (Rule 7, Rule 6 when that finding was written).~~ **Fixed on `chore/dead-code-and-error-model`:**
   `PushNotificationException` is gone, `ExpoAdapterService` throws
   `PushNotificationError` on every failure path, and the controller's mapping
   is covered by a spec.
