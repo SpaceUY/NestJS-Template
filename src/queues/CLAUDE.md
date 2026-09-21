@@ -125,5 +125,10 @@ the two congruent (`T7`).
 See `docs/audit/2026-09-18-modularity-audit.md`.
 
 - RabbitMQ and SQS adapters are complete but unwired: only BullMQ is
-  registered in `src/app.module.ts`. Selecting either today means writing
-  the `QueueProducerModule`/`QueueConsumerModule` wiring yourself.
+  registered in `src/app.module.ts`. That stays deliberate — registering three
+  brokers at once would mean three live connections for one queue. What was
+  missing was the recipe, and it is now written: `README.md`'s
+  **Switching the template's broker** gives the exact `src/app.module.ts` edit
+  for each, plus the one extra step SQS needs (it has no config scope in this
+  template — `!src/queues/sqs-adapter/config/sqs.scope.ts` — so you write one
+  first) and the three behaviours that do not survive the switch.
