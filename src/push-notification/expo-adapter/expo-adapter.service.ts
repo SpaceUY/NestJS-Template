@@ -149,8 +149,10 @@ export class ExpoAdapterService extends PushNotificationService {
       if (ticket.status === PUSH_NOTIFICATION_EXPO_STATUSES.ERROR) {
         const errorToken = ticket.details?.expoPushToken;
         const errorMessage = ticket.message;
+        // The token is returned to the caller, which needs it to revoke the
+        // device, but it never reaches the log: it is a credential (rule 5).
         console.error(
-          `[sendPushNotificationInChunks]: ERROR: error send push notification to device token ${errorToken}. Error: ${errorMessage}`,
+          `[sendPushNotificationInChunks]: ERROR: error send push notification to a device. Error: ${errorMessage}`,
         );
         errorNotifications.push({
           message: ticket.message,

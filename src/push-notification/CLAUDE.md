@@ -78,8 +78,13 @@ and asserts no provider text reaches the response;
 `expo-adapter.service.unit.spec.ts` covers the token-validation path, which
 needs no network; `push-notification-abstract.module.unit.spec.ts` covers both
 registration paths, including that `forRoot` no longer mutates the caller's
-`controllers` array. Still missing: chunking behaviour and the send path, both
-of which need `expo-server-sdk` mocked at module level.
+`controllers` array. `expo-adapter.send.unit.spec.ts` covers the send and
+chunking paths with `expo-server-sdk` mocked at module level — the real
+`Expo.isExpoPushToken` is kept through `requireActual`, since the validation
+path depends on it. It asserts the message payload, the deep-link branch, the
+error-ticket and thrown-failure translations, the dropping of invalid tokens
+before chunking, the success/failure split of a chunk report, and rule 5 on
+both paths: no device token reaches the log.
 
 `src/push-notification/abstract/mocks/push-notification.service.mock.ts` gives
 `MockPushNotificationService` — every method a `jest.fn()` with a sane default,
@@ -116,7 +121,12 @@ See `docs/audit/2026-09-11-template-audit.md` and `docs/audit/2026-09-18-modular
   is `DOC9`'s installation-line defect
   (`docs/audit/2026-09-18-modularity-audit.md`), not `D4`'s — fixed separately
   in this same branch.
-- **`G1`** — the send and chunking paths are still untested.
+- **`G1`** — ~~the send and chunking paths are still untested.~~ **Fixed on
+  `test/coverage-email-templating-push`:** `expo-adapter.send.unit.spec.ts`.
+- **`H5`** — ~~the chunk report logged the failing device token
+  (`getExpoPushNotificationChunkReport`), against rule 5. Found writing the test
+  above.~~ **Fixed on the same branch:** the log line names no token; the token
+  is still returned in the report, which is where the caller needs it.
 - **`N5`** — ~~no `abstract/mocks/`.~~ **Fixed on `chore/module-gaps`:**
   `src/push-notification/abstract/mocks/push-notification.service.mock.ts`.
 - **`M15`** — ~~`PushNotificationException` is defined but never constructed;

@@ -86,10 +86,17 @@ working app that prints emails instead of a boot failure.
 
 ## Tests
 
-No test exists for this module (finding `G1`). Adapters are plain classes —
-construct with `new`, mock the provider SDK at module level with `jest.mock`,
-assert the mapped payload and the thrown `EmailError`. `ConsoleAdapterService` is
-the easiest place to start.
+`src/email/utils/execute-html-email-send.unit.spec.ts` covers the send core the
+three real adapters share: the refusal when `content.html` is empty, the success
+log, and the translation of any provider failure into
+`EMAIL_ERRORS.PROVIDER_REJECTED` with the provider text kept as `cause` data
+rather than as the message. `console-adapter.service.unit.spec.ts` and
+`resend-adapter.service.unit.spec.ts` cover an adapter of each kind on top of
+it. `aws-ses` and `sendgrid` are still untested (finding `G1`); they route
+through the same helper, so an adapter spec there is about the payload it
+builds. Adapters are plain classes — construct with `new`, mock the provider
+SDK at module level with `jest.mock`, assert the mapped payload and the thrown
+`EmailError`.
 
 `src/email/abstract/mocks/email.service.mock.ts` gives `MockEmailService` for
 consumers that only need an `EmailService` in their container — every method a
@@ -127,4 +134,6 @@ See `docs/audit/2026-09-11-template-audit.md`.
   `TemplateService.compile` in `src/templating/` is the only compile contract.
 - **`N5`** — ~~no mocks.~~ **Fixed on `chore/module-gaps`:**
   `src/email/abstract/mocks/email.service.mock.ts`.
-- **`G1`** — the four adapters are untested; only the abstract module is covered.
+- **`G1`** — partly closed on `test/coverage-email-templating-push`: the send
+  helper, the console adapter and the resend adapter have specs. `aws-ses` and
+  `sendgrid` are still untested.
