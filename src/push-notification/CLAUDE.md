@@ -57,7 +57,10 @@ domain concern; the template does not model it.
    what `ExpoAdapterService._providerErrorOf` is for, and it feeds the log line,
    the thrown `PushNotificationError` and the chunk report's `message` alike.
    The failing token still reaches the caller in the report's own `pushToken`
-   field, because revoking the device needs it.
+   field, because revoking the device needs it. The same applies to a *thrown*
+   SDK error: `_asModuleError` drops its message rather than forwarding it,
+   since an `expo-server-sdk` rejection can quote the request body it was
+   handed, and that body carries the token.
 6. Log through `this.logger`, inherited from `PushNotificationService` —
    never `console`. An adapter takes `@Optional() logger?: LoggerService` last
    and the base falls back to a `NestLoggerAdapter`, so the module registers
