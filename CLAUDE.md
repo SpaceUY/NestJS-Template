@@ -165,18 +165,25 @@ migration file, never rely on `DB_SYNCHRONIZE` outside local development. See
 1. `pnpm run lint`
 2. `pnpm test`
 3. `pnpm run build`
-4. `pnpm run docs:check` if you touched any `CLAUDE.md`
-5. Confirm the diff is minimal and touches no module you were not asked to change.
+4. `pnpm run docs:check` if you touched any `CLAUDE.md` or `README.md`
+5. `pnpm run modularity:check` if you added, moved or deleted an import that
+   crosses a top-level `src/` directory
+6. Confirm the diff is minimal and touches no module you were not asked to change.
+
+Those are the same five gates CI runs, with one difference: CI runs `lint:ci`,
+not `lint`. `lint` carries `--fix`, so it repairs formatting instead of failing
+on it. Run `pnpm run lint:ci` when you want to know what the pipeline will say.
 
 ## Known template-wide gaps
 
 Recorded in `docs/audit/2026-09-11-template-audit.md`. The ones that will bite
 you first:
 
-**All four gates pass on `master`.** `build`, `eslint`, `test` and `docs:check`
-were measured green in `docs/audit/2026-09-18-modularity-audit.md`'s gate table;
-`pnpm run modularity:check` gates the module graph as of that audit. The
-`fix/build-and-lint` branch this section used to point at has landed.
+**Every gate passes on `master`.** `docs:check`, `modularity:check`, `lint:ci`,
+`test` and `build` were re-measured green on 2026-09-21, along with
+`tsc --noEmit`; the test suite is 519 specs across 65 suites. The gate table in
+`docs/audit/2026-09-18-modularity-audit.md` records the earlier measurement.
+The `fix/build-and-lint` branch this section used to point at has landed.
 
 - **`B1`** — ~~`src/app.module.ts` does not compile: `emailConfig`, `awsConfig` and
   `ConfigType` are referenced but never imported. Six TypeScript errors.~~ **Fixed on `fix/build-and-lint`.**
