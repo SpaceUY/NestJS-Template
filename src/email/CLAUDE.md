@@ -28,11 +28,10 @@ deliberate: it is what lets either side be swapped alone.
 | `SendgridAdapterService` | `src/email/sendgrid-adapter/sendgrid-adapter.service.ts` | Named only in `src/app.module.ts` |
 | `ResendAdapterService` | `src/email/resend-adapter/resend-adapter.service.ts` | Named only in `src/app.module.ts` |
 | `ConsoleAdapterService` | `src/email/console-adapter/console-adapter.service.ts` | Named only in `src/app.module.ts` |
+| `MockEmailService` | `src/email/abstract/mocks/` | Test double |
 
 ## Internal
 
-`src/email/abstract/templates.abstract.ts` (`EmailTemplateService`) duplicates
-`TemplateService.compile` and has no callers (finding `N7`). Do not import it.
 `src/email/utils/execute-html-email-send.ts` is an internal helper — not part of
 the surface.
 
@@ -90,7 +89,11 @@ working app that prints emails instead of a boot failure.
 No test exists for this module (finding `G1`). Adapters are plain classes —
 construct with `new`, mock the provider SDK at module level with `jest.mock`,
 assert the mapped payload and the thrown `EmailError`. `ConsoleAdapterService` is
-the easiest place to start. No `abstract/mocks/` exists yet (finding `N5`).
+the easiest place to start.
+
+`src/email/abstract/mocks/email.service.mock.ts` gives `MockEmailService` for
+consumers that only need an `EmailService` in their container — every method a
+`jest.fn()` with a sane default, the same shape `src/cache/abstract/mocks/` uses.
 
 ## Reuse
 
@@ -119,5 +122,9 @@ See `docs/audit/2026-09-11-template-audit.md`.
   points at the real `src/email/config/email.scope.ts`, drops the fictional
   logger-adapter/interface and the `@nestjs/config` example, and documents
   `src/email/utils/execute-html-email-send.ts`.
-- **`N7`** — `abstract/templates.abstract.ts` is dead code.
-- **`N5`**, **`G1`** — no mocks, no tests.
+- **`N7`** — ~~`abstract/templates.abstract.ts` is dead code.~~ **Fixed on
+  `chore/module-gaps`:** `!src/email/abstract/templates.abstract.ts` is deleted.
+  `TemplateService.compile` in `src/templating/` is the only compile contract.
+- **`N5`** — ~~no mocks.~~ **Fixed on `chore/module-gaps`:**
+  `src/email/abstract/mocks/email.service.mock.ts`.
+- **`G1`** — the four adapters are untested; only the abstract module is covered.

@@ -22,12 +22,6 @@ service in this directory, and none may be added.** Compilation lives in
 | `VerificationParams` | `src/templates/auth/verification.interface.ts` | Parameters for the verification template |
 | barrel | `src/templates/index.ts` | Re-exports the registry and the param types |
 
-## Internal
-
-`src/templates/template-renderer.interface.ts` (`TemplateRenderer`,
-`TEMPLATE_RENDERER`) duplicates `TemplateService` and has no callers
-(finding `N7`). Do not import it.
-
 ## Rules
 
 1. A template is three files in a subdirectory named for its domain:
@@ -62,6 +56,7 @@ directory depends on nothing — no NestJS import, no runtime dependency.
 
 See `docs/audit/2026-09-11-template-audit.md`.
 
-- **`N7`** — `template-renderer.interface.ts` is dead code duplicating
-  `TemplateService`.
+- **`N7`** — ~~`template-renderer.interface.ts` is dead code duplicating
+  `TemplateService`.~~ **Fixed on `chore/module-gaps`:**
+  `!src/templates/template-renderer.interface.ts` is deleted.
 - **`G1`** — no registry-consistency test.

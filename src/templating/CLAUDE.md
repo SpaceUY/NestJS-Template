@@ -21,7 +21,7 @@ compiled HTML.
 | Import | From | Purpose |
 |---|---|---|
 | `TemplateService` | `src/templating/abstract/template.service.ts` | `compile(nameOrPath, params)` — inject this |
-| `TemplateModule` | `src/templating/template.module.ts` | `forRoot` only |
+| `TemplateModule` | `src/templating/template.module.ts` | `forRoot` / `forRootAsync` |
 | `TEMPLATE_PROVIDER` | `src/templating/abstract/template-provider.const.ts` | Token an adapter module must provide |
 | `PugAdapterModule`, `PugAdapterConfig` | `src/templating/pug-adapter/pug-adapter.module.ts` | Named only in `src/app.module.ts` |
 
@@ -47,9 +47,11 @@ extension must be added there or templates will be missing from the build.
 5. Template parameters are typed through `TemplateParamsMap` in
    `src/templates/template-params.interface.ts`. Adding a template means adding
    its entry there.
-6. `TemplateModule` has no `forRootAsync` (finding `N3`). An engine needing
-   async config uses the adapter's own `registerAsync` — `PugAdapterModule`
-   already has one — and passes the result as `adapter:`.
+6. An engine needing async config has two ways in, and either is fine: pass the
+   adapter's own `registerAsync` result as `adapter:` to `forRoot`, or import it
+   and hand `TEMPLATE_PROVIDER` back through `forRootAsync`. `forRootAsync`
+   takes a factory, so it is also the way to build a `TemplateService` that
+   never came from an adapter module.
 
 ## Adding an adapter
 
@@ -63,9 +65,11 @@ extension must be added there or templates will be missing from the build.
 
 ## Tests
 
-No test exists (finding `G1`). `PugAdapterService` is a plain class — construct
-it with a fixture `baseDir`, compile a small fixture template, assert the HTML,
-and assert the failure path for a missing file.
+`template.module.unit.spec.ts` covers both registration paths, by hand and
+through a real container. `PugAdapterService` is still untested (finding `G1`):
+it is a plain class — construct it with a fixture `baseDir`, compile a small
+fixture template, assert the HTML, and assert the failure path for a missing
+file.
 
 ## Reuse
 
@@ -78,8 +82,12 @@ Nothing here imports from another module of this template. Take
 
 See `docs/audit/2026-09-11-template-audit.md`.
 
-- **`N3`** — `TemplateModule` has no `forRootAsync`, and no
-  `validateAdapterModule` guard on any async path.
-- **`N7`** — `src/templates/template-renderer.interface.ts` duplicates this
-  contract and is dead.
+- **`N3`** — ~~`TemplateModule` has no `forRootAsync`, and no
+  `validateAdapterModule` guard on any async path.~~ **Fixed on
+  `chore/module-gaps`:** `forRootAsync` exists in the factory shape the rest of
+  the template uses. It takes no adapter module, so there is nothing for
+  `validateAdapterModule` to guard there; `forRoot` still guards its own.
+- **`N7`** — ~~`!src/templates/template-renderer.interface.ts` duplicates this
+  contract and is dead.~~ **Fixed on `chore/module-gaps`:**
+  `!src/templates/template-renderer.interface.ts` is deleted.
 - **`G1`** — no tests.

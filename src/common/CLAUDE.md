@@ -22,7 +22,6 @@ instead. A helper used by exactly one module belongs in that module.
 |---|---|---|
 | `RequestException`, `ExceptionInfo` | `src/common/exception/core/ExceptionBase.ts` | HTTP exception carrying an `errorCode` |
 | `Exceptions` | `src/common/exception/exceptions.ts` | Central registry of `ExceptionInfo` values |
-| `ERROR_CODES`, `ErrorCode` | `src/common/enums.ts` | Generic error-code constants |
 | `MiddlewareModule` | `src/common/middleware/middleware.module.ts` | Registers the global interceptor and filter; imported by `src/app.module.ts` |
 | `validateAdapterModule`, `AdapterModuleLike` | `src/common/utils/nest-module-validation.ts` | Fail-fast guard for `forRoot` adapter arguments |
 | `Html` | `src/common/decorators/html-content-type.ts` | Sets `Content-Type: text/html` on a handler |
@@ -35,6 +34,11 @@ and its only callers — three validation throws in the cloud-storage default
 controller — answered `500` where `400` was intended. They now throw
 `BadRequestException`. If you need a new error shape here, it is one of the two
 in Rule 1, not a third.
+
+`ERROR_CODES`/`ErrorCode` went with it. `!src/common/enums.ts` was a generic
+code list whose only consumer was that same `ApiException` path (finding `H2`).
+Error codes belong to the module that raises them — `EMAIL_ERRORS`,
+`CACHE_ERRORS` and siblings — or to an `Exceptions` entry.
 
 ## Rules
 
@@ -104,5 +108,8 @@ See `docs/audit/2026-09-11-template-audit.md` and `docs/audit/2026-09-18-modular
   catches only `HttpException`.~~ **Fixed on `fix/security-defaults`:**
   `@Catch()` with a body built field by field, covered by
   `request-exception.filter.unit.spec.ts`.
+- **`H2`** — ~~`ERROR_CODES`/`ErrorCode` have no consumers left after `N2`
+  collapsed the error models.~~ **Fixed on `chore/module-gaps`:**
+  `!src/common/enums.ts` is deleted along with its public-surface row.
 - **`G1`** — `RequestExceptionFilter` is covered; the rest of the middleware,
   the utils and the decorators are not.
