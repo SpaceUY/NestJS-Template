@@ -4,6 +4,21 @@ import {
   PUSH_NOTIFICATION_ERRORS,
   PushNotificationError,
 } from '../abstract/push-notification.error';
+import { LoggerService } from '../../common/observability/logger/abstract/logger.service';
+import { NestLoggerAdapter } from '../../common/observability/logger/nest-adapter/nest-logger.adapter';
+
+/** Keeps the adapter's own log lines out of the test output. */
+class SilentLogger extends LoggerService {
+  context = '';
+  setContext(context: string): void {
+    this.context = context;
+  }
+
+  log(): void {}
+  warn(): void {}
+  error(): void {}
+  debug(): void {}
+}
 
 const rejection = async (promise: Promise<unknown>): Promise<Error> => {
   try {
@@ -15,9 +30,10 @@ const rejection = async (promise: Promise<unknown>): Promise<Error> => {
 };
 
 describe('ExpoAdapterService', () => {
-  const adapter = new ExpoAdapterService({
-    expoAccessToken: 'test-token',
-  } as ExpoAdapterConfig);
+  const adapter = new ExpoAdapterService(
+    { expoAccessToken: 'test-token' } as ExpoAdapterConfig,
+    new SilentLogger(),
+  );
   const notification = { title: 'a', body: 'b', data: {} };
 
   it('rejects a non-Expo push token with the module error, not an HTTP one', async () => {
@@ -41,5 +57,30 @@ describe('ExpoAdapterService', () => {
     );
 
     expect(thrown.message).not.toContain('abc123');
+  });
+
+  describe('logger wiring', () => {
+    it('tags the injected logger with the adapter context', () => {
+      const logger = new SilentLogger();
+
+      new ExpoAdapterService(
+        { expoAccessToken: 'test-token' } as ExpoAdapterConfig,
+        logger,
+      );
+
+      expect(logger.context).toBe('ExpoAdapterService');
+    });
+
+    // @Optional(): the module has to register in a project that never wired
+    // LoggerAbstractModule, so the base class supplies its own adapter.
+    it('falls back to a NestLoggerAdapter when none is injected', () => {
+      const adapterWithoutLogger = new ExpoAdapterService({
+        expoAccessToken: 'test-token',
+      } as ExpoAdapterConfig);
+
+      expect(
+        (adapterWithoutLogger as unknown as { logger: LoggerService }).logger,
+      ).toBeInstanceOf(NestLoggerAdapter);
+    });
   });
 });

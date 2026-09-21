@@ -54,11 +54,16 @@ Does not own: request/response access logging, which
    rather than resolved. `src/common/middleware/response.interceptor.ts` is the
    reference.
 
-   No file outside this module builds a `@nestjs/common` `Logger` any more.
-   The two that legitimately still do are `nest-adapter/nest-logger.adapter.ts`,
-   which is the adapter, and `src/cache/redis-adapter/redis-adapter.service.ts`,
-   which adapts one into its own `StandardLogger` precisely so that `cache`
-   keeps zero cross-module imports.
+   No file outside this module builds a `@nestjs/common` `Logger`, and none
+   calls `console` for application logging either. The two `Logger` calls that
+   legitimately remain are `nest-adapter/nest-logger.adapter.ts`, which is the
+   adapter, and `src/cache/redis-adapter/redis-adapter.service.ts`, which adapts
+   one into its own `StandardLogger` precisely so that `cache` keeps zero
+   cross-module imports. The two `console.error` calls that remain are
+   `abstract/logger.service.ts` — the telemetry-hook fallback, which cannot log
+   through the logger it is reporting about — and
+   `src/common/observability/telemetry/tracing.bootstrap.ts`, which runs before
+   the DI container exists.
 7. `TraceContextLoggerDecorator` wraps an inner `LoggerService` — it is the
    `useFactory` result in `src/app.module.ts`, not a registered adapter class.
    Any new decorator follows the same shape: implement `LoggerService`, take

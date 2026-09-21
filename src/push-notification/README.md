@@ -285,9 +285,14 @@ Feel free to submit issues and enhancement requests!
 you need — this one is written for both. What follows is the second case: what
 `src/push-notification/` needs in order to compile in another project.
 
-**What travels with it.** Copy `src/push-notification/` whole, then bring
-`src/config-provider/abstract/` if you take `expo-adapter/config/expo.scope.ts`.
-Nothing else here imports another module of the template.
+**What travels with it.** Copy `src/push-notification/` whole, then bring:
+
+- `src/config-provider/abstract/` — only if you take
+  `expo-adapter/config/expo.scope.ts`.
+- `src/common/observability/logger/` — `abstract/push-notification.service.ts`
+  defaults its `logger` to a `NestLoggerAdapter`, and `ExpoAdapterService` takes
+  an `@Optional()` `LoggerService`. The module registers whether or not the
+  target project wires `LoggerAbstractModule`, but the import has to resolve.
 
 **Peer dependencies.**
 

@@ -6,6 +6,33 @@ import {
   PushNotificationError,
 } from '../abstract/push-notification.error';
 import { PUSH_NOTIFICATION_STATUSES } from '../abstract/push-notification.service';
+import { LoggerService } from '../../common/observability/logger/abstract/logger.service';
+import { LogInput } from '../../common/observability/logger/abstract/logger.interfaces';
+
+/**
+ * Collects every line as the text an adapter would actually emit, so the
+ * rule-5 assertions below ("no push token in the log") read the whole entry —
+ * message and data — rather than one field of it.
+ */
+class RecordingLogger extends LoggerService {
+  readonly lines: string[] = [];
+  setContext(): void {}
+  log(input: LogInput): void {
+    this.lines.push(JSON.stringify(input));
+  }
+
+  warn(input: LogInput): void {
+    this.lines.push(JSON.stringify(input));
+  }
+
+  error(input: LogInput): void {
+    this.lines.push(JSON.stringify(input));
+  }
+
+  debug(input: LogInput): void {
+    this.lines.push(JSON.stringify(input));
+  }
+}
 
 const sendPushNotificationsAsync = jest.fn();
 const chunkPushNotifications = jest.fn();
@@ -48,16 +75,12 @@ describe('ExpoAdapterService send paths', () => {
   let logged: string[];
 
   beforeEach(() => {
-    adapter = new ExpoAdapterService({
-      expoAccessToken: 'test-token',
-    } as ExpoAdapterConfig);
-    logged = [];
-    jest.spyOn(console, 'error').mockImplementation((...args) => {
-      logged.push(args.map(String).join(' '));
-    });
-    jest.spyOn(console, 'log').mockImplementation((...args) => {
-      logged.push(args.map(String).join(' '));
-    });
+    const logger = new RecordingLogger();
+    adapter = new ExpoAdapterService(
+      { expoAccessToken: 'test-token' } as ExpoAdapterConfig,
+      logger,
+    );
+    logged = logger.lines;
   });
 
   afterEach(() => {
