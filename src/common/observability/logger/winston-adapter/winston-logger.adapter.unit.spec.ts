@@ -27,8 +27,16 @@ function getInternalLogger(adapter: WinstonLoggerAdapter): jest.Mocked<{
   error: jest.Mock;
   debug: jest.Mock;
 }> {
-  // eslint-disable-next-line @typescript-eslint/no-explicit-any
-  return (adapter as any).winston as jest.Mocked<{
+  return (
+    adapter as unknown as {
+      winston: jest.Mocked<{
+        info: jest.Mock;
+        warn: jest.Mock;
+        error: jest.Mock;
+        debug: jest.Mock;
+      }>;
+    }
+  ).winston as jest.Mocked<{
     info: jest.Mock;
     warn: jest.Mock;
     error: jest.Mock;

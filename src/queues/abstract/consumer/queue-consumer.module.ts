@@ -69,7 +69,9 @@ export class QueueConsumerModule implements OnModuleInit, OnModuleDestroy {
    *   dependencies, consumer registrations, imports, and global flag.
    * @returns {DynamicModule} A dynamic module wiring the adapter, consumers, and handlers.
    */
-  static forRootAsync(options: QueueConsumerModuleAsyncOptions): DynamicModule {
+  static forRootAsync<TArgs extends unknown[]>(
+    options: QueueConsumerModuleAsyncOptions<TArgs>,
+  ): DynamicModule {
     const { consumers = [], isGlobal = false } = options;
 
     return {
@@ -81,7 +83,7 @@ export class QueueConsumerModule implements OnModuleInit, OnModuleDestroy {
           provide: QueueConsumerAdapter,
           useFactory: async (
             logger: LoggerService | undefined,
-            ...args: unknown[]
+            ...args: TArgs
           ) => {
             const instance = await options.useFactory(...args);
             if (logger) instance.setLogger(logger);

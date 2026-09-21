@@ -15,11 +15,14 @@ interface EmailModuleOptions {
   isGlobal?: boolean;
 }
 
-interface EmailModuleAsyncOptions {
+// `TArgs` is the tuple of values the `inject` tokens resolve to. It is inferred
+// from the factory at the call site, which is what keeps a typed factory —
+// `(config: SomeScopeConfig) => ...` — assignable here. A plain `unknown[]`
+// would reject it: function parameters are contravariant.
+interface EmailModuleAsyncOptions<TArgs extends unknown[] = unknown[]> {
   imports?: ModuleMetadata['imports'];
   inject?: InjectionToken[];
-  // eslint-disable-next-line @typescript-eslint/no-explicit-any
-  useFactory: (...args: any[]) => Promise<EmailService> | EmailService;
+  useFactory: (...args: TArgs) => Promise<EmailService> | EmailService;
   isGlobal?: boolean;
 }
 
@@ -46,7 +49,9 @@ export class EmailAbstractModule {
     };
   }
 
-  static forRootAsync(options: EmailModuleAsyncOptions): DynamicModule {
+  static forRootAsync<TArgs extends unknown[]>(
+    options: EmailModuleAsyncOptions<TArgs>,
+  ): DynamicModule {
     const { isGlobal = false } = options;
 
     return {
@@ -58,7 +63,7 @@ export class EmailAbstractModule {
           provide: EmailService,
           useFactory: async (
             logger: LoggerService | undefined,
-            ...args: unknown[]
+            ...args: TArgs
           ) => {
             const instance = await options.useFactory(...args);
             if (logger) instance.setLogger(logger);

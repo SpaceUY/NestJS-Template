@@ -21,9 +21,12 @@ function formatLogMessage(input: LoggerInput): string {
 }
 
 export function adaptLogger(logger: Logger): StandardLogger {
+  // `Logger` gained `setContext` only in some Nest versions, so it is read
+  // through a narrowing cast rather than assumed to exist.
+  const withSetContext = logger as { setContext?: (context: string) => void };
+
   return {
-    // eslint-disable-next-line @typescript-eslint/no-explicit-any
-    setContext: (logger as any).setContext ?? (() => {}),
+    setContext: withSetContext.setContext ?? (() => {}),
     info: (input: LoggerInput) => logger.log(formatLogMessage(input)),
     error: (input: LoggerInput) => logger.error(formatLogMessage(input)),
     warn: (input: LoggerInput) => logger.warn(formatLogMessage(input)),

@@ -25,12 +25,14 @@ export class ExpoAdapterModule {
     };
   }
 
-  static registerAsync(options: {
+  // `TArgs` is the tuple of values the `inject` tokens resolve to, inferred
+  // from the factory at the call site. `unknown[]` would reject a typed
+  // factory: function parameters are contravariant.
+  static registerAsync<TArgs extends unknown[]>(options: {
     imports?: ModuleMetadata['imports'];
     inject?: InjectionToken[];
     useFactory: (
-      // eslint-disable-next-line @typescript-eslint/no-explicit-any
-      ...args: any[]
+      ...args: TArgs
     ) => Promise<ExpoAdapterConfig> | ExpoAdapterConfig;
   }): DynamicModule {
     return {

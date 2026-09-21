@@ -1,4 +1,3 @@
-/* eslint-disable @typescript-eslint/no-explicit-any */
 import { SqsConsumerAdapter } from '../sqs-consumer.adapter';
 import { SqsMessageContext } from '../sqs-message.context';
 import {
@@ -22,10 +21,26 @@ jest.mock('@aws-sdk/client-sqs', () => ({
     .mockImplementation((input) => input),
 }));
 
-let nextReceive: { Messages?: any[] } = {};
+/** The command inputs these mocks see: the SDK command objects pass through as
+ * their plain input, so every assertion reads them as a loose record. */
+type CommandInput = Record<string, unknown>;
+
+/** `_pollOnce` and `consumers` are private; the tests drive them directly. */
+type AdapterInternals = {
+  _pollOnce: (
+    queueUrl: string,
+    callback: (payload: unknown, ctx: MessageContext) => Promise<void>,
+  ) => Promise<void>;
+  consumers: Map<string, unknown>;
+};
+
+const internals = (adapter: SqsConsumerAdapter): AdapterInternals =>
+  adapter as unknown as AdapterInternals;
+
+let nextReceive: { Messages?: CommandInput[] } = {};
 
 function wireRouter(): void {
-  mockSend.mockImplementation(async (input: any) => {
+  mockSend.mockImplementation(async (input: CommandInput) => {
     if ('QueueName' in input) {
       return { QueueUrl: `https://sqs.test/${input.QueueName}` };
     }
@@ -34,13 +49,13 @@ function wireRouter(): void {
   });
 }
 
-function deleteCalls(): any[] {
+function deleteCalls(): CommandInput[] {
   return mockSend.mock.calls
     .map((c) => c[0])
     .filter((i) => 'ReceiptHandle' in i && !('VisibilityTimeout' in i));
 }
 
-function changeVisibilityCalls(): any[] {
+function changeVisibilityCalls(): CommandInput[] {
   return mockSend.mock.calls
     .map((c) => c[0])
     .filter((i) => 'ReceiptHandle' in i && 'VisibilityTimeout' in i);
@@ -72,7 +87,7 @@ describe('SqsConsumerAdapter', () => {
       const callback = jest.fn(async () => {});
       nextReceive = { Messages: [message] };
 
-      await (adapter as any)._pollOnce('https://sqs.test/orders', callback);
+      await internals(adapter)._pollOnce('https://sqs.test/orders', callback);
 
       const [payload, ctx] = callback.mock.calls[0] as unknown as [
         unknown,
@@ -95,7 +110,7 @@ describe('SqsConsumerAdapter', () => {
         ],
       };
 
-      await (adapter as any)._pollOnce('https://sqs.test/orders', callback);
+      await internals(adapter)._pollOnce('https://sqs.test/orders', callback);
 
       const ctx = (callback.mock.calls[0] as unknown[])[1] as MessageContext;
       expect(ctx.deliveryCount).toBe(3);
@@ -108,7 +123,7 @@ describe('SqsConsumerAdapter', () => {
       });
       nextReceive = { Messages: [message] };
 
-      await (adapter as any)._pollOnce('https://sqs.test/orders', callback);
+      await internals(adapter)._pollOnce('https://sqs.test/orders', callback);
 
       expect(deleteCalls()).toHaveLength(0);
       expect(changeVisibilityCalls()).toHaveLength(1);
@@ -124,7 +139,7 @@ describe('SqsConsumerAdapter', () => {
       );
       nextReceive = { Messages: [message] };
 
-      await (adapter as any)._pollOnce('https://sqs.test/orders', callback);
+      await internals(adapter)._pollOnce('https://sqs.test/orders', callback);
 
       expect(deleteCalls()).toHaveLength(1);
       expect(changeVisibilityCalls()).toHaveLength(0);
@@ -139,7 +154,7 @@ describe('SqsConsumerAdapter', () => {
       );
       nextReceive = { Messages: [message] };
 
-      await (adapter as any)._pollOnce('https://sqs.test/orders', callback);
+      await internals(adapter)._pollOnce('https://sqs.test/orders', callback);
 
       expect(deleteCalls()).toHaveLength(0);
       expect(changeVisibilityCalls()).toHaveLength(0);
@@ -150,7 +165,7 @@ describe('SqsConsumerAdapter', () => {
       const callback = jest.fn(async () => {});
       nextReceive = { Messages: [{ ...message, Body: 'plain-text' }] };
 
-      await (adapter as any)._pollOnce('https://sqs.test/orders', callback);
+      await internals(adapter)._pollOnce('https://sqs.test/orders', callback);
 
       expect((callback.mock.calls[0] as unknown[])[0]).toBe('plain-text');
     });
@@ -169,11 +184,11 @@ describe('SqsConsumerAdapter', () => {
       expect(
         mockSend.mock.calls.filter((c) => 'QueueName' in c[0]),
       ).toHaveLength(1);
-      expect((adapter as any).consumers.has('orders')).toBe(true);
+      expect(internals(adapter).consumers.has('orders')).toBe(true);
 
       await adapter.stopConsuming('orders');
 
-      expect((adapter as any).consumers.has('orders')).toBe(false);
+      expect(internals(adapter).consumers.has('orders')).toBe(false);
     });
 
     it('ignores a duplicate start for the same queue', async () => {
@@ -213,7 +228,7 @@ describe('SqsConsumerAdapter', () => {
 
       await adapter.onModuleDestroy();
 
-      expect((adapter as any).consumers.has('orders')).toBe(false);
+      expect(internals(adapter).consumers.has('orders')).toBe(false);
       expect(mockDestroy).toHaveBeenCalledTimes(1);
     });
 
@@ -238,7 +253,7 @@ describe('SqsConsumerAdapter', () => {
     const adapter = makeAdapter();
     const registration: ConsumerRegistration = {
       queue: 'orders',
-      handler: class {} as any,
+      handler: class {} as ConsumerRegistration['handler'],
     };
 
     expect(typeof adapter.startConsuming).toBe('function');

@@ -21,15 +21,14 @@ interface TemplateModuleOptions {
   isGlobal?: boolean;
 }
 
-interface TemplateModuleAsyncOptions {
+// `TArgs` is the tuple of values the `inject` tokens resolve to. It is inferred
+// from the factory at the call site, which is what keeps a typed factory —
+// `(config: SomeScopeConfig) => ...` — assignable here. A plain `unknown[]`
+// would reject it: function parameters are contravariant.
+interface TemplateModuleAsyncOptions<TArgs extends unknown[] = unknown[]> {
   imports?: ModuleMetadata['imports'];
   inject?: InjectionToken[];
-  // `any[]` mirrors NestJS's own *ModuleAsyncOptions: the factory's args are the
-  // resolved `inject` tokens, whose types this interface can't know.
-  useFactory: (
-    // eslint-disable-next-line @typescript-eslint/no-explicit-any
-    ...args: any[]
-  ) => Promise<TemplateService> | TemplateService;
+  useFactory: (...args: TArgs) => Promise<TemplateService> | TemplateService;
   isGlobal?: boolean;
 }
 
@@ -77,7 +76,9 @@ export class TemplateModule {
    * @param {TemplateModuleAsyncOptions} options - Factory, its injected dependencies, imports and global flag.
    * @returns {DynamicModule} A dynamic module that provides and exports the service.
    */
-  static forRootAsync(options: TemplateModuleAsyncOptions): DynamicModule {
+  static forRootAsync<TArgs extends unknown[]>(
+    options: TemplateModuleAsyncOptions<TArgs>,
+  ): DynamicModule {
     const { isGlobal = false } = options;
 
     return {

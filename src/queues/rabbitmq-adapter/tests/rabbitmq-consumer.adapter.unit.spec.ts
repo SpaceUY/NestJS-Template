@@ -1,4 +1,3 @@
-/* eslint-disable @typescript-eslint/no-explicit-any */
 import { Buffer } from 'node:buffer';
 import { connect } from 'amqplib';
 import { RabbitMqConsumerAdapter } from '../rabbitmq-consumer.adapter';
@@ -10,8 +9,25 @@ jest.mock('amqplib', () => ({ connect: jest.fn() }));
 
 const mockConnect = connect as jest.Mock;
 
-let mockChannel: any;
-let mockConnection: any;
+/** The amqplib surface these tests stand in for; every method a jest mock. */
+type MockChannel = Record<string, jest.Mock>;
+type MockConnection = Record<string, jest.Mock>;
+
+/** `_handleMessage` and `consumers` are private; the tests drive them directly. */
+type AdapterInternals = {
+  _handleMessage: (
+    channel: unknown,
+    message: unknown,
+    callback: (payload: unknown, ctx: MessageContext) => Promise<void>,
+  ) => Promise<void>;
+  consumers: Map<string, unknown>;
+};
+
+const internals = (adapter: RabbitMqConsumerAdapter): AdapterInternals =>
+  adapter as unknown as AdapterInternals;
+
+let mockChannel: MockChannel;
+let mockConnection: MockConnection;
 
 function wireHappyPath(): void {
   mockChannel = {
@@ -44,7 +60,7 @@ const message = {
   content: Buffer.from(JSON.stringify({ id: 1 })),
   properties: { messageId: 'm1', headers: { traceId: 'abc' } },
   fields: { deliveryTag: 1 },
-} as any;
+};
 
 describe('RabbitMqConsumerAdapter', () => {
   beforeEach(() => {
@@ -57,7 +73,7 @@ describe('RabbitMqConsumerAdapter', () => {
       const adapter = makeAdapter();
       const callback = jest.fn(async () => {});
 
-      await (adapter as any)._handleMessage(mockChannel, message, callback);
+      await internals(adapter)._handleMessage(mockChannel, message, callback);
 
       const [payload, ctx] = callback.mock.calls[0] as unknown as [
         unknown,
@@ -79,7 +95,11 @@ describe('RabbitMqConsumerAdapter', () => {
         properties: { messageId: 'm1', headers: { 'x-death': [{ count: 2 }] } },
       };
 
-      await (adapter as any)._handleMessage(mockChannel, redelivered, callback);
+      await internals(adapter)._handleMessage(
+        mockChannel,
+        redelivered,
+        callback,
+      );
 
       const ctx = (callback.mock.calls[0] as unknown[])[1] as MessageContext;
       expect(ctx.deliveryCount).toBe(3);
@@ -91,7 +111,7 @@ describe('RabbitMqConsumerAdapter', () => {
         throw new Error('handler boom');
       });
 
-      await (adapter as any)._handleMessage(mockChannel, message, callback);
+      await internals(adapter)._handleMessage(mockChannel, message, callback);
 
       expect(mockChannel.ack).not.toHaveBeenCalled();
       expect(mockChannel.nack).toHaveBeenCalledWith(message, false, true);
@@ -105,7 +125,7 @@ describe('RabbitMqConsumerAdapter', () => {
         },
       );
 
-      await (adapter as any)._handleMessage(mockChannel, message, callback);
+      await internals(adapter)._handleMessage(mockChannel, message, callback);
 
       expect(mockChannel.ack).toHaveBeenCalledTimes(1);
       expect(mockChannel.nack).not.toHaveBeenCalled();
@@ -119,7 +139,7 @@ describe('RabbitMqConsumerAdapter', () => {
         },
       );
 
-      await (adapter as any)._handleMessage(mockChannel, message, callback);
+      await internals(adapter)._handleMessage(mockChannel, message, callback);
 
       expect(mockChannel.nack).toHaveBeenCalledWith(message, false, false);
       expect(mockChannel.ack).not.toHaveBeenCalled();
@@ -130,7 +150,11 @@ describe('RabbitMqConsumerAdapter', () => {
       const callback = jest.fn(async () => {});
       const rawMessage = { ...message, content: Buffer.from('plain-text') };
 
-      await (adapter as any)._handleMessage(mockChannel, rawMessage, callback);
+      await internals(adapter)._handleMessage(
+        mockChannel,
+        rawMessage,
+        callback,
+      );
 
       expect((callback.mock.calls[0] as unknown[])[0]).toBe('plain-text');
     });
@@ -153,7 +177,7 @@ describe('RabbitMqConsumerAdapter', () => {
         'orders',
         expect.any(Function),
       );
-      expect((adapter as any).consumers.has('orders')).toBe(true);
+      expect(internals(adapter).consumers.has('orders')).toBe(true);
     });
 
     it('skips assertQueue when assertTopology is false', async () => {
@@ -194,7 +218,7 @@ describe('RabbitMqConsumerAdapter', () => {
 
       expect(mockChannel.cancel).toHaveBeenCalledWith('ctag-1');
       expect(mockChannel.close).toHaveBeenCalled();
-      expect((adapter as any).consumers.has('orders')).toBe(false);
+      expect(internals(adapter).consumers.has('orders')).toBe(false);
     });
 
     it('ignores a duplicate start for the same queue', async () => {
@@ -259,7 +283,7 @@ describe('RabbitMqConsumerAdapter', () => {
     // pulls the latest 'close' handler the mock recorded.
     function latestCloseHandler(): () => void {
       const closeCalls = mockChannel.on.mock.calls.filter(
-        (call: any[]) => call[0] === 'close',
+        (call: unknown[]) => call[0] === 'close',
       );
       return closeCalls[closeCalls.length - 1][1];
     }
@@ -270,11 +294,11 @@ describe('RabbitMqConsumerAdapter', () => {
         'orders',
         jest.fn(async () => {}),
       );
-      expect((adapter as any).consumers.has('orders')).toBe(true);
+      expect(internals(adapter).consumers.has('orders')).toBe(true);
 
       latestCloseHandler()();
 
-      expect((adapter as any).consumers.has('orders')).toBe(false);
+      expect(internals(adapter).consumers.has('orders')).toBe(false);
     });
 
     it('resume() re-subscribes a halted queue with the stored callback', async () => {
@@ -283,11 +307,11 @@ describe('RabbitMqConsumerAdapter', () => {
       await adapter.startConsuming('orders', callback);
 
       latestCloseHandler()();
-      expect((adapter as any).consumers.has('orders')).toBe(false);
+      expect(internals(adapter).consumers.has('orders')).toBe(false);
 
       await adapter.resume('orders');
 
-      expect((adapter as any).consumers.has('orders')).toBe(true);
+      expect(internals(adapter).consumers.has('orders')).toBe(true);
       expect(mockConnection.createChannel).toHaveBeenCalledTimes(2);
     });
 
@@ -306,8 +330,8 @@ describe('RabbitMqConsumerAdapter', () => {
 
       await adapter.resume();
 
-      expect((adapter as any).consumers.has('orders')).toBe(true);
-      expect((adapter as any).consumers.has('emails')).toBe(true);
+      expect(internals(adapter).consumers.has('orders')).toBe(true);
+      expect(internals(adapter).consumers.has('emails')).toBe(true);
     });
 
     it('resume() skips a queue that is still active', async () => {
@@ -332,7 +356,7 @@ describe('RabbitMqConsumerAdapter', () => {
 
       await adapter.resume('orders');
 
-      expect((adapter as any).consumers.has('orders')).toBe(false);
+      expect(internals(adapter).consumers.has('orders')).toBe(false);
     });
   });
 });

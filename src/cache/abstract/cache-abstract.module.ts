@@ -77,7 +77,9 @@ export class CacheAbstractModule {
     };
   }
 
-  static forRootAsync(options: CacheModuleAsyncOptions): DynamicModule {
+  static forRootAsync<TArgs extends unknown[]>(
+    options: CacheModuleAsyncOptions<TArgs>,
+  ): DynamicModule {
     const { providers: extProviders, exports: extExports } =
       buildExtensionProviders(options.extensions ?? {});
 

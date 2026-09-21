@@ -12,11 +12,14 @@ interface AnalyticsModuleOptions {
   isGlobal?: boolean;
 }
 
-interface AnalyticsModuleAsyncOptions {
+// `TArgs` is the tuple of values the `inject` tokens resolve to. It is inferred
+// from the factory at the call site, which is what keeps a typed factory —
+// `(config: AnalyticsScopeConfig) => ...` — assignable here. A plain
+// `unknown[]` would reject it: function parameters are contravariant.
+interface AnalyticsModuleAsyncOptions<TArgs extends unknown[] = unknown[]> {
   imports?: ModuleMetadata['imports'];
   inject?: InjectionToken[];
-  // eslint-disable-next-line @typescript-eslint/no-explicit-any
-  useFactory: (...args: any[]) => Promise<AnalyticsService> | AnalyticsService;
+  useFactory: (...args: TArgs) => Promise<AnalyticsService> | AnalyticsService;
   isGlobal?: boolean;
 }
 
@@ -38,7 +41,9 @@ export class AnalyticsAbstractModule {
     };
   }
 
-  static forRootAsync(options: AnalyticsModuleAsyncOptions): DynamicModule {
+  static forRootAsync<TArgs extends unknown[]>(
+    options: AnalyticsModuleAsyncOptions<TArgs>,
+  ): DynamicModule {
     const { isGlobal = false } = options;
 
     return {

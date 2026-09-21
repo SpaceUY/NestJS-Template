@@ -1,4 +1,3 @@
-/* eslint-disable @typescript-eslint/no-explicit-any */
 import { ConfigProviderAbstractModule } from './config-provider-abstract.module';
 import { CONFIG_PROVIDER_ERRORS } from './config-provider.error';
 import { ConfigScopeDefinition } from './config-provider.interfaces';
@@ -96,6 +95,17 @@ const testScope = defineConfigScope<TestScope>(
   },
 );
 
+/** The shape of a provider entry as these tests read it back off a DynamicModule. */
+type ProviderEntry = {
+  provide?: unknown;
+  inject?: unknown[];
+  useFactory?: (...args: unknown[]) => unknown;
+  useValue?: unknown;
+};
+
+const providersOf = (moduleRef: { providers?: unknown[] }): ProviderEntry[] =>
+  (moduleRef.providers ?? []) as ProviderEntry[];
+
 describe('ConfigProviderAbstractModule', () => {
   describe('forRoot', () => {
     it('should register sources with useValue and export scope keys', () => {
@@ -171,7 +181,7 @@ describe('ConfigProviderAbstractModule', () => {
 
   describe('scope provider factory', () => {
     async function resolveScopeFactory(
-      scope: ConfigScopeDefinition<any>,
+      scope: ConfigScopeDefinition<Record<string, unknown>>,
       adapters: Record<string, ConfigProviderService>,
     ): Promise<unknown> {
       const moduleRef = ConfigProviderAbstractModule.forRoot({
@@ -184,17 +194,21 @@ describe('ConfigProviderAbstractModule', () => {
         scopes: [scope],
       });
 
-      const provider = (moduleRef.providers as any[]).find(
+      const provider = providersOf(moduleRef).find(
         (p) => p.provide === scope.KEY,
       );
 
-      return provider.useFactory(
-        ...(scope.fields
-          ? [
-              ...new Set(Object.values(scope.fields).map((f: any) => f.source)),
-            ].map((name) => adapters[name as string])
-          : []),
-      );
+      const sources = scope.fields
+        ? [
+            ...new Set(
+              Object.values(scope.fields).map(
+                (field: { source: string }) => field.source,
+              ),
+            ),
+          ].map((name) => adapters[name])
+        : [];
+
+      return provider?.useFactory?.(...sources);
     }
 
     it('should map fields from the correct source adapters', async () => {
@@ -271,11 +285,11 @@ describe('ConfigProviderAbstractModule', () => {
         scopes: [liveScope],
       });
 
-      const provider = (moduleRef.providers as any[]).find(
+      const provider = providersOf(moduleRef).find(
         (p) => p.provide === liveScope.KEY,
       );
 
-      return provider.useFactory(adapter);
+      return provider?.useFactory?.(adapter) as LiveScope;
     }
 
     it('should return a proxy that reflects the initial value', async () => {
@@ -342,14 +356,8 @@ describe('ConfigProviderAbstractModule', () => {
 
     const findSource = (moduleRef: {
       providers?: unknown[];
-    }): {
-      inject?: unknown[];
-      useFactory?: (...args: any[]) => any;
-      useValue?: unknown;
-    } =>
-      (moduleRef.providers as any[]).find(
-        (p) => p?.provide === sourceToken,
-      ) as any;
+    }): ProviderEntry | undefined =>
+      providersOf(moduleRef).find((p) => p?.provide === sourceToken);
 
     it('hands the injected logger to a useClass source, re-tagged with its class name', () => {
       const moduleRef = ConfigProviderAbstractModule.forRoot({

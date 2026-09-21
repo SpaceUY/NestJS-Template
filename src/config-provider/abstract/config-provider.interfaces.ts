@@ -28,12 +28,19 @@ export interface ConfigProviderModuleOptions {
   scopes?: ConfigScopeDefinition<Record<string, unknown>>[];
 }
 
+// The factory's arguments are the values its `inject` tokens resolve to, which
+// this interface cannot know. Sources are declared inside a `Record`, so there
+// is no call site for a type parameter to be inferred from — unlike the other
+// abstract modules, which take `<TArgs extends unknown[]>` on `forRootAsync`.
+// `never[]` is what keeps a typed factory — `(config: SomeScopeConfig) => ...`
+// — assignable: parameters are contravariant, so `never` accepts any parameter
+// type, where `unknown[]` would accept none. The module widens it back at the
+// one place that calls it.
 export interface ConfigProviderSourceAsync {
   imports?: ModuleMetadata['imports'];
   inject?: InjectionToken[];
   useFactory: (
-    // eslint-disable-next-line @typescript-eslint/no-explicit-any
-    ...args: any[]
+    ...args: never[]
   ) => Promise<ConfigProviderService> | ConfigProviderService;
 }
 

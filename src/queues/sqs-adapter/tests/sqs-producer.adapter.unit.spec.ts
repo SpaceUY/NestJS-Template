@@ -1,4 +1,3 @@
-/* eslint-disable @typescript-eslint/no-explicit-any */
 import { SQSClient } from '@aws-sdk/client-sqs';
 import { SqsProducerAdapter } from '../sqs-producer.adapter';
 import { SQS_RESERVED_HEADERS } from '../sqs-adapter.interfaces';
@@ -18,10 +17,14 @@ jest.mock('@aws-sdk/client-sqs', () => ({
   SendMessageCommand: jest.fn().mockImplementation((input) => input),
 }));
 
+/** The command inputs these mocks see: the SDK command objects pass through as
+ * their plain input, so every assertion reads them as a loose record. */
+type CommandInput = Record<string, unknown>;
+
 // Default behavior: GetQueueUrl resolves a URL from the name, SendMessage
 // resolves a message id.
 function wireHappyPath(): void {
-  mockSend.mockImplementation(async (input: any) => {
+  mockSend.mockImplementation(async (input: CommandInput) => {
     if ('QueueName' in input) {
       return { QueueUrl: `https://sqs.test/${input.QueueName}` };
     }
@@ -29,7 +32,7 @@ function wireHappyPath(): void {
   });
 }
 
-function lastSendMessage(): any {
+function lastSendMessage(): CommandInput {
   const calls = mockSend.mock.calls.map((c) => c[0]);
   return [...calls].reverse().find((input) => 'MessageBody' in input);
 }
@@ -196,7 +199,7 @@ describe('SqsProducerAdapter', () => {
     });
 
     it('throws SEND_FAILED when publishing fails', async () => {
-      mockSend.mockImplementation(async (input: any) => {
+      mockSend.mockImplementation(async (input: CommandInput) => {
         if ('QueueName' in input) {
           return { QueueUrl: `https://sqs.test/${input.QueueName}` };
         }

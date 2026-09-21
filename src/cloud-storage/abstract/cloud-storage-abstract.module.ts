@@ -17,12 +17,15 @@ interface CloudStorageModuleOptions {
   useDefaultController?: boolean;
 }
 
-interface CloudStorageModuleAsyncOptions {
+// `TArgs` is the tuple of values the `inject` tokens resolve to. It is inferred
+// from the factory at the call site, which is what keeps a typed factory —
+// `(config: SomeScopeConfig) => ...` — assignable here. A plain `unknown[]`
+// would reject it: function parameters are contravariant.
+interface CloudStorageModuleAsyncOptions<TArgs extends unknown[] = unknown[]> {
   imports?: ModuleMetadata['imports'];
   inject?: InjectionToken[];
   useFactory: (
-    // eslint-disable-next-line @typescript-eslint/no-explicit-any
-    ...args: any[]
+    ...args: TArgs
   ) => Promise<CloudStorageService> | CloudStorageService;
   isGlobal?: boolean;
   useDefaultController?: boolean;
@@ -52,7 +55,9 @@ export class CloudStorageAbstractModule {
     };
   }
 
-  static forRootAsync(options: CloudStorageModuleAsyncOptions): DynamicModule {
+  static forRootAsync<TArgs extends unknown[]>(
+    options: CloudStorageModuleAsyncOptions<TArgs>,
+  ): DynamicModule {
     const { isGlobal = false, useDefaultController = false } = options;
 
     return {
@@ -64,7 +69,7 @@ export class CloudStorageAbstractModule {
           provide: CloudStorageService,
           useFactory: async (
             logger: LoggerService | undefined,
-            ...args: unknown[]
+            ...args: TArgs
           ) => {
             const instance = await options.useFactory(...args);
             if (logger) instance.setLogger(logger);
