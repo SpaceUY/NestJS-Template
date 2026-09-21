@@ -20,7 +20,8 @@ domain concern; the template does not model it.
 | Import | From | Purpose |
 |---|---|---|
 | `PushNotificationService` | `src/push-notification/abstract/push-notification.service.ts` | The contract — `sendPushNotification`, `sendPushNotificationInChunks` — inject this |
-| `PushNotificationAbstractModule` | `src/push-notification/abstract/push-notification-abstract.module.ts` | `forRoot` only |
+| `PushNotificationAbstractModule` | `src/push-notification/abstract/push-notification-abstract.module.ts` | `forRoot` / `forRootAsync` |
+| `MockPushNotificationService` | `src/push-notification/abstract/mocks/` | Test double |
 | `IPushNotification` and siblings | `src/push-notification/abstract/push-notification.interface.ts` | Payload shapes |
 | `PushNotificationDto` | `src/push-notification/abstract/dto/push-notification.dto.ts` | Request DTO |
 | `PushNotificationError`, `PUSH_NOTIFICATION_ERRORS` | `src/push-notification/abstract/push-notification.error.ts` | Error type and codes — the plain-`Error` shape every adapter module here uses |
@@ -65,7 +66,9 @@ domain concern; the template does not model it.
 2. Bind the service to `PUSH_NOTIFICATION_PROVIDER` in that module's providers
    and export the token — mirror `src/push-notification/expo-adapter/expo-adapter.module.ts`.
 3. Add `config/<provider>.scope.ts` and register it in `src/app.module.ts`.
-4. Pass the adapter module as `adapter:` to `PushNotificationAbstractModule.forRoot`.
+4. Pass the adapter module as `adapter:` to `PushNotificationAbstractModule.forRoot`,
+   or import its `registerAsync` result and hand `PUSH_NOTIFICATION_PROVIDER`
+   back through `forRootAsync` — see that method's doc comment.
 5. Add `<provider>-adapter.service.unit.spec.ts`.
 
 ## Tests
@@ -73,9 +76,14 @@ domain concern; the template does not model it.
 `push-notification.controller.unit.spec.ts` covers the code-to-status mapping
 and asserts no provider text reaches the response;
 `expo-adapter.service.unit.spec.ts` covers the token-validation path, which
-needs no network. Still missing: chunking behaviour and the send path, both of
-which need `expo-server-sdk` mocked at module level. No `abstract/mocks/`
-exists (finding `N5`).
+needs no network; `push-notification-abstract.module.unit.spec.ts` covers both
+registration paths, including that `forRoot` no longer mutates the caller's
+`controllers` array. Still missing: chunking behaviour and the send path, both
+of which need `expo-server-sdk` mocked at module level.
+
+`src/push-notification/abstract/mocks/push-notification.service.mock.ts` gives
+`MockPushNotificationService` — every method a `jest.fn()` with a sane default,
+the same shape `src/cache/abstract/mocks/` uses.
 
 ## Reuse
 
@@ -96,8 +104,11 @@ See `docs/audit/2026-09-11-template-audit.md` and `docs/audit/2026-09-18-modular
   **Fixed on `chore/dead-code-and-error-model`:** the codes are now
   `PUSH_NOTIFICATION_*` and describe push failures, in the `cache.error.ts`
   shape.
-- **`N3`** — no `forRootAsync`; the file ends with `// TODO: Add forRootAsync`.
-  Also, `forRoot` mutates the caller's `controllers` array with `push`.
+- **`N3`** — ~~no `forRootAsync`; the file ends with `// TODO: Add forRootAsync`.
+  Also, `forRoot` mutates the caller's `controllers` array with `push`.~~
+  **Fixed on `chore/module-gaps`:** `forRootAsync` takes the factory shape every
+  other abstract module in the template uses, and both paths build a fresh
+  controllers array. The adapter-as-module style itself (style B) is unchanged.
 - **`D4`** — ~~`src/push-notification/README.md` teaches `@nestjs/config` and
   `npm`.~~ **Fixed (`@nestjs/config`):** every registration example now injects
   `expoScope` via `@Inject(expoScope.KEY)` and types the factory parameter as
@@ -105,7 +116,9 @@ See `docs/audit/2026-09-11-template-audit.md` and `docs/audit/2026-09-18-modular
   is `DOC9`'s installation-line defect
   (`docs/audit/2026-09-18-modularity-audit.md`), not `D4`'s — fixed separately
   in this same branch.
-- **`G1`**, **`N5`** — the send and chunking paths are still untested, and no mocks exist.
+- **`G1`** — the send and chunking paths are still untested.
+- **`N5`** — ~~no `abstract/mocks/`.~~ **Fixed on `chore/module-gaps`:**
+  `src/push-notification/abstract/mocks/push-notification.service.mock.ts`.
 - **`M15`** — ~~`PushNotificationException` is defined but never constructed;
   adapter failures escape as the raw SDK error or `InternalServerErrorException`
   instead (Rule 6).~~ **Fixed on `chore/dead-code-and-error-model`:**

@@ -25,6 +25,7 @@ project that needs those adds a domain module that consumes `CloudStorageService
 | `S3AdapterService` | `src/cloud-storage/s3-adapter/s3-adapter.service.ts` | Named only in `src/app.module.ts` |
 | `LocalAdapterService` | `src/cloud-storage/local-adapter/local-adapter.service.ts` | Not currently registered in `src/app.module.ts`; wire it through `forRoot` for local development |
 | `s3Scope`, `S3ScopeConfig` | `src/cloud-storage/s3-adapter/config/s3.scope.ts` | S3 config |
+| `MockCloudStorageService` | `src/cloud-storage/abstract/mocks/` | Test double |
 
 ## Configuration
 
@@ -84,8 +85,12 @@ This module is reasonably covered:
 `src/cloud-storage/s3-adapter/s3-adapter.service.unit.spec.ts`. Follow the local
 adapter test: `jest.mock('node:fs/promises')` and `jest.mock('uuid')` at module
 level, construct with `new`, assert both the happy path and the thrown
-`CloudStorageError`. No mocks directory exists yet (finding `N5`) — adding
-`abstract/mocks/cloud-storage.service.mock.ts` would follow `src/cache/abstract/mocks/`.
+`CloudStorageError`.
+
+`src/cloud-storage/abstract/mocks/cloud-storage.service.mock.ts` gives
+`MockCloudStorageService` for consumers that only need a `CloudStorageService`
+in their container — every method a `jest.fn()` with a sane default, the same
+shape `src/cache/abstract/mocks/` uses.
 
 ## Reuse
 
@@ -116,6 +121,7 @@ See `docs/audit/2026-09-11-template-audit.md`.
   `BadRequestException`, `ApiException` is deleted, and this module no longer
   imports `src/common/exception/` at all. `!src/common/enums.ts` was deleted
   outright afterwards (finding `H2`) — it had no consumers left.
-- **`N5`** — no `abstract/mocks/`.
+- **`N5`** — ~~no `abstract/mocks/`.~~ **Fixed on `chore/module-gaps`:**
+  `src/cloud-storage/abstract/mocks/cloud-storage.service.mock.ts`.
 - **`C1`** — ~~`AWS_REGION` and `AWS_S3_EXPIRES_IN_SECONDS` are missing from
   `.env.example`.~~ **Fixed on `fix/security-defaults`:** both are declared.
