@@ -73,11 +73,18 @@ Error codes belong to the module that raises them — `EMAIL_ERRORS`,
 
 ## Tests
 
-Nothing under `src/common/` outside `logger/` has a test (finding `G1`). New
-work here ships `*.unit.spec.ts` alongside. `validateAdapterModule` is a pure
-function — test the four accepted shapes and the throwing case directly.
+Every file under `src/common/` that holds behaviour has a spec. New work here
+ships `*.unit.spec.ts` alongside. `validateAdapterModule` is a pure function —
+its spec covers the four accepted shapes and the throwing case directly.
 `ResponseInterceptor` and `RequestExceptionFilter` are tested by constructing a
 fake `ArgumentsHost` / `ExecutionContext`, not by booting the app.
+
+Two exceptions boot a real Nest app on purpose, because what they assert is the
+wiring rather than the unit: `middleware.module.unit.spec.ts` proves
+`MiddlewareModule` actually binds the interceptor and the filter as
+`APP_INTERCEPTOR`/`APP_FILTER` (and that a 500 carries no internal detail), and
+`decorators/html-content-type.unit.spec.ts` proves `@Html()` sets the header on
+the decorated handler only.
 
 ## Reuse
 
@@ -111,5 +118,7 @@ See `docs/audit/2026-09-11-template-audit.md` and `docs/audit/2026-09-18-modular
 - **`H2`** — ~~`ERROR_CODES`/`ErrorCode` have no consumers left after `N2`
   collapsed the error models.~~ **Fixed on `chore/module-gaps`:**
   `!src/common/enums.ts` is deleted along with its public-surface row.
-- **`G1`** — `RequestExceptionFilter` is covered; the rest of the middleware,
-  the utils and the decorators are not.
+- **`G1`** — ~~`RequestExceptionFilter` is covered; the rest of the middleware,
+  the utils and the decorators are not.~~ **Fixed on
+  `test/coverage-cache-common`:** `ResponseInterceptor`, `validateAdapterModule`,
+  `@Html()` and `MiddlewareModule`'s own wiring all have specs now.

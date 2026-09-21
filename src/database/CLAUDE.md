@@ -17,6 +17,7 @@ that owns the data.
 | Import | From | Purpose |
 |---|---|---|
 | `DatabaseModule` | `src/database/database.module.ts` | Imported once by `src/app.module.ts` |
+| `buildTypeOrmOptions` | `src/database/database.module.ts` | The connection factory, exported so it can be tested |
 | `BaseEntity` | `src/database/entities/base.entity.ts` | Every entity extends it |
 | `User` | `src/database/entities/user.entity.ts` | Auth identity |
 | `AuthType` | `src/database/entities/auth-type.enum.ts` | `EMAIL` / `GOOGLE` / `AUTH0`; stored on `User.authType` |
@@ -68,9 +69,11 @@ change a key.
 
 ## Tests
 
-No test covers this module (finding `G1`). Service tests mock the repository
-with `getRepositoryToken(Entity)` and a plain jest object. Do not spin up a
-real database in a unit test; integration coverage belongs in `test/`.
+`src/database/database.module.unit.spec.ts` covers `buildTypeOrmOptions`: the
+URL branch winning over the discrete one, the `5432` default, and the refusal
+when the discrete set is incomplete. Service tests mock the repository with
+`getRepositoryToken(Entity)` and a plain jest object. Do not spin up a real
+database in a unit test; integration coverage belongs in `test/`.
 
 ## Reuse
 
@@ -100,7 +103,10 @@ See `docs/audit/2026-09-11-template-audit.md`.
 
 - **`R4`** — `src/database/migrations/` holds only `.gitkeep`; the template ships
   no baseline migration.
-- **`G1`** — the connection factory's URL/host branching is untested.
+- **`G1`** — ~~the connection factory's URL/host branching is untested.~~
+  **Fixed on `test/coverage-cache-common`:** the factory is the exported
+  `buildTypeOrmOptions` (it was an inline arrow inside the `@Module` decorator,
+  unreachable from a test) and every branch has a case.
 - **`C1`** — ~~no `DB_*` key appears in `.env.example`.~~ **Fixed on
   `fix/security-defaults`:** the full `DB_*` set is declared alongside
   `DATABASE_URL`.
