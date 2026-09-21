@@ -105,9 +105,13 @@ you need — this one is written for both. What follows is the second case: what
 
 **What to port first.** `src/config-provider/` (both scopes it defines and
 uses), `src/database/entities/user.entity.ts` (the `User` shape, `uuid`,
-`authType`) and `src/common/exception/` (`RequestException`,
-`Exceptions.auth.*`). `src/auth/` will not compile until those three exist in
-the target project. `CurrentUser` travels inside the module —
+`authType`), `src/common/exception/` (`RequestException`, `Exceptions.auth.*`)
+and `src/common/observability/logger/`. `src/auth/` will not compile until
+those four exist in the target project.
+
+The logger is the cheap one: every use of it here is `@Optional()`, so the
+module boots whether or not the target project registers
+`LoggerAbstractModule` — but the import has to resolve, so the files travel. `CurrentUser` travels inside the module —
 `src/auth/decorators/current-user.decorator.ts` — so there is nothing to port
 for it.
 

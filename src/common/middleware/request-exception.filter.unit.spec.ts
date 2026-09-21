@@ -3,11 +3,29 @@ import {
   BadRequestException,
   HttpException,
   HttpStatus,
-  Logger,
 } from '@nestjs/common';
 import { RequestExceptionFilter } from './request-exception.filter';
 import { RequestException } from '../exception/core/ExceptionBase';
 import { Exceptions } from '../exception/exceptions';
+import { LoggerService } from '../observability/logger/abstract/logger.service';
+import { NestLoggerAdapter } from '../observability/logger/nest-adapter/nest-logger.adapter';
+import { LogInput } from '../observability/logger/abstract/logger.interfaces';
+
+class RecordingLogger extends LoggerService {
+  readonly errors: LogInput[] = [];
+  context = '';
+  setContext(context: string): void {
+    this.context = context;
+  }
+
+  log(): void {}
+  warn(): void {}
+  error(input: LogInput): void {
+    this.errors.push(input);
+  }
+
+  debug(): void {}
+}
 
 type Captured = { status: jest.Mock; json: jest.Mock; host: ArgumentsHost };
 
@@ -25,10 +43,11 @@ const makeHost = (): Captured => {
 
 describe('RequestExceptionFilter', () => {
   let filter: RequestExceptionFilter;
+  let logger: RecordingLogger;
 
   beforeEach(() => {
-    filter = new RequestExceptionFilter();
-    jest.spyOn(Logger.prototype, 'error').mockImplementation(() => undefined);
+    logger = new RecordingLogger();
+    filter = new RequestExceptionFilter(logger);
   });
 
   afterEach(() => jest.restoreAllMocks());
@@ -98,12 +117,11 @@ describe('RequestExceptionFilter', () => {
 
   it('answers a non-HttpException with a generic 500 and logs the detail', () => {
     const { status, json, host } = makeHost();
-    const logged = jest.spyOn(Logger.prototype, 'error');
-
-    filter.catch(
-      new TypeError('connect ECONNREFUSED 10.0.0.7:5432 as user app_rw'),
-      host,
+    const thrown = new TypeError(
+      'connect ECONNREFUSED 10.0.0.7:5432 as user app_rw',
     );
+
+    filter.catch(thrown, host);
 
     expect(status).toHaveBeenCalledWith(500);
     expect(json).toHaveBeenCalledWith({
@@ -111,11 +129,30 @@ describe('RequestExceptionFilter', () => {
       statusCode: 500,
       message: 'Internal server error',
     });
+    // Rule 5: the detail goes to the log, never to the client.
     expect(JSON.stringify(json.mock.calls[0][0])).not.toContain('10.0.0.7');
-    expect(logged).toHaveBeenCalledWith(
-      'Unhandled TypeError on POST /orders',
-      expect.stringContaining('TypeError'),
-    );
+    expect(logger.errors).toEqual([
+      {
+        message: 'unhandled exception',
+        data: { kind: 'TypeError', method: 'POST', url: '/orders' },
+        error: thrown,
+      },
+    ]);
+  });
+
+  describe('logger wiring', () => {
+    it('tags its lines with its own context', () => {
+      expect(logger.context).toBe('RequestExceptionFilter');
+    });
+
+    // The @Optional() injection is what keeps src/common/middleware/ liftable:
+    // a project that copies it without LoggerAbstractModule still boots.
+    it('falls back to a NestLoggerAdapter when no logger is injected', () => {
+      expect(
+        (new RequestExceptionFilter() as unknown as { logger: LoggerService })
+          .logger,
+      ).toBeInstanceOf(NestLoggerAdapter);
+    });
   });
 
   it('answers a thrown non-Error without crashing the filter', () => {

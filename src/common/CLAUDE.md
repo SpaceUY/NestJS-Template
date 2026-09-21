@@ -86,6 +86,12 @@ wiring rather than the unit: `middleware.module.unit.spec.ts` proves
 `decorators/html-content-type.unit.spec.ts` proves `@Html()` sets the header on
 the decorated handler only.
 
+That first spec boots twice, which is the point: once with no
+`LoggerAbstractModule` — the state a project copying `src/common/middleware/`
+alone lands in, where the `@Optional()` injection has to resolve to nothing
+without failing the container — and once with one registered, asserting both
+classes log through *that* instance rather than their fallback adapter.
+
 ## Reuse
 
 `src/common/exception/`, `src/common/utils/` and `src/common/decorators/` are
@@ -93,8 +99,11 @@ self-contained — copy the files you need, they depend only on `@nestjs/common`
 
 `src/common/middleware/` is opinionated about response shape. Copy it only if the
 target project wants the `{ success, data }` envelope; otherwise take the filter
-and leave the interceptor. The interceptor also needs `rxjs`, plus a real
-non-import dependency: `src/common/middleware/response.interceptor.ts:40`
+and leave the interceptor. Both classes reference
+`src/common/observability/logger/` — through `@Optional()` injection, so they
+boot without it, but the import has to resolve; bring that subtree or replace
+the two constructors. The interceptor also needs `rxjs`, plus a real
+non-import dependency: `src/common/middleware/response.interceptor.ts:54`
 (`user.id`) only type-checks because of the ambient global type augmentation
 the repo root ships in `@types/express/index.d.ts`, loaded solely because
 `tsconfig.json` sets `"typeRoots": ["@types", "./node_modules/@types"]`. No

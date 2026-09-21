@@ -1,4 +1,4 @@
-import { Inject, Injectable, Logger } from '@nestjs/common';
+import { Inject, Injectable, Optional } from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
 import { Repository } from 'typeorm';
 import { RequestException } from '../../common/exception/core/ExceptionBase';
@@ -7,6 +7,8 @@ import { User } from '../../database/entities/user.entity';
 import { AuthType } from '../../database/entities/auth-type.enum';
 import { AuthTokenService } from '../core/auth-token/auth-token.service';
 import { auth0Scope, Auth0ScopeConfig } from './config/auth0.scope';
+import { LoggerService } from '../../common/observability/logger/abstract/logger.service';
+import { NestLoggerAdapter } from '../../common/observability/logger/nest-adapter/nest-logger.adapter';
 
 interface Auth0UserInfo {
   sub: string;
@@ -17,9 +19,7 @@ interface Auth0UserInfo {
 
 @Injectable()
 export class Auth0Service {
-  private readonly logger = new Logger(this.constructor.name, {
-    timestamp: true,
-  });
+  private readonly logger: LoggerService;
 
   constructor(
     @Inject(auth0Scope.KEY)
@@ -27,7 +27,13 @@ export class Auth0Service {
     @InjectRepository(User)
     private readonly userRepository: Repository<User>,
     private readonly authTokenService: AuthTokenService,
-  ) {}
+    // See `GoogleService`: optional so the module lifts without
+    // `LoggerAbstractModule`, injected when the container has one.
+    @Optional() logger?: LoggerService,
+  ) {
+    this.logger = logger ?? new NestLoggerAdapter(Auth0Service.name);
+    this.logger.setContext(Auth0Service.name);
+  }
 
   async login(accessToken: string): Promise<string> {
     try {
@@ -75,7 +81,12 @@ export class Auth0Service {
       return this.authTokenService.generateAuthToken(user, AuthType.AUTH0);
     } catch (e) {
       if (!(e instanceof RequestException)) {
-        this.logger.error('Auth0 login failed');
+        // No `error:` field: an Auth0 rejection carries the submitted
+        // access token in its message (finding `C5`).
+        this.logger.error({
+          message: 'Auth0 login failed',
+          data: { kind: e instanceof Error ? e.name : typeof e },
+        });
       }
       if (e instanceof RequestException) {
         throw e;

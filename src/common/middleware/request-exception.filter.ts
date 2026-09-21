@@ -4,9 +4,12 @@ import {
   HttpException,
   HttpStatus,
   ArgumentsHost,
-  Logger,
+  Inject,
+  Optional,
 } from '@nestjs/common';
 import { Response } from 'express';
+import { LoggerService } from '../observability/logger/abstract/logger.service';
+import { NestLoggerAdapter } from '../observability/logger/nest-adapter/nest-logger.adapter';
 
 type ErrorBody = {
   success: false;
@@ -25,7 +28,16 @@ type ErrorBody = {
  */
 @Catch()
 export class RequestExceptionFilter implements ExceptionFilter {
-  private readonly logger = new Logger('ExceptionFilter', { timestamp: true });
+  private readonly logger: LoggerService;
+
+  /**
+   * See `ResponseInterceptor`'s constructor: optional injection so this file
+   * lifts into another project without requiring `LoggerAbstractModule`.
+   */
+  constructor(@Optional() @Inject(LoggerService) logger?: LoggerService) {
+    this.logger = logger ?? new NestLoggerAdapter(RequestExceptionFilter.name);
+    this.logger.setContext(RequestExceptionFilter.name);
+  }
 
   catch(exception: unknown, host: ArgumentsHost): void {
     const ctx = host.switchToHttp();
@@ -44,10 +56,11 @@ export class RequestExceptionFilter implements ExceptionFilter {
     // Not an HttpException: the detail belongs in the log, never in the body.
     const req = ctx.getRequest<{ method?: string; url?: string }>();
     const kind = exception instanceof Error ? exception.name : typeof exception;
-    this.logger.error(
-      `Unhandled ${kind} on ${req?.method ?? '?'} ${req?.url ?? '?'}`,
-      exception instanceof Error ? exception.stack : undefined,
-    );
+    this.logger.error({
+      message: 'unhandled exception',
+      data: { kind, method: req?.method ?? null, url: req?.url ?? null },
+      error: exception,
+    });
 
     res.status(HttpStatus.INTERNAL_SERVER_ERROR).json({
       success: false,
