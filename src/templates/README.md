@@ -75,5 +75,10 @@ reach `dist/`.
 **Peer dependencies.** None. Rendering them is `src/templating/`'s job, and
 that module is optional here — the registry is just paths and parameter types.
 
-**Removing it from the template instead.** Only `src/app.controller.ts` imports
-it, for `TEMPLATE_PATHS` in the demo route.
+**Removing it from the template instead.** Nothing imports this directory any
+more. `src/app.controller.ts` used to, for `TEMPLATE_PATHS` in the `GET /email`
+demo route, and that route was deleted — unguarded, it sent a real message to a
+hardcoded address. Deleting `src/templates/` today costs one thing only: the
+two starting-point templates and the typed registry pattern go with it, and
+whoever adds email later writes both from scratch. See
+`src/email/README.md`'s render-then-send recipe for how the pieces fit.

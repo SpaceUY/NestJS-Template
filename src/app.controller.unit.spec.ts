@@ -2,9 +2,6 @@ import { Test, TestingModule } from '@nestjs/testing';
 import { AppController } from './app.controller';
 import { AppService } from './app.service';
 import { appScope } from './app.scope';
-import { emailScope } from './email/config/email.scope';
-import { EmailService } from './email/abstract/email.service';
-import { TemplateService } from './templating/abstract/template.service';
 
 describe('AppController', () => {
   let appController: AppController;
@@ -22,15 +19,6 @@ describe('AppController', () => {
             selfUrl: 'http://localhost:5000',
           },
         },
-        {
-          provide: emailScope.KEY,
-          useValue: { adapter: 'CONSOLE', from: 'test@example.com' },
-        },
-        {
-          provide: EmailService,
-          useValue: { sendEmail: jest.fn(), sendEmailBatch: jest.fn() },
-        },
-        { provide: TemplateService, useValue: { compile: jest.fn() } },
       ],
     }).compile();
 
