@@ -55,6 +55,21 @@ jest.mock('expo-server-sdk', () => {
 const TOKEN_A = 'ExponentPushToken[aaaaaaaaaaaaaaaaaaaaaa]';
 const TOKEN_B = 'ExponentPushToken[bbbbbbbbbbbbbbbbbbbbbb]';
 
+/**
+ * Expo's real `DeviceNotRegistered` ticket. The shape matters: `message` is
+ * prose built out of the push token, which is why nothing may quote it, and
+ * `details.error` is the closed code that may be surfaced instead. Fixtures
+ * that put the bare code in `message` make the rule-5 tests below pass against
+ * code that leaks.
+ */
+const deviceNotRegistered = (
+  token: string,
+): { status: string; message: string; details: Record<string, string> } => ({
+  status: 'error',
+  message: `"${token}" is not a registered push notification recipient`,
+  details: { error: 'DeviceNotRegistered', expoPushToken: token },
+});
+
 const rejection = async (promise: Promise<unknown>): Promise<Error> => {
   try {
     await promise;
@@ -128,9 +143,9 @@ describe('ExpoAdapterService send paths', () => {
       expect(message[0].data).toEqual({ missionId: '7' });
     });
 
-    it('turns an error ticket into SEND_FAILED carrying the provider message', async () => {
+    it('turns an error ticket into SEND_FAILED carrying the provider code', async () => {
       sendPushNotificationsAsync.mockResolvedValue([
-        { status: 'error', message: 'DeviceNotRegistered' },
+        deviceNotRegistered(TOKEN_A),
       ]);
 
       const thrown = (await rejection(
@@ -139,7 +154,21 @@ describe('ExpoAdapterService send paths', () => {
 
       expect(thrown).toBeInstanceOf(PushNotificationError);
       expect(thrown.code).toBe(PUSH_NOTIFICATION_ERRORS.SEND_FAILED);
+      // The code, not the prose the code came wrapped in.
       expect(thrown.message).toBe('DeviceNotRegistered');
+      expect(thrown.message).not.toContain(TOKEN_A);
+    });
+
+    it('falls back to ProviderError when the ticket carries no code', async () => {
+      sendPushNotificationsAsync.mockResolvedValue([
+        { status: 'error', message: 'something went wrong upstream' },
+      ]);
+
+      const thrown = (await rejection(
+        adapter.sendPushNotification(TOKEN_A, notification),
+      )) as PushNotificationError;
+
+      expect(thrown.message).toBe('ProviderError');
     });
 
     it('turns a thrown SDK failure into SEND_FAILED', async () => {
@@ -160,6 +189,20 @@ describe('ExpoAdapterService send paths', () => {
       await rejection(adapter.sendPushNotification(TOKEN_A, notification));
 
       expect(logged.join('\n')).not.toContain(TOKEN_A);
+    });
+
+    // The one that was missing: Expo builds the rejection prose out of the
+    // token, so logging `ticket.message` leaks it even though no line names
+    // the token itself.
+    it('never quotes the provider prose when a ticket is rejected', async () => {
+      const ticket = deviceNotRegistered(TOKEN_A);
+      sendPushNotificationsAsync.mockResolvedValue([ticket]);
+
+      await rejection(adapter.sendPushNotification(TOKEN_A, notification));
+
+      expect(logged.join('\n')).not.toContain(TOKEN_A);
+      expect(logged.join('\n')).not.toContain(ticket.message);
+      expect(logged.join('\n')).toContain('DeviceNotRegistered');
     });
   });
 
@@ -199,11 +242,7 @@ describe('ExpoAdapterService send paths', () => {
     it('splits the tickets into successes and failures', async () => {
       const tickets: ExpoPushTicket[] = [
         { status: 'ok', id: 'ticket-1' },
-        {
-          status: 'error',
-          message: 'DeviceNotRegistered',
-          details: { expoPushToken: TOKEN_B },
-        },
+        deviceNotRegistered(TOKEN_B),
       ] as unknown as ExpoPushTicket[];
 
       expect(adapter.getExpoPushNotificationChunkReport(tickets)).toEqual({
@@ -231,19 +270,18 @@ describe('ExpoAdapterService send paths', () => {
     });
 
     // Rule 5 again: the failing token is returned to the caller, which needs
-    // it to revoke the device, but it must not reach the log.
-    it('never writes a failing device token to the log', () => {
-      const tickets = [
-        {
-          status: 'error',
-          message: 'DeviceNotRegistered',
-          details: { expoPushToken: TOKEN_B },
-        },
-      ] as unknown as ExpoPushTicket[];
+    // it to revoke the device, but it must not reach the log — nor the
+    // report's own `message`, where it used to arrive inside Expo's prose.
+    it('keeps the failing device token out of the log and the report message', () => {
+      const ticket = deviceNotRegistered(TOKEN_B);
+      const tickets = [ticket] as unknown as ExpoPushTicket[];
 
-      adapter.getExpoPushNotificationChunkReport(tickets);
+      const report = adapter.getExpoPushNotificationChunkReport(tickets);
 
       expect(logged.join('\n')).not.toContain(TOKEN_B);
+      expect(logged.join('\n')).not.toContain(ticket.message);
+      expect(report.errorNotifications[0].message).toBe('DeviceNotRegistered');
+      expect(report.errorNotifications[0].pushToken).toBe(TOKEN_B);
     });
 
     it('turns a thrown SDK failure into CHUNK_SEND_FAILED', async () => {
