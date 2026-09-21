@@ -1,5 +1,5 @@
 import { Inject, Injectable, Optional } from '@nestjs/common';
-import Expo, { ExpoPushTicket } from 'expo-server-sdk';
+import Expo, { ExpoPushErrorTicket, ExpoPushTicket } from 'expo-server-sdk';
 import { EXPO_ADAPTER_PROVIDER_CONFIG } from './expo-adapter-config-provider.const';
 import { ExpoAdapterConfig } from './expo-adapter-config.interface';
 import { IPushNotification } from '../abstract/push-notification.interface';
@@ -67,13 +67,14 @@ export class ExpoAdapterService extends PushNotificationService {
         await this.expo.sendPushNotificationsAsync(message);
       const relatedTicket = expoPushTicket[0];
       if (relatedTicket.status === PUSH_NOTIFICATION_EXPO_STATUSES.ERROR) {
+        const providerError = this._providerErrorOf(relatedTicket);
         this.logger.error({
           message: 'push notification rejected by the provider',
-          data: { providerMessage: relatedTicket.message },
+          data: { providerError },
         });
         throw new PushNotificationError(
           PUSH_NOTIFICATION_ERRORS.SEND_FAILED,
-          relatedTicket.message,
+          providerError,
         );
       }
       this.logger.log({ message: 'push notification sent' });
@@ -148,6 +149,17 @@ export class ExpoAdapterService extends PushNotificationService {
     );
   }
 
+  /**
+   * The provider's error **code**, never its prose. `ExpoPushErrorTicket.message`
+   * is free text that Expo routinely builds out of the push token it was given
+   * — `DeviceNotRegistered` reads `"ExponentPushToken[…]" is not a registered
+   * push notification recipient` — so quoting it anywhere leaks a device
+   * credential (rule 5). `details.error` is a closed set and safe to surface.
+   */
+  private _providerErrorOf(ticket: ExpoPushErrorTicket): string {
+    return ticket.details?.error ?? 'ProviderError';
+  }
+
   getExpoPushNotificationChunkReport(ticketChunks: ExpoPushTicket[]): {
     errorNotifications: PushNotificationErrorResponse[];
     successNotifications: PushNotificationSuccessResponse[];
@@ -157,15 +169,16 @@ export class ExpoAdapterService extends PushNotificationService {
     for (const ticket of ticketChunks) {
       if (ticket.status === PUSH_NOTIFICATION_EXPO_STATUSES.ERROR) {
         const errorToken = ticket.details?.expoPushToken;
-        const errorMessage = ticket.message;
-        // The token is returned to the caller, which needs it to revoke the
-        // device, but it never reaches the log: it is a credential (rule 5).
+        const providerError = this._providerErrorOf(ticket);
+        // The token reaches the caller in its own field, because revoking the
+        // device needs it. It reaches nothing else: not this line, and not the
+        // report's `message` (rule 5).
         this.logger.error({
           message: 'push notification rejected for one device',
-          data: { providerMessage: errorMessage },
+          data: { providerError },
         });
         errorNotifications.push({
-          message: ticket.message,
+          message: providerError,
           pushToken: errorToken || '',
           status: PUSH_NOTIFICATION_STATUSES.ERROR,
         });

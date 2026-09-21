@@ -49,7 +49,15 @@ domain concern; the template does not model it.
 4. Send in chunks. Use `sendPushNotificationInChunks`, which exists because
    Expo rate-limits large sends; do not loop over `sendPushNotification`, the
    single-send method.
-5. A device token is a credential. Never log it, never return it in a response.
+5. A device token is a credential. Never log it, never return it in a
+   response — **and never quote the provider's error prose anywhere**, which is
+   the same leak wearing a disguise: Expo's `DeviceNotRegistered` message reads
+   `"ExponentPushToken[…]" is not a registered push notification recipient`.
+   Surface `details.error`, a closed set of codes, and nothing else. That is
+   what `ExpoAdapterService._providerErrorOf` is for, and it feeds the log line,
+   the thrown `PushNotificationError` and the chunk report's `message` alike.
+   The failing token still reaches the caller in the report's own `pushToken`
+   field, because revoking the device needs it.
 6. Log through `this.logger`, inherited from `PushNotificationService` —
    never `console`. An adapter takes `@Optional() logger?: LoggerService` last
    and the base falls back to a `NestLoggerAdapter`, so the module registers
@@ -147,6 +155,17 @@ See `docs/audit/2026-09-11-template-audit.md` and `docs/audit/2026-09-18-modular
   (`getExpoPushNotificationChunkReport`), against rule 5. Found writing the test
   above.~~ **Fixed on the same branch:** the log line names no token; the token
   is still returned in the report, which is where the caller needs it.
+- ~~`H5`'s fix was half a fix, and the test that proved it was fixed could not
+  have caught the other half: both send paths still logged
+  `ExpoPushErrorTicket.message`, and Expo builds that prose out of the push
+  token, so the credential kept reaching the log through the message instead of
+  through the token field. The rule-5 specs passed because their fixtures put
+  the bare code `'DeviceNotRegistered'` in `message` — nothing like what Expo
+  actually sends. Flagged by a commit security review, not by the suite.~~
+  **Fixed on `fix/expo-provider-text-leak`:** `_providerErrorOf` surfaces
+  `details.error` and nothing else, on all three surfaces (log, thrown error,
+  report `message`); the fixtures now carry Expo's real message shape, and both
+  new specs fail against the previous code.
 - **`N5`** — ~~no `abstract/mocks/`.~~ **Fixed on `chore/module-gaps`:**
   `src/push-notification/abstract/mocks/push-notification.service.mock.ts`.
 - ~~`ExpoAdapterService` wrote seven `console.*` lines and carried a

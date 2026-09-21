@@ -22,7 +22,10 @@ export interface PushNotificationSuccessResponse {
  * Interface for the error push notification object returned by the Push Notification provider.
  * @property {string} pushToken - The failed push notification token of the target device.
  * @property {string} status - Indicates the current status of the notification ("ERROR").
- * @property {string} message - Additional information related to the error status.
+ * @property {string} message - The provider's error **code**, never its prose.
+ * An adapter must not put free provider text here: Expo builds its rejection
+ * messages out of the push token, so the prose carries a credential the
+ * `pushToken` field already exposes deliberately (rule 5).
  */
 export interface PushNotificationErrorResponse {
   pushToken: string;
