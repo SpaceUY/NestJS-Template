@@ -14,7 +14,12 @@ the pug adapter.
 
 Does not own: the template files. Those are assets in `src/templates/` — see
 `src/templates/CLAUDE.md`. Nor does it own delivery; `src/email/` takes the
-compiled HTML.
+compiled HTML. The caller joins the halves — pass the string `compile()`
+returns to `EmailService.sendEmail()` as `content: { html }`. The worked
+example is in `src/email/README.md` ("Recipe: render, then send"), and
+`src/templating/README.md` points at it. No controller demonstrates it any
+more: the demo `GET /email` route in `src/app.controller.ts` was deleted on
+`chore/template-hardening` because it was unguarded and sent for real.
 
 ## Public surface
 

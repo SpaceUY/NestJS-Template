@@ -14,8 +14,21 @@ group of keys.
 Does not own: the scopes themselves. A scope lives next to the module that
 consumes it (`src/auth/config/jwt.scope.ts`, `src/database/config/database.scope.ts`,
 `src/email/config/email.scope.ts`, `src/cloud-storage/s3-adapter/config/s3.scope.ts`,
-`src/push-notification/expo-adapter/config/expo.scope.ts`), except `src/app.scope.ts`
-which is application-level.
+`src/push-notification/expo-adapter/config/expo.scope.ts`).
+
+Three scopes sit at the root of `src/` instead, because no single module owns
+them: `src/app.scope.ts`, `src/redis.scope.ts` (shared by `cache` and the
+BullMQ queue adapter) and `src/rate-limit.scope.ts`.
+
+**A scope can never live under `src/common/`.** It is not a style rule, it is
+a cycle: a scope imports `src/config-provider/abstract/`, and
+`src/config-provider/` already imports `src/common/observability/logger/`, so a
+scope under `src/common/` closes `common ↔ config-provider` between the two
+platform modules. `pnpm run modularity:check` rejects it. This came up for
+real while adding the rate-limit scope — the first attempt put it in
+`!src/common/rate-limit/config/` and the gate caught it. A module under
+`src/common/` that needs configuration takes it from a root-level scope, the
+way `src/common/rate-limit/` does.
 
 ## Public surface
 

@@ -7,6 +7,7 @@ export type AppScopeConfig = {
   port: number;
   selfUrl: string;
   corsOrigins: string[];
+  swaggerEnabled: boolean;
 };
 
 // `CORS_ORIGINS` is a comma-separated list. Parsing lives here so the rule and
@@ -39,6 +40,20 @@ const validate = (raw: Record<string, unknown>): AppScopeConfig => {
       then: originList.required(),
       otherwise: originList.default(['*']),
     }),
+    // Swagger publishes the whole API surface, so production must not serve
+    // it. That could have been a bare `nodeEnv !== 'PROD'` check in
+    // `src/main.ts` with no new key, and the flag is deliberately preferred to
+    // it: `nodeEnv` already drives the CORS rule above, so the only way to get
+    // docs on a prod-like environment without this flag is to lie about
+    // `NODE_ENV`, which silently re-allows a wildcard `CORS_ORIGINS`. One knob
+    // per decision. The default keeps the safe behaviour — off in PROD, on
+    // everywhere else — so an environment that never sets `SWAGGER_ENABLED`
+    // behaves exactly as the `nodeEnv` check would have.
+    swaggerEnabled: Joi.when('nodeEnv', {
+      is: 'PROD',
+      then: Joi.boolean().default(false),
+      otherwise: Joi.boolean().default(true),
+    }),
   });
 
   const { error, value } = schema.validate(raw, { abortEarly: false });
@@ -53,6 +68,7 @@ export const appScope = defineConfigScope<AppScopeConfig>(
     port: from.env('PORT'),
     selfUrl: from.env('SELF_URL'),
     corsOrigins: from.env('CORS_ORIGINS'),
+    swaggerEnabled: from.env('SWAGGER_ENABLED'),
   },
   validate,
 );

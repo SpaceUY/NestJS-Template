@@ -4,6 +4,7 @@ import { User } from '../../database/entities/user.entity';
 import { AuthTokenService } from '../core/auth-token/auth-token.service';
 import { GoogleController } from './google.controller';
 import { GoogleService } from './google.service';
+import { googleScope } from './config/google.scope';
 
 describe('GoogleController', () => {
   let controller: GoogleController;
@@ -17,6 +18,9 @@ describe('GoogleController', () => {
       providers: [
         { provide: AuthTokenService, useValue: mockAuthTokenService },
         { provide: GoogleService, useValue: mockGoogleService },
+        // The controller carries `GoogleEnabledGuard`, which reads the scope.
+        // Enabled here: the disabled path is `google-enabled.guard.unit.spec.ts`.
+        { provide: googleScope.KEY, useValue: { enabled: true } },
       ],
     }).compile();
 

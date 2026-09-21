@@ -31,11 +31,14 @@ export class PugAdapterModule {
     };
   }
 
-  static registerAsync(options: {
+  // `TArgs` is the tuple of values the `inject` tokens resolve to, inferred
+  // from the factory at the call site. `unknown[]` would reject a typed
+  // factory: function parameters are contravariant (`T6`).
+  static registerAsync<TArgs extends unknown[]>(options: {
     imports?: ModuleMetadata['imports'];
     inject?: InjectionToken[];
     useFactory: (
-      ...args: unknown[]
+      ...args: TArgs
     ) => Promise<PugAdapterConfig> | PugAdapterConfig;
   }): DynamicModule {
     return {
@@ -44,7 +47,7 @@ export class PugAdapterModule {
       providers: [
         {
           provide: TEMPLATE_PROVIDER,
-          useFactory: async (...args: unknown[]) => {
+          useFactory: async (...args: TArgs) => {
             const cfg = await options.useFactory(...args);
             return new PugAdapterService(cfg);
           },

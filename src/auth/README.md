@@ -20,8 +20,8 @@ with it.
 
 | Provider | Endpoint(s) | State |
 |---|---|---|
-| Google OAuth | `GET /auth/google/web`, `GET /auth/google/callback`, `POST /auth/google/mobile/register`, `POST /auth/google/mobile/login` | Implemented |
-| Auth0 | `POST /auth/auth0/login` | Implemented |
+| Google OAuth | `GET /auth/google/web`, `GET /auth/google/callback`, `POST /auth/google/mobile/register`, `POST /auth/google/mobile/login` | Implemented — 404 while `GOOGLE_OAUTH_ENABLED=false` |
+| Auth0 | `POST /auth/auth0/login` | Implemented — 404 while `AUTH0_ENABLED=false` |
 | Email | none | **Not implemented, and no scaffold either.** The empty email controller directory and the empty `AuthService` were deleted (finding `R3`) rather than left to look like a starting point. `AuthType.EMAIL` is still the `User.authType` default, but no code path issues a token for it — write the login/registration flow yourself. |
 
 ## Configuration
@@ -42,6 +42,29 @@ required. `AUTH0_ISSUER` defaults to `https://<AUTH0_DOMAIN>/` when unset.
 
 All three scopes are registered once, in the `scopes` array in
 `src/app.module.ts`.
+
+## Turning a provider off
+
+Set `GOOGLE_OAUTH_ENABLED=false` or `AUTH0_ENABLED=false` and leave the rest of
+that provider's variables empty. The application starts, and for that provider:
+
+- every route answers **404**, as if it had never been written;
+- nothing that needs a credential is built — in Google's case the Passport
+  strategy is never constructed, which is what used to take the whole
+  application down at boot with `OAuth2Strategy requires a clientID option`;
+- one `warn` line at startup says the provider is off.
+
+Two things the flag does not do. The paths are still *mapped* — they answer
+404 rather than not existing — so they remain in the Swagger document; and the
+provider's module is still in the dependency graph. Neither is fixable from a
+config flag: the value is read asynchronously, after NestJS has already
+collected every controller in the application. To make a provider disappear
+entirely, drop it — see [`## Reuse`](#reuse) below, *Dropping a provider*.
+
+`JWT_*` is unaffected by either flag. `AuthGuard('jwt')`, `AuthTokenService`
+and every protected route in the application keep working with both providers
+off; you simply have no way to issue a token until you add a login flow of
+your own.
 
 ## Using Google OAuth
 
@@ -127,6 +150,8 @@ runtime's built-in `fetch`, not an SDK.
 **Dropping a provider.** `src/auth/google/` and `src/auth/auth0/` are
 independent of each other; drop either directory and remove its import from
 `src/auth/auth.module.ts` — nothing else in the module references either one.
+This is the real removal; the `ENABLED` flag above is the runtime switch, and
+it cannot unmap the routes on its own.
 Dropping both leaves only the JWT core (`AuthTokenService`, `JwtStrategy`);
 at that point you still need to write your own login endpoint before this
 module authenticates anyone.

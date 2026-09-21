@@ -52,6 +52,36 @@ Implement `TemplateService` and provide it via `TEMPLATE_PROVIDER` in your adapt
 
 ---
 
+---
+
+## Handing the HTML to the email module
+
+`compile` returns HTML and stops there — it does not send, store or wrap.
+Delivery is [`src/email/`](../email/README.md)'s job, and `EmailService` takes
+**pre-rendered** content, so the caller is what joins the two:
+
+```ts
+const html = await this.templateService.compile(
+  TEMPLATE_PATHS[TEMPLATES.WELCOME],
+  { name },
+);
+
+await this.emailService.sendEmail({
+  to,
+  from: this.emailConf.from,
+  subject: TEMPLATE_SUBJECTS[TEMPLATES.WELCOME],
+  content: { html },
+});
+```
+
+The full example, with the imports and the injected services, is in
+[`src/email/README.md`](../email/README.md) under "Recipe: render, then send".
+The template used to demonstrate this with a live `GET /email` route in
+`src/app.controller.ts`; that route was deleted because it was unguarded and
+sent a real email to a hardcoded recipient.
+
+---
+
 ## Separation of concerns
 
 - `src/templating`: service-level code (module, abstractions, adapters)
@@ -81,6 +111,9 @@ pnpm add -D @types/pug      # pug-adapter/
 
 `abstract/` needs only `@nestjs/common`.
 
-**Removing it from the template instead.** `src/app.controller.ts` imports
-`TemplateService` for its demo route; deleting that route clears the only
-inbound edge outside `src/app.module.ts`.
+**Removing it from the template instead.** Nothing outside `src/app.module.ts`
+imports this module any more: the demo route in `src/app.controller.ts` that
+injected `TemplateService` is gone. Drop the `TemplateModule.forRoot(...)`
+registration in `src/app.module.ts`, delete `src/templating/`, and the tree
+still compiles — `src/templates/` is only paths and parameter types, so it can
+stay or go independently.

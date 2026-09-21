@@ -11,8 +11,16 @@ AWS SES, SendGrid, Resend and a console adapter for local development.
 
 Does not own: template rendering. `EmailService` takes **pre-rendered** content.
 Compiling a template is `src/templating/`'s job, and the caller wires the two
-together — `src/app.controller.ts` shows the pattern. This separation is
+together: compile with `TemplateService.compile()`, then hand the returned HTML
+to `EmailService.sendEmail()` as `content: { html }`. `src/email/README.md`'s
+"Recipe: render, then send" section has the worked example. This separation is
 deliberate: it is what lets either side be swapped alone.
+
+No controller in the template demonstrates it any more. The demo `GET /email`
+route in `src/app.controller.ts` was deleted on `chore/template-hardening`: it
+was unguarded and triggered a real send to a hardcoded recipient as soon as a
+real adapter was configured. Do not reintroduce an example route that sends;
+the README recipe is where the pattern lives now.
 
 ## Public surface
 
@@ -44,6 +52,42 @@ the surface.
 
 Defaulting to `CONSOLE` is intentional: a developer with no credentials gets a
 working app that prints emails instead of a boot failure.
+
+**Selecting an adapter selects its requirements.** Each provider's credentials
+are `.required()` exactly while that provider is the selected one, and inert
+(defaulting to `''`) otherwise, so the other providers' variables may stay
+unset. This is the `analytics.scope.ts` pattern (`posthogApiKey` under
+`POSTHOG`), applied to all three real adapters:
+
+| `EMAIL_ADAPTER` | Required alongside it |
+|---|---|
+| `CONSOLE` (default) | nothing at all |
+| `SENDGRID` | `EMAIL_FROM`, `SENDGRID_API_KEY` |
+| `RESEND` | `EMAIL_FROM`, `RESEND_API_KEY` |
+| `AWS_SES` | `EMAIL_FROM`, `AWS_SES_REGION`, `AWS_ACCESS_KEY`, `AWS_SECRET_ACCESS_KEY` |
+
+`AwsSesAdapterService` builds its `SESClient` with an explicit `credentials`
+object, so it never falls back to the ambient AWS credential chain — all three
+of its variables are genuinely mandatory, not merely conventional.
+
+`EMAIL_FROM` has no default. A plausible-looking one (it used to be
+`fake@example.com`) is the `C2` shape: a deploy that forgot the variable sends
+from the placeholder instead of refusing to start. Under `CONSOLE` the field
+validates to `''`, which `ConsoleAdapterService` reads as "no default sender" —
+nothing is delivered from it either way, so cloning the template and booting it
+with no `.env` still works. `RESEND_EMAIL_FROM` is an optional Resend-only
+override and likewise carries no default; its old `''` default was a value this
+schema itself rejects, because Joi never validates its own defaults.
+
+Validation runs with `abortEarly: false` and each rule carries a message naming
+the **environment variable**, not the config field — Joi's own wording would say
+`"sendgridApiKey" is required`, which is not what an operator sets. A
+misconfigured `AWS_SES` boot therefore lists all four missing variables at once.
+Messages name variables and never echo a value (`T4`).
+
+This validation is deliberately incompatible with a deploy that was already
+misconfigured: one that used to start and fail at the first send now refuses to
+start and says which variable is missing.
 
 ## Rules
 
@@ -103,6 +147,14 @@ classes — construct with `new`, mock the provider SDK at module level with
 `aws-ses-adapter/` is the one adapter that does not route through
 `executeHtmlEmailSend`: it rethrows the SDK error as-is, so its spec asserts
 the raw rejection rather than an `EmailError`.
+
+`src/email/config/email.scope.unit.spec.ts` covers the scope's validator the
+way `src/analytics/config/analytics.scope.unit.spec.ts` covers its own: call
+`emailScope.validate` directly with a raw record — no Nest container. It asserts
+each adapter with its credentials present, each one without them (and that the
+message names the missing environment variable), `CONSOLE` with nothing set at
+all, the absence of any fallback sender, the rejection of an undeclared key, and
+that no credential value reaches the error message.
 
 `src/email/abstract/mocks/email.service.mock.ts` gives `MockEmailService` for
 consumers that only need an `EmailService` in their container — every method a

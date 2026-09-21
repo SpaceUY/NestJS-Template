@@ -7,6 +7,9 @@ import { jwtScope } from './auth/config/jwt.scope';
 import { googleScope } from './auth/google/config/google.scope';
 import { auth0Scope } from './auth/auth0/config/auth0.scope';
 import { MiddlewareModule } from './common/middleware/middleware.module';
+import { RateLimitModule } from './common/rate-limit/rate-limit.module';
+import { skipUnthrottledPath } from './common/rate-limit/rate-limit-skip.util';
+import { ThrottlerModule } from '@nestjs/throttler';
 import { CloudStorageAbstractModule } from './cloud-storage/abstract/cloud-storage-abstract.module';
 import { S3AdapterService } from './cloud-storage/s3-adapter/s3-adapter.service';
 import {
@@ -53,8 +56,10 @@ import { QueueConsumerModule } from './queues/abstract/consumer/queue-consumer.m
 import { BullMqProducerAdapter } from './queues/bullmq-adapter/bullmq-producer.adapter';
 import { BullMqConsumerAdapter } from './queues/bullmq-adapter/bullmq-consumer.adapter';
 import { redisScope, RedisScopeConfig } from './redis.scope';
+import { rateLimitScope, RateLimitScopeConfig } from './rate-limit.scope';
 import { rabbitmqScope } from './queues/rabbitmq-adapter/config/rabbitmq.scope';
 import { CacheAbstractModule } from './cache/abstract/cache-abstract.module';
+import { HealthModule } from './health/health.module';
 import { RedisCacheAdapterService } from './cache/redis-adapter/redis-adapter.service';
 @Module({
   imports: [
@@ -77,10 +82,36 @@ import { RedisCacheAdapterService } from './cache/redis-adapter/redis-adapter.se
         analyticsScope,
         redisScope,
         rabbitmqScope,
+        rateLimitScope,
       ],
     }),
     AuthModule,
     MiddlewareModule,
+    HealthModule,
+    ThrottlerModule.forRootAsync({
+      inject: [rateLimitScope.KEY],
+      useFactory: (rateLimit: RateLimitScopeConfig) => ({
+        throttlers: [{ ttl: rateLimit.ttlMs, limit: rateLimit.limit }],
+        // Health probes are exempt, or the load balancer reads the 429 it
+        // caused and takes healthy instances out of rotation. See
+        // src/common/rate-limit/rate-limit-skip.util.ts.
+        skipIf: skipUnthrottledPath,
+      }),
+    }),
+    // Two things to know before this runs behind a load balancer, both left
+    // as they are on purpose rather than decided here:
+    //
+    // 1. The counters live in this process's memory — the default
+    //    ThrottlerStorage is per-instance, so N instances allow N times the
+    //    configured limit. That is the accepted cost of keeping the cache off
+    //    the request path; pass a shared `storage` here if the limit ever has
+    //    to be exact across instances.
+    // 2. The client is identified by its IP, which behind a proxy is the
+    //    proxy's unless Express is told to trust it. Enabling `trust proxy`
+    //    changes `req.ip`, `req.protocol` and secure-cookie handling
+    //    application-wide, so it belongs to whoever owns the deployment, not
+    //    to this line.
+    RateLimitModule,
     QueueProducerModule.forRootAsync({
       isGlobal: true,
       inject: [redisScope.KEY],
