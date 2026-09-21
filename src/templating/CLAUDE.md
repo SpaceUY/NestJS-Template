@@ -66,10 +66,11 @@ extension must be added there or templates will be missing from the build.
 ## Tests
 
 `template.module.unit.spec.ts` covers both registration paths, by hand and
-through a real container. `PugAdapterService` is still untested (finding `G1`):
-it is a plain class — construct it with a fixture `baseDir`, compile a small
-fixture template, assert the HTML, and assert the failure path for a missing
-file.
+through a real container. `pug-adapter.service.unit.spec.ts` compiles fixture
+templates from a temporary directory: the `baseDir` join, the working-directory
+default that makes the repo-relative `TEMPLATE_PATHS` resolve, the failure for a
+template that is not on disk, and that `#{}` escapes its parameter — rule 5 of
+`src/templates/CLAUDE.md` is an XSS rule, so it gets a test.
 
 ## Reuse
 
@@ -90,4 +91,5 @@ See `docs/audit/2026-09-11-template-audit.md`.
 - **`N7`** — ~~`!src/templates/template-renderer.interface.ts` duplicates this
   contract and is dead.~~ **Fixed on `chore/module-gaps`:**
   `!src/templates/template-renderer.interface.ts` is deleted.
-- **`G1`** — no tests.
+- **`G1`** — ~~no tests.~~ **Fixed on `test/coverage-email-templating-push`:**
+  the module and the pug adapter both have specs.

@@ -41,10 +41,12 @@ service in this directory, and none may be added.** Compilation lives in
 
 ## Tests
 
-Untested (finding `G1`), and mostly declarative. What is worth testing is the
-registry's internal consistency: every key of `TEMPLATES` has an entry in
-`TEMPLATE_PATHS` and `TEMPLATE_SUBJECTS`, and every path resolves to a file on
-disk.
+`src/templates/template.const.unit.spec.ts` checks the registry's internal
+consistency, which is the only thing here that can drift: every key of
+`TEMPLATES` has an entry in `TEMPLATE_PATHS` and `TEMPLATE_SUBJECTS`, every path
+resolves to a file on disk and stays repo-relative, and every subject is
+non-empty. Rule 2 says the three maps are edited together; this is what notices
+when they are not.
 
 ## Reuse
 
@@ -59,4 +61,5 @@ See `docs/audit/2026-09-11-template-audit.md`.
 - **`N7`** — ~~`template-renderer.interface.ts` is dead code duplicating
   `TemplateService`.~~ **Fixed on `chore/module-gaps`:**
   `!src/templates/template-renderer.interface.ts` is deleted.
-- **`G1`** — no registry-consistency test.
+- **`G1`** — ~~no registry-consistency test.~~ **Fixed on
+  `test/coverage-email-templating-push`:** `template.const.unit.spec.ts`.
