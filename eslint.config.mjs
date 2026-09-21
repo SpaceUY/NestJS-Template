@@ -2,10 +2,11 @@
 
 import eslint from '@eslint/js';
 import tseslint from 'typescript-eslint';
-import typescriptEslintEslintPlugin from "@typescript-eslint/eslint-plugin";
 import prettierPlugin from 'eslint-plugin-prettier';
 
 export default tseslint.config(
+  eslint.configs.recommended,
+  tseslint.configs.recommended,
   {
     files: ['**/*.ts'],
     languageOptions: {
@@ -15,8 +16,7 @@ export default tseslint.config(
       },
     },
     plugins: {
-        "@typescript-eslint": typescriptEslintEslintPlugin,
-        prettier: prettierPlugin,
+      prettier: prettierPlugin,
     },
     settings: {
       'import/resolver': {
@@ -37,7 +37,6 @@ export default tseslint.config(
       'no-useless-constructor': 'off',
       'class-methods-use-this': 'off',
       'import/prefer-default-export': 'off',
-      '@typescript-eslint/no-explicit-any': 'off',
       'comma-dangle': ['error', 'always-multiline'],
       '@typescript-eslint/interface-name-prefix': 'off',
       '@typescript-eslint/explicit-member-accessibility': 'off',
@@ -47,6 +46,4 @@ export default tseslint.config(
       'prettier/prettier': 'error',
     },
   },
-  eslint.configs.recommended,
-  tseslint.configs.recommended,
 );
