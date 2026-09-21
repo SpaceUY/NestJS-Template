@@ -101,9 +101,11 @@ token's `userId` claim and rejects any token whose `type` claim isn't
 
 **What to port first.** `src/config-provider/` (both scopes it defines and
 uses), `src/database/entities/user.entity.ts` (the `User` shape, `uuid`,
-`authType`), `src/common/exception/` (`RequestException`, `Exceptions.auth.*`)
-and `src/user/current-user.decorator.ts`. `src/auth/` will not compile until
-those four exist in the target project.
+`authType`) and `src/common/exception/` (`RequestException`,
+`Exceptions.auth.*`). `src/auth/` will not compile until those three exist in
+the target project. `CurrentUser` travels inside the module —
+`src/auth/decorators/current-user.decorator.ts` — so there is nothing to port
+for it.
 
 **Peer dependencies.**
 

@@ -24,14 +24,16 @@ does not own the `User` entity, which lives in `src/database/entities/user.entit
 | `AuthModule` | `src/auth/auth.module.ts` | Import into any module with protected routes |
 | `AuthTokenService` | `src/auth/core/auth-token/auth-token.service.ts` | `generateAuthToken`, `validateAuthToken` — injecting it requires importing `AuthTokenModule` (`src/auth/core/auth-token/auth-token.module.ts`); `AuthModule` does not re-export it |
 | `AuthTokenPayload` | `src/auth/core/auth-token/auth-token.service.ts` | JWT payload shape |
+| `CurrentUser` | `src/auth/decorators/current-user.decorator.ts` | Param decorator returning `request.user`, populated by the JWT strategy |
 | `AuthType` | `src/database/entities/auth-type.enum.ts` | `EMAIL` / `GOOGLE` / `AUTH0`; stored on `User.authType` |
 | `jwtScope`, `JwtScopeConfig` | `src/auth/config/jwt.scope.ts` | JWT config |
 | `googleScope`, `GoogleScopeConfig` | `src/auth/google/config/google.scope.ts` | Google OAuth config |
 | `auth0Scope`, `Auth0ScopeConfig` | `src/auth/auth0/config/auth0.scope.ts` | Auth0 config |
 
-Protecting a route needs two more imports that do not live here:
-`AuthGuard('jwt')` from `@nestjs/passport` and `CurrentUser` from
-`src/user/current-user.decorator.ts`.
+Protecting a route needs one more import that does not live here:
+`AuthGuard('jwt')` from `@nestjs/passport`. `CurrentUser`
+(`src/auth/decorators/current-user.decorator.ts`) is this module's own, listed
+in the table above.
 
 ## Configuration
 
@@ -153,9 +155,9 @@ deleted (finding `R3`); there is no email/password provider to test yet.
 
 ## Reuse
 
-Couples to `src/config-provider/`, `src/database/entities/user.entity.ts`,
-`src/common/exception/` and `src/user/current-user.decorator.ts` — port those
-first. `auth` depends on `database` for both `User` and `AuthType`.
+Couples to `src/config-provider/`, `src/database/entities/user.entity.ts`
+and `src/common/exception/` — port those first. `auth` depends on `database`
+for both `User` and `AuthType`.
 `src/auth/google/` and `src/auth/auth0/` are independently droppable;
 The email provider directory no longer exists — it was an empty scaffold
 (finding `R3`). Email/password login is not implemented; write it yourself.

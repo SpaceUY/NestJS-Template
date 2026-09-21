@@ -102,8 +102,8 @@ There is no demo domain module to delete. What comes out cleanly is a module no
 other module imports: the seven adapter modules `analytics`, `cache`,
 `cloud-storage`, `email`, `push-notification`, `queues` and `templating`, and
 also `auth`, which is not an adapter module but has no inbound edges either
-(removing it leaves `database` and `user` with no importers left). Each of
-those is removed with the same three edits:
+(removing it leaves `database` with no importers left). Each of those is
+removed with the same three edits:
 
 1. Remove its registration from `src/app.module.ts`.
 2. Remove its config scope from that file's `scopes` array. `templating`
@@ -119,24 +119,19 @@ The rest of the tree is not free-standing. `pnpm run modularity:check --
 - `config-provider` is imported by `analytics`, `auth`, `cloud-storage`,
   `database`, `email`, `push-notification` and `queues` — and imports `common`
   itself.
-- `database` is imported by `auth` (13 specifiers).
-- `src/user/current-user.decorator.ts` is imported by
-  `src/auth/google/google.controller.ts`.
+- `database` is imported by `auth` (23 specifiers).
 
-So `common`, `config-provider`, `database` and `user` do not come out on their
-own: deleting any of them while something above still imports it leaves the
-tree non-compiling. They go last, once everything that imports them has gone.
+So `common`, `config-provider` and `database` do not come out on their own:
+deleting any of them while something above still imports it leaves the tree
+non-compiling. They go last, once everything that imports them has gone.
 
-Two directories fit neither list, having no registration and no config scope in
+One directory fits neither list, having no registration and no config scope in
 `src/app.module.ts`:
 
 - `src/templates/` holds two generic templates, `WELCOME` and `VERIFICATION`,
   registered in `src/templates/template.const.ts`. Both are starting points, not
   demo content — there is nothing here to strip. No module imports it; only
   `src/app.controller.ts` does, for `TEMPLATE_PATHS`.
-- `src/user/` is a single file, not a module: `current-user.decorator.ts`,
-  live per the edge above. The empty `user.module.ts` that used to sit beside
-  it was deleted (finding `R3`).
 
 Run `pnpm run modularity:check -- --report` for the current dependency graph
 before deleting anything, rather than trusting a copy of it that will drift.
