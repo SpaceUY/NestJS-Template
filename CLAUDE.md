@@ -86,12 +86,18 @@ pass `--disable-warning=ExperimentalWarning`, purely so the VM-modules notice
 does not print once per worker; drop that flag if you are debugging Node
 warnings.
 
-**TypeScript 6 changed two defaults this repo depends on.** It no longer
+**TypeScript 6 changed three defaults this repo depends on.** It no longer
 auto-includes `@types/*` packages, so they are named in
 `"types": ["node", "jest"]` — add to that list when you add a global type
-package, or it silently will not load. And it no longer infers `rootDir`
+package, or it silently will not load. It no longer infers `rootDir`
 (TS5011), so the base config pins `"."` and `tsconfig.build.json` narrows it to
-`"./src"` to keep the emitted layout at `dist/main.js`.
+`"./src"` to keep the emitted layout at `dist/main.js`. And it writes the
+`.tsbuildinfo` incremental record beside the config instead of inside `outDir`,
+which is why both build configs name their own `tsBuildInfoFile` under `dist`:
+`prebuild` is `rimraf dist`, so a record left outside survives the wipe, the
+next `tsc` reads it, concludes everything is already emitted and writes
+nothing — and `nest build` exits 0 having produced an empty output directory.
+A new build config needs its own `tsBuildInfoFile`, never a shared one.
 
 **One `paths` entry exists and is a workaround.** `@nestjs/throttler@6.7.0`'s
 declarations deep-import `@nestjs/common/interfaces`, which Nest 12's `exports`

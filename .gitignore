@@ -1,8 +1,9 @@
 # compiled output
 /dist
 /node_modules
-# `incremental: true` writes these beside the config under TypeScript 6,
-# rather than inside outDir the way it used to.
+# TypeScript 6 writes these beside the config rather than inside outDir the
+# way it used to, so both build configs name a `tsBuildInfoFile` under `dist`
+# and nothing lands here. This stays as a net for a config that forgets to.
 *.tsbuildinfo
 
 # Logs
