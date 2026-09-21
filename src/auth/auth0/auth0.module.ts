@@ -23,9 +23,14 @@ export class Auth0Module {
 
     const log = logger ?? new NestLoggerAdapter(Auth0Module.name);
     log.setContext(Auth0Module.name);
-    log.error({
+    // See `GoogleModule`: a disabled provider is a supported state, so this is
+    // a warning about what the flag cannot do — the controller is declared in
+    // the metadata above, so `/auth/auth0/login` stays mapped (answering 404
+    // through `Auth0EnabledGuard`) and stays in the Swagger document until the
+    // import is removed.
+    log.warn({
       message:
-        "Auth0 was marked as disabled but Auth0Module is still present; Please remove it from AuthModule's Imports",
+        "Auth0 is disabled: POST /auth/auth0/login answers 404. Remove Auth0Module from AuthModule's imports to unmap the route entirely.",
     });
   }
 }

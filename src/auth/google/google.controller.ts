@@ -1,11 +1,17 @@
 import { Body, Controller, Get, Post, UseGuards } from '@nestjs/common';
 import { AuthGuard } from '@nestjs/passport';
 import { CurrentUser } from '../decorators/current-user.decorator';
+import { GoogleEnabledGuard } from './google-enabled.guard';
 import { AuthTokenService } from '../core/auth-token/auth-token.service';
 import { AuthType } from '../../database/entities/auth-type.enum';
 import { User } from '../../database/entities/user.entity';
 import { GoogleService } from './google.service';
 
+// Every route here is behind `GoogleEnabledGuard`, so a deployment with
+// `GOOGLE_OAUTH_ENABLED=false` answers 404 instead of reaching a Passport
+// strategy that was never registered. Controller-level guards run before the
+// method-level `AuthGuard('google')`.
+@UseGuards(GoogleEnabledGuard)
 @Controller('auth/google')
 export class GoogleController {
   constructor(

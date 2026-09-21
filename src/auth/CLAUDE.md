@@ -48,6 +48,10 @@ required, and `issuer` derives from `domain` when unset (`https://<domain>/`).
 
 All three are registered in the `scopes` array in `src/app.module.ts`.
 
+`enabled: false` is a supported state, not a half-configured one: the provider
+builds nothing that needs a credential and all of its routes answer 404. Rule 7
+has what that does and does not cover.
+
 ## Rules
 
 1. Protect a route with the guard plus the decorator — for example, in a
@@ -70,17 +74,46 @@ All three are registered in the `scopes` array in `src/app.module.ts`.
    through the JWT guard.
 4. Auth failures throw `RequestException(Exceptions.auth.*)`. Add new cases to
    `src/common/exception/exceptions.ts` — do not construct `HttpException` here.
+   A disabled provider is the one thing that is not an auth failure: it is a
+   route this deployment does not serve, so `GoogleEnabledGuard` and
+   `Auth0EnabledGuard` throw a plain `NotFoundException` (rule 7).
 5. Auth failure messages stay generic. `invalidCredentials` must not reveal
    whether the account exists.
 6. Never log a token, an ID token, or a raw provider error. A rejected
    `verifyIdToken` carries the submitted token in its message, so
    `src/auth/google/google.service.ts` logs the error's *kind* and nothing
    else (`_logProviderFailure`). Follow that shape for any new provider.
-7. `GoogleModule` and `Auth0Module` are imported unconditionally by
-   `src/auth/auth.module.ts` and only *log* when their `enabled` flag is false.
-   A project not using one of them removes the import rather than relying on
-   the flag — this is what keeps the three providers independent: dropping one
-   never requires touching another's code.
+7. `GOOGLE_OAUTH_ENABLED=false` and `AUTH0_ENABLED=false` switch their
+   provider off for real, and the two behave the same way:
+
+   - Nothing that needs a credential is constructed. `GoogleModule` builds
+     `GoogleStrategy` through a factory gated on the flag, so with the
+     provider off the Passport strategy is never instantiated and `'google'`
+     is never registered with passport. This is not cosmetic: the strategy's
+     constructor throws `OAuth2Strategy requires a clientID option`, so a
+     class provider crashed the whole application at boot with the flag off.
+     Auth0 has no equivalent — it builds nothing that needs configuration.
+   - Every route of the provider answers **404**, through the controller-level
+     `GoogleEnabledGuard` / `Auth0EnabledGuard`.
+   - The module logs one `warn` line saying so.
+
+   What the flag still cannot do is unmap the routes: `enabled` lives in a
+   config scope resolved asynchronously inside the DI container, and Nest
+   needs the `controllers` array while it scans the module — long before any
+   scope value exists. So the controller is always declared and the guard is
+   what makes the flag real. Consequences: the paths stay in the Swagger
+   document, and `GoogleService` / `Auth0Service` are still constructed
+   (neither touches the provider until a request arrives, which the guard
+   stops first). Removing the module from `AuthModule`'s imports is still the
+   only way to make the routes disappear, and is what a project that will
+   never use the provider should do — which is also what keeps the providers
+   independent: dropping one never requires touching another's code.
+
+   Do not try to make the registration itself conditional from inside
+   `src/auth/`. It needs the flag before the container exists, which means
+   reading it outside a config scope (against `T2`) or a new synchronous
+   bootstrap read in `src/app.module.ts` / `src/main.ts`. That is a
+   template-wide decision, not an auth one.
 8. Adding a provider means a new directory `src/auth/<provider>/` with its own
    `config/<provider>.scope.ts`, service (or strategy, for a Passport-driven
    flow like `src/auth/google/`), controller and module. Add the enum member to
@@ -148,11 +181,23 @@ The rest of the module is covered too, one spec per file:
   `src/auth/auth0/auth0.controller.unit.spec.ts` — delegation only; the
   controllers hold no logic and must not gain any.
 - `src/auth/google/google.module.unit.spec.ts` and
-  `src/auth/auth0/auth0.module.unit.spec.ts` — the constructor complaint when
-  a provider is registered with `enabled: false`. Setting the flag does not
-  unregister the module, so that log line is the only thing that says the
-  routes are still live; the specs construct the module class directly and spy
-  on `Logger.prototype.error`.
+  `src/auth/auth0/auth0.module.unit.spec.ts` — what the `enabled` flag does
+  (rule 7). Each compiles its module in a real container against a `@Global()`
+  stub of the scope and the `User` repository, with the flag on and off —
+  including off *and with no credentials at all*, the case that used to crash
+  the application — then mounts it on an HTTP application and checks the
+  routes: 404 everywhere with the provider off, the real handshake or the real
+  service call with it on. Google's spec also reads passport's `_strategies`
+  registry (through `jest.requireActual`, since `passport` ships no types) to
+  prove the strategy is registered only when enabled. The disabled-provider
+  `warn` line is asserted by constructing the module class directly.
+- `src/auth/google/google-enabled.guard.unit.spec.ts` and
+  `src/auth/auth0/auth0-enabled.guard.unit.spec.ts` — 404 when the provider is
+  off, through when it is on, and the provider is never named in the response.
+- `src/auth/auth.module.unit.spec.ts` — the real `AuthModule` graph compiled in
+  a Nest container: both providers on, and both off with no credentials, where
+  `JwtStrategy` and `AuthTokenService` must still resolve because every
+  business route depends on them.
 
 Mock the `User` repository with `getRepositoryToken(User)`, and `OAuth2Client`
 with a plain jest object. Name files `*.unit.spec.ts`.
