@@ -78,6 +78,10 @@ version of this section. Keep the two congruent (`T7`).
 
 ## Known gaps
 
-- No automated check enforces that `main.ts`'s first import stays
+- ~~No automated check enforces that `main.ts`'s first import stays
   `tracing.bootstrap` — a reordering during a future edit would silently
-  disable instrumentation patching rather than fail loudly.
+  disable instrumentation patching rather than fail loudly.~~ **Fixed on
+  `test/tracing-import-order`:**
+  `src/common/observability/telemetry/tracing-import-order.unit.spec.ts` reads
+  `src/main.ts` and asserts both the position and the side-effect-only form of
+  that import, so a reorder fails `pnpm test` instead of going unnoticed.
