@@ -45,10 +45,17 @@ Does not own: request/response access logging, which
 5. `telemetryHook` on `forRoot`/`forRootAsync` is the single integration point
    for OpenTelemetry or Datadog. A throwing hook must never break the caller;
    `LoggerService.emitTelemetry` already guarantees that.
-6. `Logger` from `@nestjs/common` is still used directly in
-   `src/common/middleware/`, `src/auth/google/google.module.ts` and
-   `src/auth/google/google.service.ts`. That is legacy — new code injects
-   `LoggerService`.
+6. `Logger` from `@nestjs/common` is still used directly in six files:
+   `src/common/middleware/response.interceptor.ts`,
+   `src/common/middleware/request-exception.filter.ts`,
+   `src/auth/google/google.module.ts`, `src/auth/google/google.service.ts`,
+   `src/auth/auth0/auth0.module.ts` and `src/auth/auth0/auth0.service.ts`.
+   That is legacy — new code injects `LoggerService`. Closing it is a decision,
+   not a cleanup: the middleware pair is copied into other projects, so it
+   should take the rule-4 route (`new NestLoggerAdapter(...)`, no DI
+   requirement) rather than inject, while the two auth services are
+   application services and should inject. Doing either changes what those
+   lines look like in a log, so scope it deliberately.
 7. `TraceContextLoggerDecorator` wraps an inner `LoggerService` — it is the
    `useFactory` result in `src/app.module.ts`, not a registered adapter class.
    Any new decorator follows the same shape: implement `LoggerService`, take
@@ -99,5 +106,7 @@ See `docs/audit/2026-09-11-template-audit.md`.
 - **`C5`** — ~~`src/auth/google/google.service.ts` logs the raw provider error on
   the token path, against this module's own practices.~~ **Fixed on
   `fix/security-defaults`:** it logs the error's constructor name only.
-- Direct `@nestjs/common` `Logger` use persists in middleware and the Google
-  auth module.
+- Direct `@nestjs/common` `Logger` use persists in six files — the two
+  middleware classes and four files under `src/auth/`. Rule 6 lists them and
+  says which route each should take. Still open deliberately: it changes log
+  output, so it wants its own branch and its own review.
