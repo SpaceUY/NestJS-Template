@@ -128,8 +128,9 @@ describe('verifyConnection', () => {
   let exit: jest.SpyInstance;
 
   beforeEach(() => {
-    // verifyConnection races the probe against a 5s timeout it never clears,
-    // so a real timer would outlive every test in this block.
+    // verifyConnection races the probe against a 5s timeout; fake timers are
+    // what let the timeout case run without waiting, and what make the
+    // cleanup assertions below observable through jest.getTimerCount().
     jest.useFakeTimers();
     exit = jest
       .spyOn(process, 'exit')
@@ -176,6 +177,27 @@ describe('verifyConnection', () => {
     await run();
 
     expect(exit).toHaveBeenCalledWith(1);
+  });
+
+  // Promise.race does not cancel the loser: a timer left armed keeps the event
+  // loop alive for five seconds after a boot that already succeeded.
+  it('clears the timeout once the probe succeeds', async () => {
+    // clearAllMocks resets calls, not implementations: the rejection left by
+    // the previous test would otherwise still be armed here.
+    redis.set.mockResolvedValue('OK');
+    redis.get.mockResolvedValue('connection-test');
+
+    await run();
+
+    expect(jest.getTimerCount()).toBe(0);
+  });
+
+  it('clears the timeout when the probe fails', async () => {
+    redis.set.mockRejectedValue(new Error('ECONNREFUSED'));
+
+    await run();
+
+    expect(jest.getTimerCount()).toBe(0);
   });
 
   it('stops the process when the probe never answers', async () => {

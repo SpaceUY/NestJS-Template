@@ -118,6 +118,12 @@ See `docs/audit/2026-09-11-template-audit.md`.
 - **`G1`** — ~~no adapter or extension tests.~~ **Fixed on
   `test/coverage-cache-common`:** `redis-adapter.service`, both redis
   extensions, `client.ts` and `utils/logger.ts` all have specs.
+- **`H7`** — ~~`verifyConnection` raced the probe against a `setTimeout` it
+  never cleared, so a successful startup left a 5s timer holding the event
+  loop open.~~ **Fixed on `fix/redis-startup-timeout`:**
+  `createTimeoutPromise` returns a `cancel` and `verifyConnection` calls it in
+  a `finally`; two specs assert `jest.getTimerCount()` is `0` after the probe
+  settles either way.
 - **`L2`** — ~~`src/cache/redis-adapter/utils/logger.ts:25` disables a rule named
   `ts/no-explicit-any`, which does not exist; ESLint errors on the bogus name and
   flags the `any` anyway. The prefix should be `@typescript-eslint/`.~~ **Fixed:
