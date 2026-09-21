@@ -77,8 +77,10 @@ to `RedisCacheAdapterService`.
 
 ## Tests
 
-No adapter test exists yet (finding `G1`), but the doubles do — consumers use
-them:
+The adapter, both extensions, the client factory and the logger adapter each
+have a spec; `ioredis` is mocked at module level in
+`src/cache/redis-adapter/client.unit.spec.ts` so nothing opens a socket. The
+doubles are for consumers:
 
 ```ts
 providers: [
@@ -90,6 +92,11 @@ providers: [
 Every mock method is a `jest.fn()` with a sane default (`null` for gets, `0` for
 counts, `[]` for lists). Adapter tests construct the adapter with `new` and mock
 `ioredis` at module level.
+
+What the adapter specs pin down beyond the happy path: every driver failure
+becomes a `CacheError` carrying its own code and never the ioredis message, no
+cached *value* reaches the debug log, and `verifyConnection` stops the process
+rather than booting with a cache that answers wrong.
 
 ## Reuse
 
@@ -108,7 +115,9 @@ See `docs/audit/2026-09-11-template-audit.md`.
   not a dependency.~~ **Fixed:** the README's `forRootAsync` example now injects
   `redisScope` via `@Inject(redisScope.KEY)` and types the factory parameter as
   `RedisScopeConfig`, matching `src/app.module.ts`.
-- **`G1`** — no adapter or extension tests.
+- **`G1`** — ~~no adapter or extension tests.~~ **Fixed on
+  `test/coverage-cache-common`:** `redis-adapter.service`, both redis
+  extensions, `client.ts` and `utils/logger.ts` all have specs.
 - **`L2`** — ~~`src/cache/redis-adapter/utils/logger.ts:25` disables a rule named
   `ts/no-explicit-any`, which does not exist; ESLint errors on the bogus name and
   flags the `any` anyway. The prefix should be `@typescript-eslint/`.~~ **Fixed:
