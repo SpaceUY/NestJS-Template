@@ -114,7 +114,8 @@ See `docs/audit/2026-09-11-template-audit.md`.
   failures answer `500` where `400` was intended.~~ **Fixed on
   `chore/dead-code-and-error-model`:** the three throws are
   `BadRequestException`, `ApiException` is deleted, and this module no longer
-  imports `src/common/exception/` or `src/common/enums.ts` at all.
+  imports `src/common/exception/` at all. `!src/common/enums.ts` was deleted
+  outright afterwards (finding `H2`) — it had no consumers left.
 - **`N5`** — no `abstract/mocks/`.
 - **`C1`** — ~~`AWS_REGION` and `AWS_S3_EXPIRES_IN_SECONDS` are missing from
   `.env.example`.~~ **Fixed on `fix/security-defaults`:** both are declared.

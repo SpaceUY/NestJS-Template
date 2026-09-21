@@ -31,8 +31,6 @@ deliberate: it is what lets either side be swapped alone.
 
 ## Internal
 
-`src/email/abstract/templates.abstract.ts` (`EmailTemplateService`) duplicates
-`TemplateService.compile` and has no callers (finding `N7`). Do not import it.
 `src/email/utils/execute-html-email-send.ts` is an internal helper — not part of
 the surface.
 
@@ -119,5 +117,7 @@ See `docs/audit/2026-09-11-template-audit.md`.
   points at the real `src/email/config/email.scope.ts`, drops the fictional
   logger-adapter/interface and the `@nestjs/config` example, and documents
   `src/email/utils/execute-html-email-send.ts`.
-- **`N7`** — `abstract/templates.abstract.ts` is dead code.
+- **`N7`** — ~~`abstract/templates.abstract.ts` is dead code.~~ **Fixed on
+  `chore/module-gaps`:** `!src/email/abstract/templates.abstract.ts` is deleted.
+  `TemplateService.compile` in `src/templating/` is the only compile contract.
 - **`N5`**, **`G1`** — no mocks, no tests.

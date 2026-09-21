@@ -80,6 +80,7 @@ See `docs/audit/2026-09-11-template-audit.md`.
 
 - **`N3`** — `TemplateModule` has no `forRootAsync`, and no
   `validateAdapterModule` guard on any async path.
-- **`N7`** — `src/templates/template-renderer.interface.ts` duplicates this
-  contract and is dead.
+- **`N7`** — ~~`!src/templates/template-renderer.interface.ts` duplicates this
+  contract and is dead.~~ **Fixed on `chore/module-gaps`:**
+  `!src/templates/template-renderer.interface.ts` is deleted.
 - **`G1`** — no tests.

@@ -21,7 +21,7 @@ COPY --chown=node:node . .
 # Run the build command which creates the production bundle
 RUN pnpm run build
 
-RUN chmod 777 ./docker-script.sh
+RUN chmod 755 ./docker-script.sh
 
 # Start the server using the production build
 CMD ./docker-script.sh
