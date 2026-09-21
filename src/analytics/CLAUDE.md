@@ -63,12 +63,15 @@ A new adapter test follows the same shape.
 
 ## Reuse
 
-Copy `src/analytics/` whole. `abstract/` and
-`console-adapter/` need only `@nestjs/common`; `posthog-adapter/` needs the
-peer dependency `posthog-node`. It depends on
-`src/config-provider/abstract/` for the scope helpers and, in the adapters,
-on `src/common/observability/logger/` for the optional logger fallback — port
+Copy `src/analytics/` whole. `abstract/` and `console-adapter/` need only
+`@nestjs/common`; `posthog-adapter/` needs the peer dependency `posthog-node`,
+and `config/analytics.scope.ts` needs `joi`. Two edges leave this module:
+`src/config-provider/abstract/` for the scope helpers and, in both adapters,
+`src/common/observability/logger/` for the optional logger fallback — port
 those too, or replace the `logger?:` parameter with a different default.
+
+`src/analytics/README.md`'s `## Reuse` is the human version of this section.
+Keep the two congruent (`T7`).
 
 ## Known gaps
 

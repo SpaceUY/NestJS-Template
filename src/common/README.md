@@ -69,9 +69,36 @@ Behavior on invalid input:
 
 ---
 
-## Reuse note
+## Reuse
 
-`src/common/middleware/response.interceptor.ts` only type-checks because of the ambient `Express.User` augmentation the repo root ships in `@types/express/index.d.ts`, loaded via `tsconfig.json`'s `typeRoots` setting. Copy that `@types/` directory and `typeRoots` entry along with `common`, or the interceptor fails to compile.
+**Two supported workflows.** Clone the template whole, or lift only the modules
+you need — this one is written for both. What follows is the second case: what
+`src/common/` needs in order to compile in another project.
+
+**What travels with it.** Nothing. `src/common/` imports from no other module
+of the template — it is the platform tier, and seven modules import *from* it,
+so it is the first thing to lift and the last thing to delete.
+
+**Copy per directory, not per module.**
+
+- `exception/`, `utils/` and `decorators/` are self-contained and need only
+  `@nestjs/common`.
+- `observability/logger/` is what `analytics`, `cloud-storage`,
+  `config-provider`, `email` and `queues` all reach for. Taking any of those
+  means taking this.
+- `observability/telemetry/` needs the OpenTelemetry packages listed in
+  `src/common/observability/telemetry/README.md`.
+- `middleware/` is opinionated about response shape — copy it only if the
+  target project wants the `{ success, data }` envelope. It needs `rxjs`, and
+  one non-import dependency worth knowing about:
+  `src/common/middleware/response.interceptor.ts` only type-checks because of
+  the ambient `Express.User` augmentation the repo root ships in
+  `@types/express/index.d.ts`, loaded via `tsconfig.json`'s `typeRoots`
+  setting. Copy that `@types/` directory and the `typeRoots` entry along with
+  it, or the interceptor fails to compile (`EXT7`).
+
+**Removing it from the template instead.** You cannot, until every module that
+imports it has gone. `pnpm run modularity:check -- --report` names them.
 
 ---
 

@@ -390,3 +390,31 @@ For most application config (JWT secrets, DB URLs, adapter options) the default 
 | `CONFIG_PROVIDER_UNKNOWN_SOURCE`          | A scope references a source name not registered in the module |
 
 The last error (`UNKNOWN_SOURCE`) is thrown **at registration time** (module init), not at runtime, so misconfiguration is caught immediately on app startup.
+
+## Reuse
+
+**Two supported workflows.** Clone the template whole, or lift only the modules
+you need — this one is written for both. What follows is the second case: what
+`src/config-provider/` needs in order to compile in another project.
+
+**What travels with it.** Copy `src/config-provider/` whole, then bring
+`src/common/observability/logger/`: `abstract/config-provider.service.ts` and
+`abstract/config-provider-abstract.module.ts` log through `LoggerService` and
+fall back to `NestLoggerAdapter`. That is the module's only edge to another
+module of the template, which is what makes it the first thing to lift — every
+module that owns a config scope imports the two helpers from here.
+
+**Peer dependencies.**
+
+```bash
+pnpm add dotenv                             # env-adapter/
+pnpm add @aws-sdk/client-secrets-manager     # secrets-manager-adapter/ only
+```
+
+Joi is a dependency of the *scopes*, not of this module — a consuming project
+may validate with Zod or anything else.
+
+**Removing it from the template instead.** You cannot, while anything above it
+still owns a scope: `analytics`, `auth`, `cloud-storage`, `database`, `email`,
+`push-notification` and `queues` all import from here. It goes last, once those
+have gone or been rewired.

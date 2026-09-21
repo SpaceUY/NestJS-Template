@@ -278,3 +278,31 @@ The `PushNotificationAbstractModule` is designed to be flexible and support mult
 ## Contributing
 
 Feel free to submit issues and enhancement requests!
+
+## Reuse
+
+**Two supported workflows.** Clone the template whole, or lift only the modules
+you need — this one is written for both. What follows is the second case: what
+`src/push-notification/` needs in order to compile in another project.
+
+**What travels with it.** Copy `src/push-notification/` whole, then bring
+`src/config-provider/abstract/` if you take `expo-adapter/config/expo.scope.ts`.
+Nothing else here imports another module of the template.
+
+**Peer dependencies.**
+
+```bash
+pnpm add expo-server-sdk    # expo-adapter/
+pnpm add joi                # expo-adapter/config/expo.scope.ts
+```
+
+`abstract/` needs only `@nestjs/common`.
+
+**What you are also copying.** This module uses registration style B — the
+adapter ships its own `register`/`registerAsync` module and the abstract module
+aliases its token. Style A is what new modules use
+(`docs/architecture/module-contract.md`); the extra indirection here is
+historical, not a pattern to follow.
+
+**Removing it from the template instead.** Nothing imports
+`src/push-notification/`; it comes out in three edits.

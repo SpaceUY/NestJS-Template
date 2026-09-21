@@ -596,6 +596,10 @@ the processor throws. The adapter maps the context contract onto that:
 
 ## Reuse
 
+**Two supported workflows.** Clone the template whole, or lift only the modules
+you need — this one is written for both. What follows is the second case: what
+`src/queues/` needs in order to compile in another project.
+
 **Scope of this section.** It describes the narrowest useful copy — `abstract/`
 plus the one adapter directory you use — which needs only the logger alongside
 it for `bullmq-adapter/` or `sqs-adapter/`. Taking `rabbitmq-adapter/` instead

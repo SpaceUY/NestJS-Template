@@ -100,11 +100,21 @@ rather than booting with a cache that answers wrong.
 
 ## Reuse
 
-Copy `src/cache/abstract/` plus the adapter directories you want. `abstract/`
-depends only on `@nestjs/common`; `redis-adapter/` needs `ioredis` plus
-`src/redis.scope.ts` (shared with `src/queues/bullmq-adapter/` — bring it
-along, or replace it with a cache-local scope if lifting `redis-adapter/`
-without `queues/`).
+Copy `src/cache/abstract/` plus the adapter directories you want. No edge
+leaves this module — `pnpm run modularity:check -- --report` prints none for
+`cache`, which is what makes it the only adapter module that lifts with zero
+companions (`EXT1`). `abstract/` depends only on `@nestjs/common`;
+`redis-adapter/` needs `ioredis`.
+
+Config is the one thing to carry over deliberately: `src/app.module.ts` feeds
+the adapter from `src/redis.scope.ts`, an application-level scope shared with
+`src/queues/bullmq-adapter/`, and that file is not part of this module. Bring
+it, or hand `RedisCacheAdapterService` a config object from wherever the target
+project keeps its own — the constructor takes a plain object and does not
+care.
+
+`src/cache/README.md`'s `## Reuse` is the human version of this section. Keep
+the two congruent (`T7`).
 
 ## Known gaps
 

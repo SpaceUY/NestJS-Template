@@ -117,6 +117,9 @@ needs `bullmq` plus `src/redis.scope.ts` (or a queues-local replacement if
 lifting it without `cache/`); `rabbitmq-adapter/` needs `amqplib` (+
 `rabbitmq.scope.ts`); `sqs-adapter/` needs `@aws-sdk/client-sqs`.
 
+`src/queues/README.md`'s `## Reuse` is the human version of this section. Keep
+the two congruent (`T7`).
+
 ## Known gaps
 
 See `docs/audit/2026-09-18-modularity-audit.md`.

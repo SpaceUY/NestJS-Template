@@ -57,3 +57,23 @@ export const TEMPLATE_SUBJECTS = {
 - This folder should remain static (no Nest modules/providers).
 - The service layer that renders these templates lives under `src/templating`.
 
+## Reuse
+
+**Two supported workflows.** Clone the template whole, or lift only the modules
+you need — this one is written for both. What follows is the second case: what
+`src/templates/` needs in order to compile in another project.
+
+**What travels with it.** Nothing. `src/templates/` imports from no other
+module and has no runtime dependency — not even `@nestjs/common`. It is a
+typed registry (`template.const.ts`), a params interface and two `.pug` files.
+
+Copy the directory whole, or take `template.const.ts` and
+`template-params.interface.ts` as the pattern and supply your own templates.
+Copy the `nest-cli.json` asset entry with it, or the `.pug` files will not
+reach `dist/`.
+
+**Peer dependencies.** None. Rendering them is `src/templating/`'s job, and
+that module is optional here — the registry is just paths and parameter types.
+
+**Removing it from the template instead.** Only `src/app.controller.ts` imports
+it, for `TEMPLATE_PATHS` in the demo route.

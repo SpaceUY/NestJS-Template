@@ -107,6 +107,9 @@ Copy `src/cloud-storage/abstract/` plus the adapters you want.
 
 Drop `cloud-storage.controller.ts` if the target project brings its own.
 
+`src/cloud-storage/README.md`'s `## Reuse` is the human version of this
+section. Keep the two congruent (`T7`).
+
 ## Known gaps
 
 See `docs/audit/2026-09-11-template-audit.md`.

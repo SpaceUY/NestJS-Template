@@ -284,3 +284,33 @@ providers: [
 ```
 
 All mock methods are `jest.fn()` with sensible defaults (`null` for gets, `0` for counts, `[]` for lists).
+
+## Reuse
+
+**Two supported workflows.** Clone the template whole, or lift only the modules
+you need — this one is written for both. What follows is the second case: what
+`src/cache/` needs in order to compile in another project.
+
+**What travels with it.** Nothing — this is the one adapter module that imports
+from no other module of the template. `pnpm run modularity:check -- --report`
+prints no outgoing edge for `cache`, and that is deliberate: it is the reference
+implementation of `docs/architecture/module-contract.md`.
+
+The one thing to know is config. `src/app.module.ts` feeds the adapter from
+`src/redis.scope.ts`, an application-level scope shared with
+`src/queues/bullmq-adapter/`. That file is not part of this module — bring it,
+or hand `RedisCacheAdapterService` its config from wherever your project keeps
+it. The adapter takes a plain config object in its constructor, so it does not
+care which.
+
+**Peer dependencies.**
+
+```bash
+pnpm add ioredis        # redis-adapter/ only
+```
+
+`abstract/` needs only `@nestjs/common`.
+
+**Removing it from the template instead.** Nothing imports `src/cache/`; it
+comes out in three edits, and `src/redis.scope.ts` goes only once
+`src/queues/` has gone too.

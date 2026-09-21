@@ -75,9 +75,13 @@ template that is not on disk, and that `#{}` escapes its parameter — rule 5 of
 ## Reuse
 
 Copy `src/templating/` whole; `pug-adapter/` needs `pug` and `@types/pug`.
-Nothing here imports from another module of this template. Take
-`src/templates/` with it if you want the typed registry, and copy the
-`nest-cli.json` asset entry.
+One edge leaves this module: `template.module.ts` calls `validateAdapterModule`
+from `src/common/utils/nest-module-validation.ts`, so copy that file or inline
+the check. Take `src/templates/` with it if you want the typed registry, and
+copy the `nest-cli.json` asset entry.
+
+`src/templating/README.md`'s `## Reuse` is the human version of this section.
+Keep the two congruent.
 
 ## Known gaps
 

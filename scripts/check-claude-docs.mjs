@@ -57,8 +57,12 @@ function referencedPaths(text) {
 
 /**
  * Runs every rule over every CLAUDE.md and README.md and reports violations.
- * The six required sections and the module-map rule are CLAUDE.md-only; a
- * README has no required shape and only gets the path-existence rule below.
+ * The six required sections and the module-map rule are CLAUDE.md-only. A
+ * README's only required section is `## Reuse`: the template is meant to be
+ * taken whole *or* module by module, so every module states what it needs in
+ * order to compile elsewhere — in its README for the human and in its
+ * CLAUDE.md for the agent. Everything else in a README is free-form, and the
+ * path-existence rule below applies to both files.
  * @returns {Promise<string[]>} Human-readable violation lines.
  */
 async function check() {
@@ -74,6 +78,15 @@ async function check() {
         if (!text.includes(`\n${section}\n`)) {
           violations.push(`${doc}: missing required section "${section}"`);
         }
+      }
+
+      const readme = doc.replace(/CLAUDE\.md$/, 'README.md');
+      if (!existsSync(join(ROOT, readme))) {
+        violations.push(`${doc}: no sibling "${readme}"`);
+      } else if (
+        !(await readFile(join(ROOT, readme), 'utf8')).includes('\n## Reuse\n')
+      ) {
+        violations.push(`${readme}: missing required section "## Reuse"`);
       }
     }
 

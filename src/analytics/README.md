@@ -51,3 +51,31 @@ Note: `posthog-node` ships an official `./nestjs` entrypoint, but this repo
 deliberately doesn't use it — sticking with the same provider-agnostic
 abstraction pattern used by `email` and `logger` keeps PostHog swappable
 without touching consumers.
+
+## Reuse
+
+**Two supported workflows.** Clone the template whole, or lift only the modules
+you need — this one is written for both. What follows is the second case: what
+`src/analytics/` needs in order to compile in another project.
+
+**What travels with it.** Copy `src/analytics/` whole, then bring:
+
+- `src/config-provider/abstract/` — `config/analytics.scope.ts` builds its scope
+  with `configSources` and `defineConfigScope` from there.
+- `src/common/observability/logger/` — both adapters take an optional
+  `LoggerService` and fall back to `NestLoggerAdapter`. Drop that parameter and
+  this dependency goes with it.
+
+**Peer dependencies.**
+
+```bash
+pnpm add joi            # the config scope
+pnpm add posthog-node   # posthog-adapter/ only
+```
+
+`abstract/` and `console-adapter/` need only `@nestjs/common`.
+
+**Removing it from the template instead.** Nothing imports `src/analytics/`, so
+it comes out in three edits: its registration in `src/app.module.ts`, its scope
+in that file's `scopes` array, and the `ANALYTICS_*` / `POSTHOG_*` keys in
+`.env.example`.

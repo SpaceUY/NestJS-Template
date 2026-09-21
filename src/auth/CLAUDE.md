@@ -164,11 +164,13 @@ deleted (finding `R3`); there is no email/password provider to test yet.
 Couples to `src/config-provider/`, `src/database/entities/user.entity.ts`
 and `src/common/exception/` — port those first. `auth` depends on `database`
 for both `User` and `AuthType`.
-`src/auth/google/` and `src/auth/auth0/` are independently droppable;
-The email provider directory no longer exists — it was an empty scaffold
-(finding `R3`). Email/password login is not implemented; write it yourself.
-See `src/auth/README.md`'s `## Reuse` for the peer-dependency list and the
-step order.
+`src/auth/google/` and `src/auth/auth0/` are independently droppable: each
+is a directory, a scope and one entry in `AuthModule`'s imports. The email
+provider directory no longer exists — it was an empty scaffold (finding `R3`),
+and email/password login is not implemented; write it yourself.
+
+`src/auth/README.md`'s `## Reuse` is the human version of this section — the
+peer-dependency list and the step order. Keep the two congruent.
 
 ## Known gaps
 

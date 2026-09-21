@@ -178,3 +178,33 @@ defines `S3ScopeConfig` and is registered in `src/app.module.ts` (invariant `T2`
 - `forRoot` is useful for simple/no-config adapters (for example `LocalAdapterService`).
 - `forRootAsync` makes config-driven adapter selection and instantiation explicit.
 - For a real cloud provider like S3, `forRootAsync` is the standard path.
+
+## Reuse
+
+**Two supported workflows.** Clone the template whole, or lift only the modules
+you need — this one is written for both. What follows is the second case: what
+`src/cloud-storage/` needs in order to compile in another project.
+
+**What travels with it.** Copy `src/cloud-storage/abstract/` plus the adapters
+you want, then bring:
+
+- `src/common/observability/logger/` — `abstract/cloud-storage.service.ts`, the
+  abstract module and the mock all reference `LoggerService`.
+- `src/config-provider/abstract/` — only if you take `s3-adapter/`, whose
+  `config/s3.scope.ts` imports the scope helpers. `local-adapter/` needs none.
+
+**Peer dependencies.**
+
+```bash
+pnpm add @nestjs/swagger class-validator          # abstract/
+pnpm add -D @types/multer                         # abstract/
+pnpm add @aws-sdk/client-s3 @aws-sdk/s3-request-presigner   # s3-adapter/
+pnpm add uuid                                     # local-adapter/
+```
+
+**What to drop.** `abstract/cloud-storage.controller.ts` is a default REST
+surface, not part of the contract — leave it out if the target project brings
+its own routes. Nothing else in the module references it.
+
+**Removing it from the template instead.** Nothing imports
+`src/cloud-storage/`; it comes out in three edits.

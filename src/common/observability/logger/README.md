@@ -342,3 +342,30 @@ pnpm add winston
 3. Call `this.telemetryHook?.(level, input, context)` at the end of each method
    so the hook fires automatically when wired.
 4. Register it with `LoggerAbstractModule.forRoot` or `forRootAsync`.
+
+## Reuse
+
+**Two supported workflows.** Clone the template whole, or lift only the modules
+you need — this one is written for both. What follows is the second case: what
+`src/common/observability/logger/` needs in order to compile in another project.
+
+**What travels with it.** Nothing from another module. This directory sits in
+the platform tier and five modules import *from* it — `analytics`,
+`cloud-storage`, `config-provider`, `email` and `queues` all take an optional
+`LoggerService` — so taking any of those means taking this one.
+
+Copy the directory minus the adapters you do not want, and take `PRACTICES.md`
+with it: the practices are the valuable half.
+
+**Peer dependencies.**
+
+```bash
+pnpm add class-transformer      # abstract/ imports ClassConstructor
+pnpm add pino pino-pretty       # pino-adapter/ (pino-pretty for the dev preset)
+pnpm add winston                # winston-adapter/
+```
+
+`nest-adapter/` needs only `@nestjs/common`.
+
+**Removing it from the template instead.** You cannot, while any of those five
+modules is still present.
