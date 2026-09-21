@@ -45,12 +45,21 @@ signal, not a debugging one — do not use `capture()` in place of a log line.
 
 ## Tests
 
-Only `abstract/analytics-abstract.module.unit.spec.ts` exists today — it
-covers `forRoot`/`forRootAsync` wiring, not `ConsoleAdapterService` or
-`PosthogAdapterService` behavior. A new adapter test constructs the service
-directly (`new PosthogAdapterService(config)`), following
-`src/common/observability/logger/nest-adapter/nest-logger.adapter.unit.spec.ts`'s
-pattern of spying on the underlying client rather than booting Nest.
+`abstract/analytics-abstract.module.unit.spec.ts` covers `forRoot` /
+`forRootAsync` wiring. Both adapters have their own spec, constructed with
+`new` and with the provider SDK mocked at module level rather than booting
+Nest:
+
+- `console-adapter/console-adapter.service.unit.spec.ts` — the event is logged
+  and said to be unsent, both flag methods resolve falsy, and the logger
+  fallback of rule 4 holds.
+- `posthog-adapter/posthog-adapter.service.unit.spec.ts` — the client is built
+  from the config, `capture()` swallows a client failure instead of surfacing
+  it (rule 2), an unknown flag reads as `false` rather than `undefined`,
+  `onModuleDestroy` actually awaits the flush (rule 5), and the API key never
+  reaches a log line.
+
+A new adapter test follows the same shape.
 
 ## Reuse
 
@@ -63,8 +72,9 @@ those too, or replace the `logger?:` parameter with a different default.
 
 ## Known gaps
 
-- No adapter-level tests for `ConsoleAdapterService` or `PosthogAdapterService`
-  — only the abstract module's wiring is covered.
+- **`G1`** — ~~no adapter-level tests for `ConsoleAdapterService` or
+  `PosthogAdapterService`; only the abstract module's wiring was covered.~~
+  **Fixed on `test/coverage-remaining`:** both adapters have a spec.
 - ~~`config/analytics.scope.ts`'s `validate` function takes an untyped `raw`
   parameter, relying on `tsconfig.json` not being in strict mode (`TS1`) to
   avoid a `noImplicitAny` error.~~ **Fixed on `chore/typescript-strict`:** it
