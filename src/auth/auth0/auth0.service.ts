@@ -6,7 +6,7 @@ import { Exceptions } from '../../common/exception/exceptions';
 import { User } from '../../database/entities/user.entity';
 import { AuthType } from '../../database/entities/auth-type.enum';
 import { AuthTokenService } from '../core/auth-token/auth-token.service';
-import { auth0Scope, Auth0ScopeConfig } from './config/auth0.scope';
+import { auth0Scope, type Auth0ScopeConfig } from './config/auth0.scope';
 import { LoggerService } from '../../common/observability/logger/abstract/logger.service';
 import { NestLoggerAdapter } from '../../common/observability/logger/nest-adapter/nest-logger.adapter';
 

@@ -12,7 +12,7 @@ import {
 } from '../abstract/producer/queue-producer.error';
 import {
   SQS_RESERVED_HEADERS,
-  SqsProducerAdapterOptions,
+  type SqsProducerAdapterOptions,
 } from './sqs-adapter.interfaces';
 import { resolveQueueUrl } from './sqs-queue-url.util';
 import { assertSupportedDeliveryOptions } from '../abstract/producer/queue-delivery-options.util';

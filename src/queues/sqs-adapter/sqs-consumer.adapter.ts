@@ -6,7 +6,7 @@ import {
   QueueConsumerError,
   QUEUE_CONSUMER_ERRORS,
 } from '../abstract/consumer/queue-consumer.error';
-import { SqsConsumerAdapterOptions } from './sqs-adapter.interfaces';
+import { type SqsConsumerAdapterOptions } from './sqs-adapter.interfaces';
 import { SqsMessageContext } from './sqs-message.context';
 import { resolveQueueUrl } from './sqs-queue-url.util';
 

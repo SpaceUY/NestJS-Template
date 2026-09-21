@@ -4,7 +4,7 @@ import {
   Injectable,
   NotFoundException,
 } from '@nestjs/common';
-import { auth0Scope, Auth0ScopeConfig } from './config/auth0.scope';
+import { auth0Scope, type Auth0ScopeConfig } from './config/auth0.scope';
 
 /**
  * Makes `AUTH0_ENABLED=false` mean the route is gone. See

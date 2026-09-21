@@ -4,7 +4,7 @@ import {
   Injectable,
   NotFoundException,
 } from '@nestjs/common';
-import { googleScope, GoogleScopeConfig } from './config/google.scope';
+import { googleScope, type GoogleScopeConfig } from './config/google.scope';
 
 /**
  * Makes `GOOGLE_OAUTH_ENABLED=false` mean the routes are gone.

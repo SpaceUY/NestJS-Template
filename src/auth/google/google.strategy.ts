@@ -3,7 +3,7 @@ import { PassportStrategy } from '@nestjs/passport';
 import { InjectRepository } from '@nestjs/typeorm';
 import { Repository } from 'typeorm';
 import { Strategy, VerifyCallback } from 'passport-google-oauth20';
-import { googleScope, GoogleScopeConfig } from './config/google.scope';
+import { googleScope, type GoogleScopeConfig } from './config/google.scope';
 import { User } from '../../database/entities/user.entity';
 import { AuthType } from '../../database/entities/auth-type.enum';
 

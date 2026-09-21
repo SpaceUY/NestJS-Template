@@ -7,7 +7,7 @@ import {
   CACHE_ADAPTER_CLIENT,
   CACHE_LOGGER,
 } from '../../abstract/cache.tokens';
-import { StandardLogger } from '../utils/logger';
+import { type StandardLogger } from '../utils/logger';
 
 @Injectable()
 export class RedisCacheKeysExtension extends CacheKeysExtension {

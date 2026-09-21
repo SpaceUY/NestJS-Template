@@ -1,4 +1,11 @@
 {
   "extends": "./tsconfig.json",
+  "compilerOptions": {
+    // TypeScript 6 refuses to infer this (TS5011). It has always been `./src`
+    // in effect — the exclusions below leave `src/` as the only source root —
+    // and `start:prod` runs `node dist/main`, so naming it keeps the emitted
+    // layout exactly where it was.
+    "rootDir": "./src"
+  },
   "exclude": ["node_modules", "test", "dist", "**/*spec.ts", "migrations", "ormconfig.ts"]
 }

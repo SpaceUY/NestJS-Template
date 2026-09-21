@@ -7,7 +7,7 @@ import {
   QUEUE_CONSUMER_ERRORS,
 } from '../abstract/consumer/queue-consumer.error';
 import {
-  BullMqConsumerAdapterOptions,
+  type BullMqConsumerAdapterOptions,
   BullMqJobEnvelope,
 } from './bullmq-adapter.interfaces';
 import { BullMqMessageContext } from './bullmq-message.context';

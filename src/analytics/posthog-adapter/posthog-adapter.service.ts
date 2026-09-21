@@ -2,7 +2,7 @@ import { Injectable, OnModuleDestroy } from '@nestjs/common';
 import { PostHog } from 'posthog-node';
 import { AnalyticsService } from '../abstract/analytics.service';
 import { CaptureEventInput } from '../abstract/analytics.interfaces';
-import { PosthogAdapterConfig } from './posthog-adapter-config.interface';
+import { type PosthogAdapterConfig } from './posthog-adapter-config.interface';
 import { LoggerService } from '../../common/observability/logger/abstract/logger.service';
 import { NestLoggerAdapter } from '../../common/observability/logger/nest-adapter/nest-logger.adapter';
 

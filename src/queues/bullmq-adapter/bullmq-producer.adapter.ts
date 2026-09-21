@@ -9,7 +9,7 @@ import {
 import { assertSupportedDeliveryOptions } from '../abstract/producer/queue-delivery-options.util';
 import {
   BullMqAddJobParams,
-  BullMqProducerAdapterOptions,
+  type BullMqProducerAdapterOptions,
 } from './bullmq-adapter.interfaces';
 
 // BullMQ requires a job name; the worker processes all names regardless. This

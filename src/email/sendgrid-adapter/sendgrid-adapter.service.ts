@@ -5,7 +5,7 @@ import {
   SendRenderedEmailParams,
   SendRenderedEmailMultipleParams,
 } from '../abstract/email.interface';
-import { SendgridAdapterConfig } from './sendgrid-adapter-config.interface';
+import { type SendgridAdapterConfig } from './sendgrid-adapter-config.interface';
 import * as sgMail from '@sendgrid/mail';
 import { ClientResponse } from '@sendgrid/mail';
 import { executeHtmlEmailSend } from '../utils/execute-html-email-send';

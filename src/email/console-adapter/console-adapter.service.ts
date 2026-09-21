@@ -6,7 +6,7 @@ import {
   SendRenderedEmailMultipleParams,
   SendRenderedEmailParams,
 } from '../abstract/email.interface';
-import { ConsoleAdapterConfig } from './console-adapter-config.interface';
+import { type ConsoleAdapterConfig } from './console-adapter-config.interface';
 
 @Injectable()
 export class ConsoleAdapterService extends EmailService {

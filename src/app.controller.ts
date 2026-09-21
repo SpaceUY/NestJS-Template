@@ -1,6 +1,6 @@
 import { Controller, Get, Inject } from '@nestjs/common';
 import { AppService } from './app.service';
-import { appScope, AppScopeConfig } from './app.scope';
+import { appScope, type AppScopeConfig } from './app.scope';
 
 @Controller()
 export class AppController {

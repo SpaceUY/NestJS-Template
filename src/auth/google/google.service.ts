@@ -4,7 +4,7 @@ import { Repository } from 'typeorm';
 import { OAuth2Client } from 'google-auth-library';
 import { RequestException } from '../../common/exception/core/ExceptionBase';
 import { Exceptions } from '../../common/exception/exceptions';
-import { googleScope, GoogleScopeConfig } from './config/google.scope';
+import { googleScope, type GoogleScopeConfig } from './config/google.scope';
 import { User } from '../../database/entities/user.entity';
 import { AuthType } from '../../database/entities/auth-type.enum';
 import { AuthTokenService } from '../core/auth-token/auth-token.service';
