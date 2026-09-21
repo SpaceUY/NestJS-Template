@@ -18,15 +18,7 @@ export default tseslint.config(
     plugins: {
       prettier: prettierPlugin,
     },
-    settings: {
-      'import/resolver': {
-        node: {
-          extensions: ['.js', '.jsx', '.ts', '.tsx', '.d.ts'],
-        },
-      },
-    },
     rules: {
-      'import/no-unresolved': 'off',
       indent: 'off',
       'arrow-parens': 'off',
       'no-await-in-loop': 'off',
@@ -36,9 +28,7 @@ export default tseslint.config(
       'no-underscore-dangle': 'off',
       'no-useless-constructor': 'off',
       'class-methods-use-this': 'off',
-      'import/prefer-default-export': 'off',
       'comma-dangle': ['error', 'always-multiline'],
-      '@typescript-eslint/interface-name-prefix': 'off',
       '@typescript-eslint/explicit-member-accessibility': 'off',
       '@typescript-eslint/explicit-module-boundary-types': 'off',
       'lines-between-class-members': ['error', 'always', { exceptAfterSingleLine: true }],
