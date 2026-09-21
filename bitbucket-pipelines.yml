@@ -15,7 +15,9 @@ definitions:
           - pnpm run docs:check
           - pnpm run modularity:check
           - pnpm run lint:ci
-          - pnpm test
+          # test:cov, not test: the coverageThreshold in package.json is the
+          # floor, and it only fails the build when coverage is collected.
+          - pnpm run test:cov
           - pnpm run build
         artifacts:
           - dist/**
