@@ -226,6 +226,92 @@ A working version of exactly this graph is compiled and asserted in
 `src/queues/abstract/tests/queue-consumer-feature.module.di.spec.ts` — read
 that file rather than trusting this snippet, since it is the one CI runs.
 
+### Switching the template's broker
+
+`src/app.module.ts` wires **BullMQ** and only BullMQ. The other two adapters are
+complete and tested but not registered anywhere, so choosing one is an edit to
+that file, not a config flag. All three edits have the same shape — swap the two
+adapter classes and the scope they inject — and the rest of the template does
+not change, because consumers depend on `QueueProducerService` /
+`QueueConsumerService`, never on an adapter (`T1`).
+
+**To RabbitMQ.** The config scope already exists and is already registered:
+`rabbitmqScope` is in `src/app.module.ts`'s `scopes` array and `RABBITMQ_URL` is
+in `.env.example`. Only the two registrations change:
+
+```ts
+import { RabbitMqProducerAdapter } from './queues/rabbitmq-adapter/rabbitmq-producer.adapter';
+import { RabbitMqConsumerAdapter } from './queues/rabbitmq-adapter/rabbitmq-consumer.adapter';
+import { rabbitmqScope, RabbitmqScopeConfig } from './queues/rabbitmq-adapter/config/rabbitmq.scope';
+
+QueueProducerModule.forRootAsync({
+  isGlobal: true,
+  inject: [rabbitmqScope.KEY],
+  useFactory: (rabbitmq: RabbitmqScopeConfig) =>
+    new RabbitMqProducerAdapter({ url: rabbitmq.url }),
+}),
+QueueConsumerModule.forRootAsync({
+  isGlobal: true,
+  inject: [rabbitmqScope.KEY],
+  useFactory: (rabbitmq: RabbitmqScopeConfig) =>
+    new RabbitMqConsumerAdapter({ url: rabbitmq.url }),
+}),
+```
+
+`redisScope` stays where it is — `src/cache/` still uses it.
+
+**To SQS.** One extra step: **SQS has no config scope in this template.**
+`!src/queues/sqs-adapter/config/sqs.scope.ts` does not exist, and the snippets
+further down that say `inject: [awsConfig.KEY]` are illustrative, not a file you
+can import. Write the scope first, next to the adapter, the way every other one
+here is written (`T2`):
+
+```ts
+// src/queues/sqs-adapter/config/sqs.scope.ts
+export type SqsScopeConfig = { region: string; endpoint?: string };
+
+export const sqsScope = defineConfigScope<SqsScopeConfig>(
+  'sqs',
+  { region: from.env('AWS_REGION'), endpoint: from.env('SQS_ENDPOINT') },
+  (raw) => { /* Joi validate, as in rabbitmq.scope.ts */ },
+);
+```
+
+`AWS_REGION` is already in `.env.example`; add `SQS_ENDPOINT` (a LocalStack or
+ElasticMQ URL) if you want one locally. Then register the scope in
+`src/app.module.ts`'s `scopes` array and swap the two adapters:
+
+```ts
+QueueProducerModule.forRootAsync({
+  isGlobal: true,
+  inject: [sqsScope.KEY],
+  useFactory: (sqs: SqsScopeConfig) => new SqsProducerAdapter({ region: sqs.region }),
+}),
+QueueConsumerModule.forRootAsync({
+  isGlobal: true,
+  inject: [sqsScope.KEY],
+  useFactory: (sqs: SqsScopeConfig) =>
+    new SqsConsumerAdapter({ region: sqs.region, waitTimeSeconds: 20 }),
+}),
+```
+
+Leave the credentials out of the scope unless you are running against a real
+AWS account from a laptop: both adapters fall back to the default credential
+chain, which is the IAM role in a deployed environment.
+
+**What does not transfer between brokers.** The contract is broker-agnostic;
+three behaviours are not, and switching changes them:
+
+| | BullMQ | RabbitMQ | SQS |
+|---|---|---|---|
+| `nack({ requeue: false })` | throws `UnrecoverableError` — the job fails for good, remaining attempts skipped | `channel.nack(..., requeue: false)` — dead-lettered if the queue has a DLX, dropped otherwise | **no-op** — the message reappears after its visibility timeout, and reaches a DLQ only through a redrive policy |
+| Parallelism | `concurrency` per worker | `prefetch` per channel | none inside a batch; run more instances |
+| Delivery | Redis push | broker push | long poll |
+
+Each adapter's own section below is the detail. Read the one you are switching
+to before switching — `nack({ requeue: false })` in particular silently means
+something different on SQS.
+
 ## Acknowledgment Contract
 
 Implicit acknowledgment is the **adapter's responsibility**. Adapters track
