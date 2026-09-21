@@ -4,7 +4,7 @@ import { Cluster, Redis } from 'ioredis';
 import { CACHE_ERRORS, CacheError } from '../abstract/cache.error';
 import { CacheService } from '../abstract/cache.service';
 import { createRedisClient, verifyConnection } from './client';
-import { RedisAdapterConfig } from './redis-adapter-config.interface';
+import { type RedisAdapterConfig } from './redis-adapter-config.interface';
 import { StandardLogger, adaptLogger } from './utils/logger';
 
 @Injectable()

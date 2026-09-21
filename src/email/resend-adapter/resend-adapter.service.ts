@@ -5,7 +5,7 @@ import {
   SendRenderedEmailParams,
   SendRenderedEmailMultipleParams,
 } from '../abstract/email.interface';
-import { ResendAdapterConfig } from './resend-adapter-config.interface';
+import { type ResendAdapterConfig } from './resend-adapter-config.interface';
 import { CreateBatchResponse, CreateEmailResponse, Resend } from 'resend';
 import { executeHtmlEmailSend } from '../utils/execute-html-email-send';
 

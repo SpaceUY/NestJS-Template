@@ -6,7 +6,7 @@ import {
   QueueConsumerError,
   QUEUE_CONSUMER_ERRORS,
 } from '../abstract/consumer/queue-consumer.error';
-import { RabbitMqConsumerAdapterOptions } from './rabbitmq-adapter.interfaces';
+import { type RabbitMqConsumerAdapterOptions } from './rabbitmq-adapter.interfaces';
 import { RabbitMqMessageContext } from './rabbitmq-message.context';
 
 type ConsumerCallback = (

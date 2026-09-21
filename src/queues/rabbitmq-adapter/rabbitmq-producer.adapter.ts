@@ -10,7 +10,7 @@ import {
 import {
   PublishToExchangeParams,
   RABBITMQ_RESERVED_HEADERS,
-  RabbitMqProducerAdapterOptions,
+  type RabbitMqProducerAdapterOptions,
 } from './rabbitmq-adapter.interfaces';
 import { assertSupportedDeliveryOptions } from '../abstract/producer/queue-delivery-options.util';
 

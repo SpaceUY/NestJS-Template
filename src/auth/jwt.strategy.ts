@@ -9,7 +9,7 @@ import {
 } from 'passport-jwt';
 import { RequestException } from '../common/exception/core/ExceptionBase';
 import { Exceptions } from '../common/exception/exceptions';
-import { jwtScope, JwtScopeConfig } from './config/jwt.scope';
+import { jwtScope, type JwtScopeConfig } from './config/jwt.scope';
 import { User } from '../database/entities/user.entity';
 import { AuthTokenPayload } from './core/auth-token/auth-token.service';
 

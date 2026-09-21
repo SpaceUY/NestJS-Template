@@ -132,9 +132,13 @@ has what that does and does not cover.
    genuinely Auth0-signed; only after both checks pass does it find-or-create
    the `User` by `auth0Id` and return the app's own JWT via `AuthTokenService`,
    the same as `GoogleController`'s callback does. No local JWKS verification:
-   `jwks-rsa`'s `jose` dependency is ESM-only and breaks this template's Jest
-   setup, and it would be redundant work for an endpoint that only runs once
-   per login, not on every request.
+   it would be redundant work for an endpoint that only runs once per login,
+   not on every request. That is now the whole reason. The other half of it —
+   that `jwks-rsa`'s ESM-only `jose` dependency broke this template's Jest
+   setup — stopped being true on 2026-09-21, when the Nest 12 upgrade moved
+   the `test` scripts to `node --experimental-vm-modules`; an ESM dependency
+   loads under Jest here now. If you revisit the decision, revisit it on the
+   merits above, not on that constraint.
 
    The client must request the `AUTH0_AUDIENCE` value as the `audience` when it
    obtains the access token from Auth0 (e.g. the SPA SDK's `audience` option).

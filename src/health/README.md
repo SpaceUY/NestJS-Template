@@ -73,7 +73,9 @@ own failure with the error's class name. This is written up in
 Unlike the extraction figures in the root `README.md`, which measure
 `tsc --noEmit` and say so, this module was exercised by booting the app on
 2026-09-21 against the `postgres` and `redis` containers from
-`docker-compose.yml`, with the initial migration run on an empty database:
+`docker-compose.yml`, with the initial migration run on an empty database. The
+run below was repeated on the same day against `@nestjs/terminus` 12.1.0 after
+the Nest 12 upgrade, with the same outcome in every row:
 
 | Scenario | `GET /health/live` | `GET /health` |
 |---|---|---|
@@ -81,6 +83,7 @@ Unlike the extraction figures in the root `README.md`, which measure
 | Redis stopped | **200** | **503** |
 | Redis restored | 200 | 200 |
 | Postgres stopped | **200** | **503** |
+| Postgres restored | 200 | 200 |
 
 The two bold rows are the point of the split: with a dependency down the
 container is *not* restarted, and the load balancer *does* stop routing to it.
@@ -98,6 +101,13 @@ Two things that only showed up by running it:
 And it confirmed the first entry in `src/health/CLAUDE.md`'s `## Known gaps`:
 the 503 body was `{"success":false,"statusCode":503,"message":"Service
 Unavailable Exception"}`, with no indication of which dependency failed.
+
+One thing the terminus 12 re-run changed, in the healthy body rather than the
+failing one: every indicator now reports its own `responseTime`, so `GET
+/health` answers
+`{"database":{"responseTime":16,"status":"up"},"cache":{"responseTime":3,"status":"up"}}`
+where 11.x sent `{"database":{"status":"up"}}`. Nothing reads that field here,
+but a dashboard or alert parsing the body elsewhere will see the new key.
 
 ## Tuning the probes
 
@@ -120,15 +130,27 @@ HTTP indicator; add it to the readiness array in
 
 ```ts
 const indicators: HealthIndicatorFunction[] = [
-  () => this.database.pingCheck('database', { timeout: DATABASE_PING_TIMEOUT_MS }),
+  () => this.database.pingCheck('database').withTimeout(DATABASE_PING_TIMEOUT_MS),
   () => this.http.pingCheck('billing', 'https://api.example.com/ping'),
 ];
 ```
 
-For something with no terminus indicator, copy the shape of
-`src/health/cache.health-indicator.ts`: inject the **abstract** service (`T1`),
-race the probe against a timeout, clear the timer, and report the error's class
-name rather than the provider's message (`T4`).
+`withTimeout` is terminus 12's spelling; the old `{ timeout }` option still
+works but is deprecated, and unlike the option the builder hands the probe an
+`AbortSignal`, so a hung connection is cancelled rather than abandoned.
+
+For something with no terminus indicator you have two shapes to choose from,
+and the choice is about what reaches the caller:
+
+- `healthIndicatorService.check('x').attempt(fn).withTimeout(ms)` is terminus's
+  own, and the shortest. It reports a failure as
+  `down({ message: <the thrown error's message> })` — fine for an internal
+  dependency whose errors say nothing sensitive.
+- `src/health/cache.health-indicator.ts`'s shape — inject the **abstract**
+  service (`T1`), race the probe against a timeout, clear the timer, report the
+  error's *class name* (`T4`) — when the provider's message can carry a host,
+  a port or a credential, as `ioredis`'s does. That is the whole reason the
+  cache indicator is written out by hand instead of using `attempt`.
 
 Two things not to do: do not add the dependency to `liveness()`, and do not
 report a dependency that is not registered as `up` — leave it out, the way
@@ -155,13 +177,15 @@ Copy `src/health/` whole.
 **Peer packages:** `@nestjs/terminus`, plus `@nestjs/typeorm` and `typeorm`
 for the database indicator.
 
-**Pin terminus to 11.x.** Version 12 is ESM-only (`"type": "module"`). Node 24
-can `require()` it, so the application boots, but Jest under this template's
-CommonJS setup cannot load it and every spec touching the module dies with
-`SyntaxError: Unexpected token 'export'`. This template is CommonJS by
-contract — see the root `README.md`, "Prerequisite — the destination's module
-system". If the destination project is ESM, use 12.x instead and rewrite the
-indicator against its `HealthIndicatorService.attempt().withTimeout()` API.
+**Terminus is on 12.x, and it is ESM-only** (`"type": "module"`, no CommonJS
+build) — as is every Nest 12 package. This template still *emits* CommonJS and
+loads it through Node's `require(esm)`, which works from Node 22.12 on, so the
+application boots normally. The one thing that does not come for free is Jest:
+a CommonJS test cannot load an ESM dependency unless Jest is started as
+`node --experimental-vm-modules ./node_modules/jest/bin/jest.js`. Copy this
+repo's `test`/`test:cov` scripts along with the module, or every spec touching
+it dies with `SyntaxError: Unexpected token 'export'`. A destination on Vitest,
+or one that is ESM throughout, needs no such flag.
 
 **Companion directories,** both reached through `@Optional()` injection, so the
 module boots without either — though the imports must still resolve:

@@ -116,11 +116,19 @@ boot without it, but the import has to resolve; bring that subtree or replace
 the two constructors. The interceptor also needs `rxjs`, plus a real
 non-import dependency: `src/common/middleware/response.interceptor.ts:54`
 (`user.id`) only type-checks because of the ambient global type augmentation
-the repo root ships in `@types/express/index.d.ts`, loaded solely because
-`tsconfig.json` sets `"typeRoots": ["@types", "./node_modules/@types"]`. No
-import statement references it. Copying the interceptor without also copying
-the root `@types/` directory and adding that `typeRoots` entry to the
-destination project's `tsconfig.json` leaves it failing to compile (`EXT7`).
+the repo root ships in `@types/express/index.d.ts`. No import statement
+references it; it applies because `tsconfig.json` declares no `include`, so
+every `.d.ts` under the project root is part of the program. Copy the root
+`@types/` directory into the destination and make sure its `tsconfig.json`
+actually compiles that path — a destination with `"include": ["src"]` will
+not, and the file has to move under `src/` there. Without it the interceptor
+fails to compile (`EXT7`).
+
+Was `typeRoots`; it is not any more. Under TypeScript 6 a `typeRoots` entry no
+longer pulls `@types/*` packages in automatically, so this repo names them in
+`"types": ["node", "jest"]` instead, and the local augmentation is picked up
+as an ordinary source file. Both facts matter to a destination on TypeScript 6:
+if it sets `types`, whatever it leaves out of that list stops being loaded.
 
 `src/common/README.md`'s `## Reuse` is the human version of this section. Keep
 the two congruent (`T7`).

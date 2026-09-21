@@ -1,5 +1,5 @@
 import { Inject, Module, Optional } from '@nestjs/common';
-import { auth0Scope, Auth0ScopeConfig } from './config/auth0.scope';
+import { auth0Scope, type Auth0ScopeConfig } from './config/auth0.scope';
 import { AuthTokenModule } from '../core/auth-token/auth-token.module';
 import { Auth0Controller } from './auth0.controller';
 import { Auth0Service } from './auth0.service';

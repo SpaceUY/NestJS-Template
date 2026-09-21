@@ -3,7 +3,7 @@ import { PassportModule } from '@nestjs/passport';
 import { getRepositoryToken } from '@nestjs/typeorm';
 import { Repository } from 'typeorm';
 import { OAuth2Client } from 'google-auth-library';
-import { googleScope, GoogleScopeConfig } from './config/google.scope';
+import { googleScope, type GoogleScopeConfig } from './config/google.scope';
 import { AuthTokenModule } from '../core/auth-token/auth-token.module';
 import { GoogleController } from './google.controller';
 import { GoogleService } from './google.service';

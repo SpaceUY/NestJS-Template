@@ -95,9 +95,12 @@ so it is the first thing to lift and the last thing to delete.
   knowing about:
   `src/common/middleware/response.interceptor.ts` only type-checks because of
   the ambient `Express.User` augmentation the repo root ships in
-  `@types/express/index.d.ts`, loaded via `tsconfig.json`'s `typeRoots`
-  setting. Copy that `@types/` directory and the `typeRoots` entry along with
-  it, or the interceptor fails to compile (`EXT7`).
+  `@types/express/index.d.ts`. Nothing imports it — it applies because this
+  repo's `tsconfig.json` sets no `include`, so every `.d.ts` under the project
+  root is compiled. Copy that `@types/` directory across and check that the
+  destination's `tsconfig.json` really covers where you put it (under
+  `"include": ["src"]` it does not, so move the file into `src/`). Otherwise
+  the interceptor fails to compile (`EXT7`).
 
 **Removing it from the template instead.** You cannot, until every module that
 imports it has gone. `pnpm run modularity:check -- --report` names them.

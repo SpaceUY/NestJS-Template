@@ -1,6 +1,14 @@
 {
   "compilerOptions": {
-    "module": "commonjs",
+    // Nest 12 ships pure ESM with an `exports` map and no CommonJS build, so
+    // `node`/`node10` resolution can no longer see it correctly. `nodenext`
+    // reads the map; because this package has no `"type": "module"`, the emit
+    // stays CommonJS and Node's `require(esm)` loads Nest at runtime. That is
+    // the layout `nest new --type cjs` generates for 12.x, and it is what
+    // keeps `T5`'s extensionless relative imports legal.
+    "module": "nodenext",
+    "moduleResolution": "nodenext",
+    "resolvePackageJsonExports": true,
     "declaration": true,
     "removeComments": true,
     "emitDecoratorMetadata": true,
@@ -10,12 +18,31 @@
     "target": "es2020",
     "sourceMap": true,
     "outDir": "./dist",
-    "baseUrl": "./",
+    // TypeScript 6 stops inferring this (TS5011), and ts-jest compiles one
+    // file at a time, so without it every spec fails with a different guess.
+    // `tsconfig.build.json` narrows it to `./src` for the emit that ships.
+    "rootDir": ".",
     "incremental": true,
     "skipLibCheck": true,
     "strict": true,
     "forceConsistentCasingInFileNames": false,
     "noFallthroughCasesInSwitch": false,
-    "typeRoots": ["@types", "./node_modules/@types"]
+    // `@nestjs/throttler@6.7.0`'s declarations deep-import
+    // `@nestjs/common/interfaces`, a specifier Nest 12's `exports` map resolves
+    // to a file that does not exist (`./interfaces.js`; the real entry is
+    // `./interfaces/index.js`). Without this the import silently degrades to
+    // `any` under `skipLibCheck` and `ThrottlerAsyncOptions` demands an
+    // `imports` key it does not really need. It is the only such specifier in
+    // the tree; delete this the day throttler ships a Nest 12 build.
+    "paths": {
+      "@nestjs/common/interfaces": [
+        "./node_modules/@nestjs/common/interfaces/index.d.ts"
+      ]
+    },
+    // Listed explicitly because TypeScript 6 no longer auto-includes every
+    // `@types/*` package. `./@types/express/index.d.ts` is picked up as a
+    // source file, not through `typeRoots`, so the `Express.User` augmentation
+    // still applies (`EXT7`).
+    "types": ["node", "jest"]
   }
 }

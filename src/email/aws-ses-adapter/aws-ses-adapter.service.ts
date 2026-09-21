@@ -5,7 +5,7 @@ import {
   SendRenderedEmailParams,
   SendRenderedEmailMultipleParams,
 } from '../abstract/email.interface';
-import { AwsSesAdapterConfig } from './aws-ses-adapter-config.interface';
+import { type AwsSesAdapterConfig } from './aws-ses-adapter-config.interface';
 import {
   SESClient,
   SendEmailCommand,

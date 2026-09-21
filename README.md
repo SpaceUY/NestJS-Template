@@ -81,29 +81,44 @@ The general recipe:
 2. Copy each companion directory that module depends on (see below) into the
    destination's `src/`.
 3. If `common` is one of those companions, also copy the repo-root `@types/`
-   directory and add `"typeRoots": ["@types", "./node_modules/@types"]` to the
-   destination's `tsconfig.json`. `common` depends on the ambient `Express.User`
+   directory, and put it somewhere the destination's `tsconfig.json` actually
+   compiles — this repo declares no `include`, so a `.d.ts` at the project root
+   is part of the program; a destination with `"include": ["src"]` needs the
+   file under `src/` instead. `common` depends on the ambient `Express.User`
    type declared there — see `src/common/CLAUDE.md`'s `## Reuse` section for
    the details, since this is the dependency with no import statement, so no
    amount of reading the source will surface it. (The
    `src/common/observability/logger/` subtree on its own does not need it: the
-   queues measurement below compiled clean without `typeRoots`.)
+   queues measurement below compiled clean without it.)
 4. Install the module's npm packages (below).
 5. Register the module in the destination's `src/app.module.ts`, the way this
    template's own `src/app.module.ts` does.
 
-**Prerequisite — the destination's module system.** A project scaffolded today
-by `@nestjs/cli@latest` (measured 2026-09-19 against `@nestjs/cli` 12.0.3 and
-TypeScript 6.0.3) is ESM: `"type": "module"` in `package.json` and
-`"module"`/`"moduleResolution": "nodenext"` in `tsconfig.json`. That resolution
-mode requires an explicit `.js` extension on every relative import. This
-template is CommonJS — `tsconfig.json` sets `"module": "commonjs"` and
-`package.json` has no `"type"` field — and none of its source writes
-extensioned relative imports, so **no module from this template compiles in a
-default modern scaffold** until the destination either sets
-`"module": "commonjs"` or every relative import in the copied code gains a
-`.js` extension. This affects every module, not just the ones below. Evidence:
-`docs/audit/evidence/extract-queues-2026-09-19.txt`.
+**Prerequisite — the destination's module system.** `nest new` asks which
+module system you want and **defaults to ESM**: `"type": "module"` in
+`package.json`, `nodenext` resolution, and Vitest. Under `"type": "module"`
+every relative import needs an explicit `.js` extension, and no file in this
+template writes one, so **no module from this template compiles into a default
+scaffold** until either the destination drops `"type": "module"` or every
+relative import in the copied code gains a `.js` extension.
+
+The other answer to that prompt is the one that fits. `nest new --type cjs`
+produces `"module"`/`"moduleResolution": "nodenext"` with no `"type"` field
+and Jest — which is exactly this repo's `tsconfig.json` since the 2026-09-21
+Nest 12 upgrade. Into that scaffold a module copies across unchanged.
+Extensionless relative imports stay legal because the package is CommonJS;
+`nodenext` is only how TypeScript reads the `exports` map that every Nest 12
+package now ships. Evidence for the older, wider gap:
+`docs/audit/evidence/extract-queues-2026-09-19.txt`, measured 2026-09-19
+against `@nestjs/cli` 12.0.3 and TypeScript 6.0.3, before this template moved
+to `nodenext`.
+
+One thing does not travel with the source, whichever answer you give: **a
+CommonJS destination on Jest must start Jest with
+`node --experimental-vm-modules ./node_modules/jest/bin/jest.js`**, or any
+spec that reaches an ESM package — `@nestjs/terminus`, or `@nestjs/common`
+itself — dies with `SyntaxError: Unexpected token 'export'`. Copy this repo's
+`test` scripts along with the code. On Vitest the question does not arise.
 
 What that costs, measured by copying each module alone into a fresh `nest new`
 project and running `tsc --noEmit`. The 2026-09-19 `queues` run is not
@@ -172,10 +187,13 @@ What the agent should then do, in this order:
    the destination's `package.json` for `"type": "module"` and its
    `tsconfig.json` for `"moduleResolution"`. If the destination is ESM, this
    is a real fork in the road and the wrong moment to guess — the prerequisite
-   above explains why, and the two ways out are to switch the destination to
-   CommonJS or to add a `.js` extension to every relative import in the copied
-   code. Say which one you are taking and why, rather than discovering it as a
-   wall of `TS2307`s later.
+   above explains why, and the two ways out are to drop `"type": "module"` or
+   to add a `.js` extension to every relative import in the copied code. Say
+   which one you are taking and why, rather than discovering it as a wall of
+   `TS2307`s later. Then check how the destination runs Jest: a CommonJS
+   project whose `test` script is a bare `jest` will fail on the first ESM
+   import, and the fix is the `--experimental-vm-modules` invocation in this
+   repo's `package.json`.
 3. **Copy the module, then its companions**, from the `## Reuse` list — not
    from the import errors, which under-report: the `@types/express` ambient
    augmentation that `src/common/middleware/response.interceptor.ts` needs has
@@ -256,6 +274,14 @@ before deleting anything, rather than trusting a copy of it that will drift.
 $ pnpm install                 # pnpm 10.15.1, Node 24.15.0 — never npm or yarn
 $ cp .env.example .env         # then fill the required keys, see below
 ```
+
+NestJS 12, TypeScript 6, Jest 30, Node 24. Two consequences worth knowing
+before the first `pnpm test`: every Nest 12 package is ESM-only, so
+`tsconfig.json` uses `"module": "nodenext"` while still emitting CommonJS (the
+`nest new --type cjs` layout), and the `test` scripts start Jest through
+`node --experimental-vm-modules` because a CommonJS test cannot otherwise load
+an ESM dependency. Run `pnpm test`, never a bare `jest`. `CLAUDE.md`'s
+`## Toolchain` has the rest.
 
 `.env.example` lists every key the code actually reads, grouped by the config
 scope that reads it, and marks which ones are required. Two of them have no

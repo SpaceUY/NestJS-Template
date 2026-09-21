@@ -6,7 +6,7 @@ import {
   ConfigProviderError,
   CONFIG_PROVIDER_ERRORS,
 } from '../abstract/config-provider.error';
-import { EnvConfigAdapterOptions } from './env-config.interfaces';
+import { type EnvConfigAdapterOptions } from './env-config.interfaces';
 
 @Injectable()
 export class EnvConfigAdapter extends ConfigProviderService {

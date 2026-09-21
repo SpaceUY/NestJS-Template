@@ -1,7 +1,7 @@
 import { Inject, Injectable, Optional } from '@nestjs/common';
 import Expo, { ExpoPushErrorTicket, ExpoPushTicket } from 'expo-server-sdk';
 import { EXPO_ADAPTER_PROVIDER_CONFIG } from './expo-adapter-config-provider.const';
-import { ExpoAdapterConfig } from './expo-adapter-config.interface';
+import { type ExpoAdapterConfig } from './expo-adapter-config.interface';
 import { IPushNotification } from '../abstract/push-notification.interface';
 import {
   PUSH_NOTIFICATION_STATUSES,

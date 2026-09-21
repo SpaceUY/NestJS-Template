@@ -8,7 +8,7 @@ import {
   CONFIG_PROVIDER_ERRORS,
 } from '../abstract/config-provider.error';
 import { ReloadableConfigProviderService } from '../abstract/reloadable-config-provider.service';
-import { SecretsManagerAdapterOptions } from './secrets-manager-config.interfaces';
+import { type SecretsManagerAdapterOptions } from './secrets-manager-config.interfaces';
 
 @Injectable()
 export class SecretsManagerConfigAdapter extends ReloadableConfigProviderService {
