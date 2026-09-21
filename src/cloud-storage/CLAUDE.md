@@ -79,11 +79,14 @@ adapter here that suits `forRoot`.
 
 ## Tests
 
-This module is reasonably covered:
+Every file with behaviour has a spec:
 `src/cloud-storage/abstract/cloud-storage-abstract.module.unit.spec.ts`,
+`src/cloud-storage/abstract/cloud-storage.controller.unit.spec.ts`,
 `src/cloud-storage/local-adapter/local-adapter.service.unit.spec.ts` and
-`src/cloud-storage/s3-adapter/s3-adapter.service.unit.spec.ts`. Follow the local
-adapter test: `jest.mock('node:fs/promises')` and `jest.mock('uuid')` at module
+`src/cloud-storage/s3-adapter/s3-adapter.service.unit.spec.ts`. The controller
+spec builds a testing module with `MockCloudStorageService` and pins the three
+guard clauses — a missing file, an empty buffer and a blank key each answer
+`400` without a provider round trip. Follow the local adapter test: `jest.mock('node:fs/promises')` and `jest.mock('uuid')` at module
 level, construct with `new`, assert both the happy path and the thrown
 `CloudStorageError`.
 
@@ -125,3 +128,7 @@ See `docs/audit/2026-09-11-template-audit.md`.
   `src/cloud-storage/abstract/mocks/cloud-storage.service.mock.ts`.
 - **`C1`** — ~~`AWS_REGION` and `AWS_S3_EXPIRES_IN_SECONDS` are missing from
   `.env.example`.~~ **Fixed on `fix/security-defaults`:** both are declared.
+- **`G1`** — ~~`cloud-storage.controller.ts` was the one file here with no
+  spec.~~ **Fixed on `test/coverage-remaining`:**
+  `src/cloud-storage/abstract/cloud-storage.controller.unit.spec.ts` covers the
+  three handlers and their guard clauses.

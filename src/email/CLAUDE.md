@@ -92,11 +92,17 @@ log, and the translation of any provider failure into
 `EMAIL_ERRORS.PROVIDER_REJECTED` with the provider text kept as `cause` data
 rather than as the message. `console-adapter.service.unit.spec.ts` and
 `resend-adapter.service.unit.spec.ts` cover an adapter of each kind on top of
-it. `aws-ses` and `sendgrid` are still untested (finding `G1`); they route
-through the same helper, so an adapter spec there is about the payload it
-builds. Adapters are plain classes — construct with `new`, mock the provider
-SDK at module level with `jest.mock`, assert the mapped payload and the thrown
-`EmailError`.
+it, and `aws-ses-adapter.service.unit.spec.ts` and
+`sendgrid-adapter.service.unit.spec.ts` cover the remaining two: the payload
+each builds for its SDK, the sender and subject defaults, the batch call that
+must not be the single-send one, and — on every failure path — that neither the
+AWS secret nor the SendGrid API key reaches a log line. Adapters are plain
+classes — construct with `new`, mock the provider SDK at module level with
+`jest.mock`, assert the mapped payload and the thrown `EmailError`.
+
+`aws-ses-adapter/` is the one adapter that does not route through
+`executeHtmlEmailSend`: it rethrows the SDK error as-is, so its spec asserts
+the raw rejection rather than an `EmailError`.
 
 `src/email/abstract/mocks/email.service.mock.ts` gives `MockEmailService` for
 consumers that only need an `EmailService` in their container — every method a
@@ -134,6 +140,8 @@ See `docs/audit/2026-09-11-template-audit.md`.
   `TemplateService.compile` in `src/templating/` is the only compile contract.
 - **`N5`** — ~~no mocks.~~ **Fixed on `chore/module-gaps`:**
   `src/email/abstract/mocks/email.service.mock.ts`.
-- **`G1`** — partly closed on `test/coverage-email-templating-push`: the send
-  helper, the console adapter and the resend adapter have specs. `aws-ses` and
-  `sendgrid` are still untested.
+- **`G1`** — ~~no tests.~~ Partly closed on
+  `test/coverage-email-templating-push` (the send helper, the console adapter
+  and the resend adapter) and **fully closed on `test/coverage-remaining`:**
+  `aws-ses` and `sendgrid` have specs too, so every file in the module with
+  behaviour is covered.

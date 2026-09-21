@@ -147,6 +147,12 @@ The rest of the module is covered too, one spec per file:
 - `src/auth/google/google.controller.unit.spec.ts` and
   `src/auth/auth0/auth0.controller.unit.spec.ts` — delegation only; the
   controllers hold no logic and must not gain any.
+- `src/auth/google/google.module.unit.spec.ts` and
+  `src/auth/auth0/auth0.module.unit.spec.ts` — the constructor complaint when
+  a provider is registered with `enabled: false`. Setting the flag does not
+  unregister the module, so that log line is the only thing that says the
+  routes are still live; the specs construct the module class directly and spy
+  on `Logger.prototype.error`.
 
 Mock the `User` repository with `getRepositoryToken(User)`, and `OAuth2Client`
 with a plain jest object. Name files `*.unit.spec.ts`.
@@ -187,6 +193,6 @@ See `docs/audit/2026-09-11-template-audit.md`.
   `docs/audit/module-independence-baseline.json` records no `abs-import`
   entry at all, so `pnpm run modularity:check` fails on the next one.
 - **`G1`** — ~~no tests.~~ **Fixed on `test/coverage-auth`:** every service,
-  strategy and controller in the module has a spec. What is still not covered is
-  the module wiring itself — `GoogleModule` and `Auth0Module` only log when
-  their provider is disabled, and that log is not asserted.
+  strategy and controller in the module has a spec. The last gap — the
+  `GoogleModule` / `Auth0Module` constructor log when a provider is registered
+  while disabled — closed on `test/coverage-remaining`.
