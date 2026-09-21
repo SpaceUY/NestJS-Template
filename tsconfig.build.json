@@ -5,7 +5,15 @@
     // in effect — the exclusions below leave `src/` as the only source root —
     // and `start:prod` runs `node dist/main`, so naming it keeps the emitted
     // layout exactly where it was.
-    "rootDir": "./src"
+    "rootDir": "./src",
+    // Keep the incremental record inside `outDir`, where TypeScript wrote it
+    // before 6.0 started placing it beside the config instead. `prebuild` is
+    // `rimraf dist`, so the record has to die with the output it describes:
+    // left outside, it survives the wipe, the next `tsc` reads it, concludes
+    // every file is already emitted and writes nothing — `nest build` then
+    // exits 0 having produced an empty `dist/`. Any new build config needs its
+    // own path here, never a shared one.
+    "tsBuildInfoFile": "./dist/tsconfig.build.tsbuildinfo"
   },
   "exclude": ["node_modules", "test", "dist", "**/*spec.ts", "migrations", "ormconfig.ts"]
 }

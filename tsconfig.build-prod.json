@@ -1,6 +1,10 @@
 {
   "extends": "./tsconfig.build.json",
   "compilerOptions": {
-    "sourceMap": false
+    "sourceMap": false,
+    // Its own record, not the one inherited from `tsconfig.build.json`: two
+    // configs sharing a `.tsbuildinfo` differ in `sourceMap`, so each run would
+    // invalidate the other's and rebuild everything anyway.
+    "tsBuildInfoFile": "./dist/tsconfig.build-prod.tsbuildinfo"
   }
 }
