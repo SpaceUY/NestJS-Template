@@ -55,20 +55,6 @@ export type RenderEmailTemplateParams<
   Params extends Record<Templates[keyof Templates], unknown>,
 > = TemplateNameToParams<Templates, Params>;
 
-// /**
-//  * Parameters for rendering an email template
-//  */
-// export interface RenderEmailTemplateParams<
-//   Templates extends Record<string, string>,
-//   Params extends Record<Templates[keyof Templates], any>,
-//   /** Name of the email template to use */
-//   name: Templates[keyof Templates];
-//   /** ID of the email template to use */
-//   templateId?: string;
-//   /** Parameters to be used in the template */
-//   params: Params[Templates[keyof Templates]];
-// }
-
 /**
  * Parameters for sending an email with pre-rendered content
  */

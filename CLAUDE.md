@@ -143,9 +143,10 @@ migration file, never rely on `DB_SYNCHRONIZE` outside local development. See
   `forbidNonWhitelisted`.
 - **Entities:** extend `src/database/entities/base.entity.ts`. `id` (integer) is
   internal; `uuid` is the only identifier an API response may expose.
-- **Tests:** co-located, `*.unit.spec.ts` for isolated unit tests. The
-  remaining `*.spec.ts` files are legacy (finding `N4`); new tests use
-  `*.unit.spec.ts`.
+- **Tests:** co-located. `*.unit.spec.ts` for isolated unit tests,
+  `*.di.spec.ts` for the one spec that boots a real Nest DI container
+  (`src/queues/abstract/tests/queue-consumer-feature.module.di.spec.ts`). No
+  plain `*.spec.ts` name is left under `src/` — finding `N4` is closed.
 - **Git:** branches `feature/` `fix/` `chore/` `hotfix/`; conventional commits;
   PRs only, never a direct push to `master`.
 
