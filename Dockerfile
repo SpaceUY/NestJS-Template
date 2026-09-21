@@ -23,5 +23,12 @@ RUN pnpm run build
 
 RUN chmod 755 ./docker-script.sh
 
+# Liveness, not readiness: this decides whether to RESTART the container, and
+# restarting because Postgres blinked turns one outage into two. Readiness
+# (/health, dependencies included) is what the load balancer polls instead.
+# Uses node's global fetch rather than curl, so the probe adds no package.
+HEALTHCHECK --interval=30s --timeout=5s --start-period=60s --retries=3 \
+    CMD node -e "fetch('http://127.0.0.1:'+(process.env.PORT||5000)+'/health/live').then(r=>process.exit(r.ok?0:1)).catch(()=>process.exit(1))"
+
 # Start the server using the production build
 CMD ./docker-script.sh
