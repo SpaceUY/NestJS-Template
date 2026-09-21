@@ -41,13 +41,23 @@ no `abstract/`, no `<provider>-adapter/` and no `forRoot`. Import
    `CacheHealthIndicator.isConfigured()` returns false when no `CacheService`
    resolved, and the controller omits the indicator entirely. Reporting an
    absent dependency as healthy is how a health check starts lying.
-4. **Every probe races a timeout, and clears its timer.** An unreachable
-   dependency usually hangs rather than refusing. The uncleared timer in
-   `_probeWithTimeout` would be finding `H7` all over again — it held the
-   event loop open after a *successful* probe.
+4. **Every probe is bounded in time.** An unreachable dependency usually hangs
+   rather than refusing. The database indicator gets its bound from terminus,
+   `pingCheck('database').withTimeout(ms)` — never the `{ timeout }` option,
+   which 12.x deprecates. `CacheHealthIndicator` still races its own timer
+   because it cannot use the builder (rule 5), and that timer must be cleared:
+   the uncleared one would be finding `H7` all over again — it held the event
+   loop open after a *successful* probe.
 5. **The failure reason is the error's class name** (`T4`). An `ioredis`
    connection error reads `connect ECONNREFUSED 10.0.0.4:6379` and can carry
    the password. Neither the response body nor the log line may quote it.
+
+   This is why `CacheHealthIndicator` does not use terminus 12's
+   `healthIndicatorService.check('cache').attempt(fn).withTimeout(ms)`, which
+   would otherwise replace the whole of `_probeWithTimeout`: on failure the
+   builder calls `session.down({ message: errorMessage(err) })`, putting the
+   provider's raw text in the response body. The hand-written version exists
+   for that one reason. Do not "simplify" it back.
 
 ## Tests
 
@@ -65,13 +75,15 @@ Copy `src/health/` whole. It needs the peer package `@nestjs/terminus`, plus
 `@nestjs/typeorm` and `typeorm` for the database indicator that terminus
 resolves through `ModuleRef`.
 
-**Pin `@nestjs/terminus` to the 11.x line.** 12.x is `"type": "module"`,
-ESM-only. Node 24 can `require()` it so the app still boots, but Jest running
-under this template's CommonJS transform cannot load it at all, and every spec
-that imports the module fails with `SyntaxError: Unexpected token 'export'`.
-This template is CommonJS by contract — see the root `README.md`'s
-"Prerequisite — the destination's module system". A destination project that is
-ESM can use 12.x and should.
+**`@nestjs/terminus` is on 12.x, and the destination has to be able to load
+ESM.** 12.x is `"type": "module"` with no CommonJS build, the same as every
+Nest 12 package. This template still emits CommonJS and reaches it through
+Node's `require(esm)`; what that costs is one line in the destination's test
+setup, because Jest cannot load an ESM dependency from a CommonJS test unless
+it is started as `node --experimental-vm-modules ./node_modules/jest/bin/jest.js`.
+Copy this repo's `test` scripts along with the module, or every spec that
+imports it fails with `SyntaxError: Unexpected token 'export'`. A destination
+on Vitest needs nothing.
 
 Two edges leave this module, both `@Optional()`, so it boots without either —
 but both imports still have to resolve:

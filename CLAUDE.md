@@ -48,6 +48,7 @@ pnpm install                  # pnpm 10.15.1, Node 24.15.0 — never npm or yarn
 pnpm run start:dev            # watch mode
 pnpm run build                # nest build
 pnpm test                     # jest, rootDir src, testRegex .*\.spec\.ts$
+                              # always through the script — see ## Toolchain
 pnpm run test:cov             # jest + coverageThreshold — what CI runs
 pnpm run test:e2e             # jest --config ./test/jest-e2e.json
 pnpm run lint                 # eslint --fix
@@ -60,6 +61,43 @@ pnpm run db:migration:revert
 ```
 
 A local Postgres is available through `docker-compose.yml`.
+
+## Toolchain
+
+Four facts about the build that are not obvious from any single file, and that
+you will otherwise rediscover as an error message.
+
+**Nest 12 is ESM-only; this template is not.** Every `@nestjs/*` 12.x package
+is `"type": "module"` with no CommonJS build. This repo has no `"type"` field
+and emits CommonJS, and reaches Nest through Node's `require(esm)` — supported
+from Node 22.12, and the engine here is Node 24. `tsconfig.json` therefore sets
+`"module": "nodenext"` with `"moduleResolution": "nodenext"`, which is exactly
+what `nest new --type cjs` generates for 12.x. Do not "fix" it back to
+`"commonjs"`: node10 resolution cannot read Nest 12's `exports` map, and
+`nodenext` in a non-`type: module` package still keeps `T5`'s extensionless
+relative imports legal.
+
+**Never run `jest` directly — run `pnpm test`.** A CommonJS test cannot
+`require()` an ESM dependency under Jest unless Jest itself is started as
+`node --experimental-vm-modules ./node_modules/jest/bin/jest.js`, which is what
+every `test*` script does. Bare `jest` fails with `SyntaxError: Unexpected
+token 'export'` on `@nestjs/terminus` and anything else ESM. The scripts also
+pass `--disable-warning=ExperimentalWarning`, purely so the VM-modules notice
+does not print once per worker; drop that flag if you are debugging Node
+warnings.
+
+**TypeScript 6 changed two defaults this repo depends on.** It no longer
+auto-includes `@types/*` packages, so they are named in
+`"types": ["node", "jest"]` — add to that list when you add a global type
+package, or it silently will not load. And it no longer infers `rootDir`
+(TS5011), so the base config pins `"."` and `tsconfig.build.json` narrows it to
+`"./src"` to keep the emitted layout at `dist/main.js`.
+
+**One `paths` entry exists and is a workaround.** `@nestjs/throttler@6.7.0`'s
+declarations deep-import `@nestjs/common/interfaces`, which Nest 12's `exports`
+map resolves to a file that does not exist. `tsconfig.json` maps it back. It is
+the only such specifier in the tree — delete the entry, do not extend it, the
+day throttler ships a Nest 12 build.
 
 ## Invariants
 
@@ -199,9 +237,9 @@ five `EXT` rows are reference measurements rather than defects. The ones that
 will bite you first are below.
 
 **Every gate passes.** `docs:check`, `modularity:check`, `lint:ci`, `test:cov`
-and `build` were measured green on 2026-09-21, along with `tsc --noEmit`: 706
-specs across 85 suites, coverage 96.13% statements / 88.61% branches against a
-floor of 95 / 88. `pnpm run modularity:check` runs against a zero-violation
+and `build` were measured green on 2026-09-21 against NestJS 12 and TypeScript
+6, along with `tsc --noEmit`: 706 specs across 85 suites, coverage 96.13%
+statements / 89.63% branches against a floor of 95 / 88. `pnpm run modularity:check` runs against a zero-violation
 baseline (`docs/audit/module-independence-baseline.json`), so it fails on the
 first new cross-module violation instead of freezing a known set.
 
@@ -245,17 +283,19 @@ first new cross-module violation instead of freezing a known set.
 - **`EXT7` — `common` has an extraction dependency no import graph can see.**
   `src/common/middleware/response.interceptor.ts` reads `user.id`, which type-
   checks only because the repo root ships `@types/express/index.d.ts` and
-  `tsconfig.json` loads it through `typeRoots`. Copying `common` elsewhere
-  means copying that file and that setting. `src/common/CLAUDE.md` and
-  `src/common/README.md` both say so now. `EXT9` is the general form: a green
-  `modularity:check` is not proof a module extracts cleanly.
+  `tsconfig.json` declares no `include`, so every `.d.ts` under the project
+  root is compiled. Copying `common` elsewhere means copying that file *and*
+  landing it somewhere the destination's `tsconfig.json` actually covers.
+  `src/common/CLAUDE.md` and `src/common/README.md` both say so now. `EXT9` is
+  the general form: a green `modularity:check` is not proof a module extracts
+  cleanly.
 - **RabbitMQ and SQS are complete but unwired.** Only BullMQ is registered in
   `src/app.module.ts`. Deliberate — three brokers registered at once means
   three live connections for one queue. `src/queues/README.md`'s *Switching the
   template's broker* has the exact edit for each.
 - **Extraction cost is measured for one module only.** `queues` was re-measured
   on 2026-09-19 after the discovery that a fresh `@nestjs/cli` scaffold is ESM
-  while this template is CommonJS — which is what made the earlier probes
+  while this template emits CommonJS — which is what made the earlier probes
   measure the wrong thing. It closes at two companions,
   `src/common/observability/logger/` and `src/config-provider/`
   (`docs/audit/evidence/extract-queues-closure-2026-09-19.txt`). `cache`
@@ -264,6 +304,13 @@ first new cross-module violation instead of freezing a known set.
   been copied into a clean project and compiled. **Left open knowingly, by team
   decision on 2026-09-21.** Do not quote a per-module extraction cost outside
   `queues` as measured.
+
+  Every one of those numbers is now also older than the toolchain. The
+  2026-09-21 Nest 12 upgrade moved this repo to `"module": "nodenext"`, which
+  is what `nest new --type cjs` emits, so the scaffold and the template now
+  differ only by `"type": "module"` — the gap the 2026-09-19 evidence file
+  describes is narrower than it records. Re-measuring was not part of that
+  work.
 
 ### Closed, kept here because they are cited
 
