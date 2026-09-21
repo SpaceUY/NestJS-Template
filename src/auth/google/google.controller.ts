@@ -1,6 +1,6 @@
 import { Body, Controller, Get, Post, UseGuards } from '@nestjs/common';
 import { AuthGuard } from '@nestjs/passport';
-import { CurrentUser } from '../../user/current-user.decorator';
+import { CurrentUser } from '../decorators/current-user.decorator';
 import { AuthTokenService } from '../core/auth-token/auth-token.service';
 import { AuthType } from '../../database/entities/auth-type.enum';
 import { User } from '../../database/entities/user.entity';
