@@ -36,10 +36,15 @@ export class HealthController {
   })
   readiness(): Promise<HealthCheckResult> {
     const indicators: HealthIndicatorFunction[] = [
+      // `withTimeout` replaces the `{ timeout }` option, which terminus 12
+      // deprecates. It is not only the supported spelling: the option raced a
+      // timer, while the builder passes an `AbortSignal` into the probe, so a
+      // hung connection is cancelled rather than left running behind a
+      // resolved promise.
       () =>
-        this.database.pingCheck('database', {
-          timeout: DATABASE_PING_TIMEOUT_MS,
-        }),
+        this.database
+          .pingCheck('database')
+          .withTimeout(DATABASE_PING_TIMEOUT_MS),
     ];
 
     // Left out entirely when no cache is registered, rather than reported up.

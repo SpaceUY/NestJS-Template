@@ -2,6 +2,7 @@ import {
   HealthCheckResult,
   HealthCheckService,
   HealthIndicatorFunction,
+  HealthIndicatorResult,
   TypeOrmHealthIndicator,
 } from '@nestjs/terminus';
 import { HealthController } from './health.controller';
@@ -25,17 +26,33 @@ function makeHealthService(): {
     }),
   } as unknown as HealthCheckService;
 
+  // `HealthIndicatorFunction` is a union in terminus 12: a thunk, or a bare
+  // `HealthCheckAttempt` builder, which is a thenable rather than a callable.
+  // The controller only ever hands over thunks; this narrows to that arm
+  // instead of casting, so the day it stops being true the test says so.
   const ran = async (): Promise<string[]> => {
-    const results = await Promise.all(captured.map((fn) => fn()));
-    return results.flatMap((result) => Object.keys(result));
+    const results = await Promise.all(
+      captured.map((indicator) =>
+        typeof indicator === 'function' ? indicator() : indicator,
+      ),
+    );
+    return results.flatMap((result: HealthIndicatorResult) =>
+      Object.keys(result),
+    );
   };
 
   return { service, ran };
 }
 
 describe('HealthController', () => {
+  // `pingCheck` no longer returns the result: terminus 12 returns a
+  // `HealthCheckAttempt` builder that only runs once something awaits it, so
+  // the double has to be chainable and thenable, not a resolved promise.
+  const withTimeout = jest
+    .fn()
+    .mockResolvedValue({ database: { status: 'up' } });
   const database = {
-    pingCheck: jest.fn().mockResolvedValue({ database: { status: 'up' } }),
+    pingCheck: jest.fn(() => ({ withTimeout })),
   } as unknown as jest.Mocked<TypeOrmHealthIndicator>;
 
   beforeEach(() => jest.clearAllMocks());
@@ -51,9 +68,8 @@ describe('HealthController', () => {
       await new HealthController(service, database, cache).readiness();
       await ran();
 
-      expect(database.pingCheck).toHaveBeenCalledWith('database', {
-        timeout: DATABASE_PING_TIMEOUT_MS,
-      });
+      expect(database.pingCheck).toHaveBeenCalledWith('database');
+      expect(withTimeout).toHaveBeenCalledWith(DATABASE_PING_TIMEOUT_MS);
     });
 
     it('includes the cache when one is registered', async () => {
