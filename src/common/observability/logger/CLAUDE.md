@@ -45,17 +45,20 @@ Does not own: request/response access logging, which
 5. `telemetryHook` on `forRoot`/`forRootAsync` is the single integration point
    for OpenTelemetry or Datadog. A throwing hook must never break the caller;
    `LoggerService.emitTelemetry` already guarantees that.
-6. `Logger` from `@nestjs/common` is still used directly in six files:
-   `src/common/middleware/response.interceptor.ts`,
-   `src/common/middleware/request-exception.filter.ts`,
-   `src/auth/google/google.module.ts`, `src/auth/google/google.service.ts`,
-   `src/auth/auth0/auth0.module.ts` and `src/auth/auth0/auth0.service.ts`.
-   That is legacy — new code injects `LoggerService`. Closing it is a decision,
-   not a cleanup: the middleware pair is copied into other projects, so it
-   should take the rule-4 route (`new NestLoggerAdapter(...)`, no DI
-   requirement) rather than inject, while the two auth services are
-   application services and should inject. Doing either changes what those
-   lines look like in a log, so scope it deliberately.
+6. **Optional injection is the shape for a class that is both wired by the
+   container and copied elsewhere.** `@Optional() @Inject(LoggerService)` with
+   a `new NestLoggerAdapter(...)` fallback gets the container's logger — trace
+   id, telemetry hook — when one is registered, and still boots in a project
+   that copied the file without `LoggerAbstractModule`. Rule 4's constructor
+   parameter is the same idea for an adapter that is constructed with `new`
+   rather than resolved. `src/common/middleware/response.interceptor.ts` is the
+   reference.
+
+   No file outside this module builds a `@nestjs/common` `Logger` any more.
+   The two that legitimately still do are `nest-adapter/nest-logger.adapter.ts`,
+   which is the adapter, and `src/cache/redis-adapter/redis-adapter.service.ts`,
+   which adapts one into its own `StandardLogger` precisely so that `cache`
+   keeps zero cross-module imports.
 7. `TraceContextLoggerDecorator` wraps an inner `LoggerService` — it is the
    `useFactory` result in `src/app.module.ts`, not a registered adapter class.
    Any new decorator follows the same shape: implement `LoggerService`, take
@@ -106,7 +109,10 @@ See `docs/audit/2026-09-11-template-audit.md`.
 - **`C5`** — ~~`src/auth/google/google.service.ts` logs the raw provider error on
   the token path, against this module's own practices.~~ **Fixed on
   `fix/security-defaults`:** it logs the error's constructor name only.
-- Direct `@nestjs/common` `Logger` use persists in six files — the two
-  middleware classes and four files under `src/auth/`. Rule 6 lists them and
-  says which route each should take. Still open deliberately: it changes log
-  output, so it wants its own branch and its own review.
+- ~~Direct `@nestjs/common` `Logger` use persists in six files — the two
+  middleware classes and four files under `src/auth/`.~~ **Fixed on
+  `refactor/logger-consistency`:** all six take `@Optional()` `LoggerService`
+  with a `NestLoggerAdapter` fallback (rule 6), and their log lines are
+  `LogInput` objects instead of interpolated strings (rule 2). The two
+  remaining `new Logger(...)` calls in `src/` are the adapter itself and the
+  Redis adapter's deliberate self-containment.

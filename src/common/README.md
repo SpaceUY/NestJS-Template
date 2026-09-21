@@ -89,8 +89,10 @@ so it is the first thing to lift and the last thing to delete.
 - `observability/telemetry/` needs the OpenTelemetry packages listed in
   `src/common/observability/telemetry/README.md`.
 - `middleware/` is opinionated about response shape — copy it only if the
-  target project wants the `{ success, data }` envelope. It needs `rxjs`, and
-  one non-import dependency worth knowing about:
+  target project wants the `{ success, data }` envelope. Both classes import
+  `observability/logger/` (optionally injected, so no DI requirement — but the
+  import must resolve). It needs `rxjs`, and one non-import dependency worth
+  knowing about:
   `src/common/middleware/response.interceptor.ts` only type-checks because of
   the ambient `Express.User` augmentation the repo root ships in
   `@types/express/index.d.ts`, loaded via `tsconfig.json`'s `typeRoots`

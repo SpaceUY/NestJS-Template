@@ -1,4 +1,4 @@
-import { Inject, Injectable, Logger } from '@nestjs/common';
+import { Inject, Injectable, Optional } from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
 import { Repository } from 'typeorm';
 import { OAuth2Client } from 'google-auth-library';
@@ -8,12 +8,12 @@ import { googleScope, GoogleScopeConfig } from './config/google.scope';
 import { User } from '../../database/entities/user.entity';
 import { AuthType } from '../../database/entities/auth-type.enum';
 import { AuthTokenService } from '../core/auth-token/auth-token.service';
+import { LoggerService } from '../../common/observability/logger/abstract/logger.service';
+import { NestLoggerAdapter } from '../../common/observability/logger/nest-adapter/nest-logger.adapter';
 
 @Injectable()
 export class GoogleService {
-  private readonly logger = new Logger(this.constructor.name, {
-    timestamp: true,
-  });
+  private readonly logger: LoggerService;
 
   constructor(
     private oauthClient: OAuth2Client,
@@ -22,7 +22,14 @@ export class GoogleService {
     @InjectRepository(User)
     private readonly userRepository: Repository<User>,
     private authTokenService: AuthTokenService,
-  ) {}
+    // Optional so `src/auth/` still boots in a project that copies it without
+    // registering `LoggerAbstractModule`; injected, it brings the trace id and
+    // the telemetry hook the container's logger is wired with.
+    @Optional() logger?: LoggerService,
+  ) {
+    this.logger = logger ?? new NestLoggerAdapter(GoogleService.name);
+    this.logger.setContext(GoogleService.name);
+  }
 
   async register(idToken: string): Promise<string> {
     try {
@@ -100,8 +107,11 @@ export class GoogleService {
    * object — or its message — writes a credential to the log (finding `C5`).
    */
   private _logProviderFailure(operation: string, e: unknown): void {
-    this.logger.error(
-      `Google ${operation} failed: ${e instanceof Error ? e.name : typeof e}`,
-    );
+    // No `error:` field for the same reason: the adapters serialize it, and
+    // this one's message is the credential.
+    this.logger.error({
+      message: 'Google provider call failed',
+      data: { operation, kind: e instanceof Error ? e.name : typeof e },
+    });
   }
 }

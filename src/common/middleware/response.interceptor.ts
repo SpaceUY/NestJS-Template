@@ -1,17 +1,29 @@
 import {
   NestInterceptor,
-  Logger,
   ExecutionContext,
   CallHandler,
+  Inject,
+  Optional,
 } from '@nestjs/common';
 import { Observable } from 'rxjs';
 import { map } from 'rxjs/operators';
 import { Request, Response } from 'express';
+import { LoggerService } from '../observability/logger/abstract/logger.service';
+import { NestLoggerAdapter } from '../observability/logger/nest-adapter/nest-logger.adapter';
 
 export class ResponseInterceptor implements NestInterceptor {
-  private readonly logger = new Logger('ResponseInterceptor', {
-    timestamp: true,
-  });
+  private readonly logger: LoggerService;
+
+  /**
+   * The container's `LoggerService` when one is registered — which is what
+   * carries the trace id and the telemetry hook — and a `NestLoggerAdapter`
+   * otherwise. `@Optional()` is what keeps `src/common/middleware/` liftable:
+   * a project that copies it without `LoggerAbstractModule` still boots.
+   */
+  constructor(@Optional() @Inject(LoggerService) logger?: LoggerService) {
+    this.logger = logger ?? new NestLoggerAdapter(ResponseInterceptor.name);
+    this.logger.setContext(ResponseInterceptor.name);
+  }
 
   intercept(ctx: ExecutionContext, next: CallHandler): Observable<unknown> {
     return next.handle().pipe(
@@ -35,10 +47,11 @@ export class ResponseInterceptor implements NestInterceptor {
     const { method, url, ip, user } = req;
     const { statusCode } = res;
 
-    this.logger.log(
-      `${ip} ${user ? 'user' : '-'} ${
-        user ? user.id : '-'
-      } [${new Date().toISOString()}] "${method} ${url} HTTP/1.0" ${statusCode}`,
-    );
+    // Rule 2 of the logger guide: values go in `data`, not interpolated into
+    // the message, or the line stops being machine-parseable.
+    this.logger.log({
+      message: 'request handled',
+      data: { method, url, statusCode, ip, userId: user ? user.id : null },
+    });
   }
 }

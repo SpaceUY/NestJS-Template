@@ -1,6 +1,25 @@
-import { CallHandler, ExecutionContext, Logger } from '@nestjs/common';
+import { CallHandler, ExecutionContext } from '@nestjs/common';
 import { lastValueFrom, of } from 'rxjs';
 import { ResponseInterceptor } from './response.interceptor';
+import { LoggerService } from '../observability/logger/abstract/logger.service';
+import { NestLoggerAdapter } from '../observability/logger/nest-adapter/nest-logger.adapter';
+import { LogInput } from '../observability/logger/abstract/logger.interfaces';
+
+class RecordingLogger extends LoggerService {
+  readonly lines: LogInput[] = [];
+  context = '';
+  setContext(context: string): void {
+    this.context = context;
+  }
+
+  log(input: LogInput): void {
+    this.lines.push(input);
+  }
+
+  warn(): void {}
+  error(): void {}
+  debug(): void {}
+}
 
 type HostParts = {
   ctx: ExecutionContext;
@@ -37,14 +56,11 @@ const handlerOf = (value: unknown): CallHandler =>
 
 describe('ResponseInterceptor', () => {
   let interceptor: ResponseInterceptor;
-  let logged: string[];
+  let logger: RecordingLogger;
 
   beforeEach(() => {
-    interceptor = new ResponseInterceptor();
-    logged = [];
-    jest.spyOn(Logger.prototype, 'log').mockImplementation((message) => {
-      logged.push(String(message));
-    });
+    logger = new RecordingLogger();
+    interceptor = new ResponseInterceptor(logger);
   });
 
   afterEach(() => jest.restoreAllMocks());
@@ -95,22 +111,28 @@ describe('ResponseInterceptor', () => {
   });
 
   describe('access log', () => {
-    it('writes one line per response with method, url and status', async () => {
+    it('writes one line per response, with the values in data', async () => {
       const { ctx } = makeCtx({ statusCode: 201 });
 
       await run({ id: 1 }, ctx);
 
-      expect(logged).toHaveLength(1);
-      expect(logged[0]).toContain('"GET /things HTTP/1.0" 201');
-      expect(logged[0]).toContain('10.0.0.1');
+      expect(logger.lines).toHaveLength(1);
+      // Rule 2: the values are fields, not text interpolated into the message.
+      expect(logger.lines[0].data).toEqual({
+        method: 'GET',
+        url: '/things',
+        statusCode: 201,
+        ip: '10.0.0.1',
+        userId: null,
+      });
     });
 
-    it('marks an anonymous request with dashes instead of a user id', async () => {
+    it('records a null user id for an anonymous request', async () => {
       const { ctx } = makeCtx();
 
       await run({ id: 1 }, ctx);
 
-      expect(logged[0]).toContain('10.0.0.1 - - [');
+      expect(logger.lines[0].data?.userId).toBeNull();
     });
 
     it('logs the user id when the request carries one', async () => {
@@ -118,7 +140,22 @@ describe('ResponseInterceptor', () => {
 
       await run({ id: 1 }, ctx);
 
-      expect(logged[0]).toContain('user user-uuid');
+      expect(logger.lines[0].data?.userId).toBe('user-uuid');
+    });
+  });
+
+  describe('logger wiring', () => {
+    it('tags its lines with its own context', () => {
+      expect(logger.context).toBe('ResponseInterceptor');
+    });
+
+    // The @Optional() injection is what keeps src/common/middleware/ liftable:
+    // a project that copies it without LoggerAbstractModule still boots.
+    it('falls back to a NestLoggerAdapter when no logger is injected', () => {
+      expect(
+        (new ResponseInterceptor() as unknown as { logger: LoggerService })
+          .logger,
+      ).toBeInstanceOf(NestLoggerAdapter);
     });
   });
 });

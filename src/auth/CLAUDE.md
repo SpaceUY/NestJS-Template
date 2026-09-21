@@ -161,9 +161,11 @@ deleted (finding `R3`); there is no email/password provider to test yet.
 
 ## Reuse
 
-Couples to `src/config-provider/`, `src/database/entities/user.entity.ts`
-and `src/common/exception/` — port those first. `auth` depends on `database`
-for both `User` and `AuthType`.
+Couples to `src/config-provider/`, `src/database/entities/user.entity.ts`,
+`src/common/exception/` and `src/common/observability/logger/` — port those
+first. `auth` depends on `database` for both `User` and `AuthType`. The logger
+is `@Optional()` everywhere it is used here, so the module boots without
+`LoggerAbstractModule` registered; the import still has to resolve.
 `src/auth/google/` and `src/auth/auth0/` are independently droppable: each
 is a directory, a scope and one entry in `AuthModule`'s imports. The email
 provider directory no longer exists — it was an empty scaffold (finding `R3`),
