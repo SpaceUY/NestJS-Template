@@ -127,15 +127,24 @@ token, a wrong-issuer token, and a malformed token. Mock the `User` repository
 with `getRepositoryToken(User)`, `AuthTokenService` with a plain jest object,
 and stub `global.fetch`.
 
-The rest of the module is still untested (finding `G1`). What new tests must
-cover:
+The rest of the module is covered too, one spec per file:
 
-- `JwtStrategy.validate` — wrong `type` returns `null`; unknown `uuid` throws
-  `RequestException`; a valid payload returns the `User`.
-- `AuthTokenService` — the signed payload shape, and that `expiresIn` is omitted
-  when `ignoreExpiration` is set.
-- `GoogleService.register` / `login` — existing user, wrong `authType`, and an
-  undefined ticket payload.
+- `src/auth/jwt.strategy.unit.spec.ts` — a wrong `type` returns `null` without
+  reaching the database; an unknown `uuid` throws `RequestException`; a valid
+  payload returns the `User`.
+- `src/auth/core/auth-token/auth-token.service.unit.spec.ts` — the signed
+  payload shape and that nothing else leaks into it, plus two tests that boot
+  `AuthTokenModule` and sign a real token to prove `expiresIn` is applied, and
+  dropped when `ignoreExpiration` is set.
+- `src/auth/google/google.service.unit.spec.ts` — both `register` and `login`
+  end to end against a mocked `OAuth2Client`, and the `C5` invariant: the
+  provider error's message never reaches the log, and an application-level
+  rejection is not logged as a provider failure at all.
+- `src/auth/google/google.strategy.unit.spec.ts` — existing user, first
+  sign-in provisioning, and a repository failure reaching `done(err)`.
+- `src/auth/google/google.controller.unit.spec.ts` and
+  `src/auth/auth0/auth0.controller.unit.spec.ts` — delegation only; the
+  controllers hold no logic and must not gain any.
 
 Mock the `User` repository with `getRepositoryToken(User)`, and `OAuth2Client`
 with a plain jest object. Name files `*.unit.spec.ts`.
@@ -175,4 +184,7 @@ See `docs/audit/2026-09-11-template-audit.md`.
   `M1`): every specifier in those files is relative now, and
   `docs/audit/module-independence-baseline.json` records no `abs-import`
   entry at all, so `pnpm run modularity:check` fails on the next one.
-- **`G1`** — no tests.
+- **`G1`** — ~~no tests.~~ **Fixed on `test/coverage-auth`:** every service,
+  strategy and controller in the module has a spec. What is still not covered is
+  the module wiring itself — `GoogleModule` and `Auth0Module` only log when
+  their provider is disabled, and that log is not asserted.
