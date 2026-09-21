@@ -45,11 +45,12 @@ export async function verifyConnection(
   const TIMEOUT_MS = 5000;
   const testKey = `redis-startup-test-${Date.now()}`;
   const testValue = 'connection-test';
+  const timeout = createTimeoutPromise(TIMEOUT_MS);
 
   try {
     await Promise.race([
       testRedisOperations(redis, logger, testKey, testValue),
-      createTimeoutPromise(TIMEOUT_MS),
+      timeout.promise,
     ]);
   } catch (error) {
     logger.error({
@@ -60,6 +61,11 @@ export async function verifyConnection(
       message: '🚨 STOPPING APPLICATION - Redis is required for operation',
     });
     process.exit(1);
+  } finally {
+    // Promise.race settles but does not cancel the loser: once the probe has
+    // answered, the pending timer would hold the event loop open for the rest
+    // of the five seconds.
+    timeout.cancel();
   }
 }
 
@@ -84,10 +90,19 @@ async function testRedisOperations(
   });
 }
 
-function createTimeoutPromise(timeoutMs: number): Promise<never> {
-  return new Promise((_, reject) => {
-    setTimeout(() => {
+interface CancellableTimeout {
+  promise: Promise<never>;
+  cancel: () => void;
+}
+
+function createTimeoutPromise(timeoutMs: number): CancellableTimeout {
+  let timer: NodeJS.Timeout | undefined;
+
+  const promise = new Promise<never>((_, reject) => {
+    timer = setTimeout(() => {
       reject(new Error(`Redis connection timeout after ${timeoutMs}ms`));
     }, timeoutMs);
   });
+
+  return { promise, cancel: () => clearTimeout(timer) };
 }
