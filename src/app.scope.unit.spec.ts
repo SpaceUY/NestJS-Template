@@ -38,4 +38,40 @@ describe('appScope', () => {
   it('refuses a CORS_ORIGINS that parses to nothing', () => {
     expect(() => validate({ nodeEnv: 'PROD', corsOrigins: ' , ' })).toThrow();
   });
+
+  it('publishes Swagger by default outside production', () => {
+    expect(validate({}).swaggerEnabled).toBe(true);
+    expect(validate({ nodeEnv: 'TEST' }).swaggerEnabled).toBe(true);
+  });
+
+  // The whole point: an environment that says nothing about Swagger must not
+  // expose the API surface in production.
+  it('hides Swagger by default in production', () => {
+    expect(
+      validate({ nodeEnv: 'PROD', corsOrigins: 'https://app.io' })
+        .swaggerEnabled,
+    ).toBe(false);
+  });
+
+  // The escape hatch the flag exists for: docs on a prod-like environment
+  // without having to lie about NODE_ENV and lose the CORS rule above.
+  it('lets production opt back in explicitly', () => {
+    expect(
+      validate({
+        nodeEnv: 'PROD',
+        corsOrigins: 'https://app.io',
+        swaggerEnabled: 'true',
+      }).swaggerEnabled,
+    ).toBe(true);
+  });
+
+  it('lets any environment opt out explicitly', () => {
+    expect(validate({ swaggerEnabled: 'false' }).swaggerEnabled).toBe(false);
+  });
+
+  it('refuses a SWAGGER_ENABLED that is not a boolean', () => {
+    expect(() => validate({ swaggerEnabled: 'sometimes' })).toThrow(
+      /swaggerEnabled/,
+    );
+  });
 });
