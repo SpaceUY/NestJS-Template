@@ -56,3 +56,31 @@ Implement `TemplateService` and provide it via `TEMPLATE_PROVIDER` in your adapt
 
 - `src/templating`: service-level code (module, abstractions, adapters)
 - `src/templates`: template assets (pug files) and type-safe registries/constants
+
+## Reuse
+
+**Two supported workflows.** Clone the template whole, or lift only the modules
+you need — this one is written for both. What follows is the second case: what
+`src/templating/` needs in order to compile in another project.
+
+**What travels with it.** Copy `src/templating/` whole, then bring
+`src/common/utils/nest-module-validation.ts`: `template.module.ts` calls
+`validateAdapterModule` to fail loudly when `forRoot` is handed something that
+is not an adapter module. That single function is this module's only edge to
+another module of the template — copy the file, or inline the check.
+
+Take `src/templates/` with it if you want the typed registry, and copy the
+`nest-cli.json` asset entry or the `.pug` files will not reach `dist/`.
+
+**Peer dependencies.**
+
+```bash
+pnpm add pug
+pnpm add -D @types/pug      # pug-adapter/
+```
+
+`abstract/` needs only `@nestjs/common`.
+
+**Removing it from the template instead.** `src/app.controller.ts` imports
+`TemplateService` for its demo route; deleting that route clears the only
+inbound edge outside `src/app.module.ts`.

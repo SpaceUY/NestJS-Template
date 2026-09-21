@@ -102,6 +102,9 @@ import statement references it. Copying the interceptor without also copying
 the root `@types/` directory and adding that `typeRoots` entry to the
 destination project's `tsconfig.json` leaves it failing to compile (`EXT7`).
 
+`src/common/README.md`'s `## Reuse` is the human version of this section. Keep
+the two congruent (`T7`).
+
 ## Known gaps
 
 See `docs/audit/2026-09-11-template-audit.md` and `docs/audit/2026-09-18-modularity-audit.md`.

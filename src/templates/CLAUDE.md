@@ -54,6 +54,9 @@ Copy `src/templates/` whole, or take `template.const.ts` and
 `template-params.interface.ts` as the pattern and supply your own templates. The
 directory depends on nothing — no NestJS import, no runtime dependency.
 
+`src/templates/README.md`'s `## Reuse` is the human version of this section.
+Keep the two congruent (`T7`).
+
 ## Known gaps
 
 See `docs/audit/2026-09-11-template-audit.md`.

@@ -89,6 +89,9 @@ imports `ClassConstructor` from it); `nest-adapter/` needs only `@nestjs/common`
 `winston-adapter/` needs `winston`. Take `PRACTICES.md` with it — the
 practices are the valuable half.
 
+`src/common/observability/logger/README.md`'s `## Reuse` is the human version
+of this section. Keep the two congruent (`T7`).
+
 ## Known gaps
 
 See `docs/audit/2026-09-11-template-audit.md`.

@@ -108,8 +108,14 @@ the Secrets Manager source, `@aws-sdk/client-secrets-manager`; the env source
 needs `dotenv`. Joi is a dependency of the *scopes*, not of this module — a
 consuming project may validate with Zod or anything else.
 
-Nothing inside `src/config-provider/` imports from another module of this
-template, which is what makes it the first thing to lift.
+One edge leaves this module: `abstract/config-provider.service.ts` and
+`abstract/config-provider-abstract.module.ts` log through `LoggerService` from
+`src/common/observability/logger/`, so that travels with it. Nothing else
+does, which is what makes this the first thing to lift — every module that
+owns a config scope imports the two helpers from here.
+
+`src/config-provider/README.md`'s `## Reuse` is the human version of this
+section. Keep the two congruent.
 
 ## Known gaps
 

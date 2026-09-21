@@ -95,8 +95,14 @@ the same shape `src/cache/abstract/mocks/` uses.
 Copy `src/push-notification/` whole; `expo-adapter/` needs `expo-server-sdk`.
 `config/expo.scope.ts` depends on `src/config-provider/` and `joi`.
 
-Be aware you are also copying finding `N3` — a project lifting this module
-should plan to add `forRootAsync`.
+You are also copying registration style B — the adapter ships its own
+`register`/`registerAsync` module and the abstract module aliases its token.
+That is historical, not the pattern to follow
+(`docs/architecture/module-contract.md`); `forRootAsync` exists on both sides
+now (`N3`), so the indirection is the only thing left of it.
+
+`src/push-notification/README.md`'s `## Reuse` is the human version of this
+section. Keep the two congruent.
 
 ## Known gaps
 

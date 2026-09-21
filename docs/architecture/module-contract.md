@@ -67,8 +67,27 @@ EmailAbstractModule.forRootAsync({
 ships its own `register`/`registerAsync` dynamic module that binds a provider
 token; the abstract module imports it and aliases the token to the abstract
 class. It exists because those adapters were written before style A settled.
-It costs an extra indirection and neither of the two modules using it has a
-working `forRootAsync` (finding `N3`). Do not add new modules in this style.
+It costs an extra indirection for nothing: both modules gained a working
+`forRootAsync` on `chore/module-gaps` (finding `N3`), so style B now buys the
+same thing style A does, through one more module. Do not add new modules in
+this style.
+
+## Reuse is part of the contract
+
+The template serves two workflows: cloned whole, or lifted one module at a
+time. The second is what the shape above is for, and it only works if each
+module says out loud what it needs. So every module documents its own reuse
+twice, and `pnpm run docs:check` fails when either is missing:
+
+- `CLAUDE.md`'s `## Reuse` — for the agent. The companion directories, the
+  peer packages, the edge cases.
+- `README.md`'s `## Reuse` — for the human. Same facts, written as a move:
+  what travels with it, what to install, what to drop, and what removing it
+  from the template costs.
+
+They must agree. When a module gains or loses an edge, both change in the same
+commit — `pnpm run modularity:check -- --report` prints the edges that either
+one claims.
 
 ## Writing a module CLAUDE.md
 

@@ -99,6 +99,10 @@ token's `userId` claim and rejects any token whose `type` claim isn't
 
 ## Reuse
 
+**Two supported workflows.** Clone the template whole, or lift only the modules
+you need — this one is written for both. What follows is the second case: what
+`src/auth/` needs in order to compile in another project.
+
 **What to port first.** `src/config-provider/` (both scopes it defines and
 uses), `src/database/entities/user.entity.ts` (the `User` shape, `uuid`,
 `authType`) and `src/common/exception/` (`RequestException`,

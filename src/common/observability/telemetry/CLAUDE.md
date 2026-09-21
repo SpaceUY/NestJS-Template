@@ -73,6 +73,9 @@ Copy `src/common/observability/telemetry/` whole. It needs the
 the instrumentations for infrastructure the target project doesn't use.
 `tracing.bootstrap.ts`'s import-order requirement (rule 1) travels with it.
 
+`src/common/observability/telemetry/README.md`'s `## Reuse` is the human
+version of this section. Keep the two congruent (`T7`).
+
 ## Known gaps
 
 - No automated check enforces that `main.ts`'s first import stays

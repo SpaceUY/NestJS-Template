@@ -98,3 +98,25 @@ starts the SDK — the app behaves exactly as it would without OpenTelemetry.
 Set `OTEL_EXPORTER_OTLP_ENDPOINT` (and `OTEL_EXPORTER_OTLP_HEADERS` for
 backends that require auth) to enable it; no code changes needed to point at a
 different backend.
+
+## Reuse
+
+**Two supported workflows.** Clone the template whole, or lift only the modules
+you need — this one is written for both. What follows is the second case: what
+`src/common/observability/telemetry/` needs in order to compile in another project.
+
+**What travels with it.** Nothing from another module — the directory imports
+only `@nestjs/common` and the OpenTelemetry packages. `src/main.ts` imports
+`tracing.bootstrap.ts` first, before anything else, and that import order is a
+requirement of the module, not a style choice: the SDK has to start before the
+instrumented libraries are loaded. Carry that requirement with the files.
+
+**Peer dependencies.** The `@opentelemetry/*` set listed in `package.json`:
+`sdk-node`, `sdk-trace-base`, `exporter-trace-otlp-http`,
+`instrumentation-http`, `instrumentation-nestjs-core`, `instrumentation-pg`,
+`instrumentation-ioredis`, `resources`, `semantic-conventions` and `api`. Drop
+the instrumentations for infrastructure the target project does not run.
+
+**Removing it from the template instead.** Two edits: the
+`tracing.bootstrap.ts` import at the top of `src/main.ts` and the `OTEL_*` keys
+in `.env.example`.

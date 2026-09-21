@@ -177,3 +177,32 @@ function that calls the provider SDK and a `toMailingResponse` mapper, it:
 1. Create a new `*AdapterService` that extends `EmailService`.
 2. Add a config interface for constructor params.
 3. Instantiate it inside `EmailAbstractModule.forRootAsync(...useFactory...)`.
+
+## Reuse
+
+**Two supported workflows.** Clone the template whole, or lift only the modules
+you need — this one is written for both. What follows is the second case: what
+`src/email/` needs in order to compile in another project.
+
+**What travels with it.** Copy `src/email/abstract/` plus the adapters you
+want, then bring:
+
+- `src/common/observability/logger/` — `abstract/email.service.ts`, the abstract
+  module, the mock and `utils/execute-html-email-send.ts` all reference
+  `LoggerService`.
+- `src/config-provider/abstract/` — only if you take `config/email.scope.ts`.
+
+**Peer dependencies.**
+
+```bash
+pnpm add @aws-sdk/client-ses    # aws-ses-adapter/
+pnpm add @sendgrid/mail         # sendgrid-adapter/
+pnpm add resend                 # resend-adapter/
+pnpm add joi                    # config/email.scope.ts
+```
+
+`abstract/` and `console-adapter/` need only `@nestjs/common`.
+
+**Removing it from the template instead.** `src/app.controller.ts` imports
+`EmailService` and `emailScope` for its demo route — that is the only inbound
+edge outside `src/app.module.ts`, and deleting the demo route clears it.

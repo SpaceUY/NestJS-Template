@@ -121,6 +121,9 @@ Copy `src/email/abstract/` plus the adapters you want.
 Adapters reference `LoggerService` from `src/common/observability/logger/` — port that too, or
 drop the optional logger parameter.
 
+`src/email/README.md`'s `## Reuse` is the human version of this section. Keep
+the two congruent (`T7`).
+
 ## Known gaps
 
 See `docs/audit/2026-09-11-template-audit.md`.

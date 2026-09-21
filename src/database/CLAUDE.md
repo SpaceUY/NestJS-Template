@@ -85,14 +85,9 @@ database in a unit test; integration coverage belongs in `test/`.
 
 ## Reuse
 
-**No `README.md` is planned for this module.** A README answers "should I
-adopt this?" — a shopping question. Nobody shops for a database module: any
-NestJS + TypeORM project needs one regardless, so there is no adoption
-decision for a human guide to make room for. What follows below is a
-different question — "how do I port this one's shape?" — asked by someone who
-has already committed to taking `src/database/` (or pieces of it) into
-another project. That reader is exactly who this `## Reuse` section, like the
-rest of this agent guide, already serves.
+`src/database/README.md`'s `## Reuse` is the human version of this section —
+the peer-dependency list, what transfers unchanged and what to drop. Keep the
+two congruent; they describe the same move.
 
 `src/database/entities/base.entity.ts` and the migration scripts in
 `package.json` transfer to any TypeORM project unchanged.
