@@ -134,15 +134,47 @@ export class AppModule {}
 
 ## Config
 
-[`src/email/config/email.scope.ts`](./config/email.scope.ts) supports:
+[`src/email/config/email.scope.ts`](./config/email.scope.ts) reads:
 
-- `EMAIL_ADAPTER`: `AWS_SES | SENDGRID | RESEND | CONSOLE`
-- `EMAIL_FROM`
-- `SENDGRID_API_KEY`
-- `RESEND_API_KEY`
-- `RESEND_EMAIL_FROM`
+| Variable | Meaning |
+|---|---|
+| `EMAIL_ADAPTER` | `AWS_SES \| SENDGRID \| RESEND \| CONSOLE`. Defaults to `CONSOLE`. |
+| `EMAIL_FROM` | The sender address handed to the provider. |
+| `SENDGRID_API_KEY` | SendGrid credential. |
+| `RESEND_API_KEY` | Resend credential. |
+| `RESEND_EMAIL_FROM` | Optional Resend-only override of `EMAIL_FROM`. |
+| `AWS_SES_REGION` | SES region. |
+| `AWS_ACCESS_KEY` | SES access key id (shared with the S3 scope). |
+| `AWS_SECRET_ACCESS_KEY` | SES secret access key (shared with the S3 scope). |
 
-If `EMAIL_ADAPTER` is not provided, it defaults to `CONSOLE`.
+### Picking an adapter picks its requirements
+
+Choosing a provider makes that provider's variables mandatory. The app refuses
+to boot without them and the error names the variable you are missing — it no
+longer starts and then fails at the first send:
+
+| `EMAIL_ADAPTER` | Also required |
+|---|---|
+| `CONSOLE` (default) | nothing |
+| `SENDGRID` | `EMAIL_FROM`, `SENDGRID_API_KEY` |
+| `RESEND` | `EMAIL_FROM`, `RESEND_API_KEY` |
+| `AWS_SES` | `EMAIL_FROM`, `AWS_SES_REGION`, `AWS_ACCESS_KEY`, `AWS_SECRET_ACCESS_KEY` |
+
+The other providers' variables may stay unset or empty while they are not
+selected. Everything is reported at once, so a bare `EMAIL_ADAPTER=AWS_SES`
+tells you about all four in a single message.
+
+`CONSOLE` stays the frictionless local path: clone, install, start — no
+provider variable and not even `EMAIL_FROM`, because that adapter prints the
+message to the log instead of delivering it. `EMAIL_FROM` has no default
+precisely so a forgotten one cannot become a plausible production sender;
+under `CONSOLE` it simply stays empty and `ConsoleAdapterService` logs the
+message with no default sender.
+
+**Upgrading an existing deployment.** This is a deliberate breaking change. If
+your environment sets `EMAIL_ADAPTER` to a real provider, make sure that
+provider's credential and `EMAIL_FROM` are set before you deploy, or the app
+will not start.
 
 ## Sending Emails
 
@@ -157,6 +189,69 @@ await this.emailService.sendEmail({
   },
 });
 ```
+
+## Recipe: render, then send
+
+`EmailService` never renders. Compiling a template belongs to
+[`src/templating/`](../templating/README.md), and the caller joins the two
+halves: `TemplateService.compile()` returns the HTML string, and that string
+goes into `sendEmail` as `content: { html }`. Keeping the two apart is what
+lets you swap the mail provider without touching templates, and swap the
+template engine without touching delivery.
+
+Address the template through `TEMPLATE_PATHS` and its subject through
+`TEMPLATE_SUBJECTS`, both from
+[`src/templates/template.const.ts`](../templates/template.const.ts) — never a
+hand-written path or an inlined subject string.
+
+```ts
+import { Inject, Injectable } from '@nestjs/common';
+import { EmailService } from './email/abstract/email.service';
+import { emailScope, EmailScopeConfig } from './email/config/email.scope';
+import { TemplateService } from './templating/abstract/template.service';
+import {
+  TEMPLATES,
+  TEMPLATE_PATHS,
+  TEMPLATE_SUBJECTS,
+} from './templates/template.const';
+
+@Injectable()
+export class WelcomeMailer {
+  constructor(
+    private readonly templateService: TemplateService,
+    private readonly emailService: EmailService,
+    @Inject(emailScope.KEY)
+    private readonly emailConf: EmailScopeConfig,
+  ) {}
+
+  async sendWelcome(to: string, name: string): Promise<void> {
+    // 1. Templating renders. It knows nothing about email.
+    const html = await this.templateService.compile(
+      TEMPLATE_PATHS[TEMPLATES.WELCOME],
+      { name },
+    );
+
+    // 2. Email delivers pre-rendered content. It knows nothing about pug.
+    await this.emailService.sendEmail({
+      to,
+      from: this.emailConf.from,
+      subject: TEMPLATE_SUBJECTS[TEMPLATES.WELCOME],
+      content: { html },
+    });
+  }
+}
+```
+
+Both services are injected as their abstract classes, and both are registered
+globally in `src/app.module.ts`, so a feature module needs no extra imports.
+`from` is optional — every adapter falls back to its configured sender — but
+passing `emailConf.from` keeps the sender in one place.
+
+The template used to ship a live demonstration of this at `GET /email` in
+`src/app.controller.ts`. It was deleted: the route had no guard and sent a real
+email to a hardcoded address the moment a non-console adapter was configured.
+This recipe replaces it. If you want to try a send by hand, do it from a script
+or a guarded route of your own, not from an open endpoint.
 
 ## Sending Helper (`executeHtmlEmailSend`)
 
@@ -203,6 +298,8 @@ pnpm add joi                    # config/email.scope.ts
 
 `abstract/` and `console-adapter/` need only `@nestjs/common`.
 
-**Removing it from the template instead.** `src/app.controller.ts` imports
-`EmailService` and `emailScope` for its demo route — that is the only inbound
-edge outside `src/app.module.ts`, and deleting the demo route clears it.
+**Removing it from the template instead.** Nothing outside `src/app.module.ts`
+imports this module any more: the demo route in `src/app.controller.ts` that
+used to inject `EmailService` and `emailScope` is gone. Drop the
+`EmailAbstractModule.forRootAsync(...)` registration and the `emailScope` entry
+in `src/app.module.ts`, delete `src/email/`, and the tree still compiles.
