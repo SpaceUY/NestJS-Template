@@ -16,6 +16,8 @@ This is the SpaceDev reusable NestJS template. Each top-level directory under
 - `CLAUDE.md` — project invariants, commands and the module map. Start here.
 - `src/<module>/CLAUDE.md` — rules, public surface and extraction recipe for that module.
 - `src/<module>/README.md` — human-facing recipes and examples for that module.
+- `.claude/skills/setup-template/` — the guided setup wizard, run by hand with
+  `/setup-template`. See [Guided setup](#guided-setup-setup-template).
 
 Each module's two files are self-contained on purpose: they describe how that
 module works and what it needs elsewhere, and they reference nothing outside
@@ -315,6 +317,65 @@ value, not an omission. `KEY=` hands the config scope an empty string, and Joi
 rejects an empty string for every key but nine. To leave something unset,
 comment the line out — which is why the optional blocks in that file ship
 commented rather than empty.
+
+## Guided setup (`/setup-template`)
+
+The section above is the manual route: read `.env.example`, decide each key,
+delete what you don't need. The other route is to have an agent walk you
+through the same decisions one at a time. In Claude Code, type:
+
+```
+/setup-template
+```
+
+**It does not start on its own.** The skill lives in
+`.claude/skills/setup-template/` and carries
+`disable-model-invocation: true`, so an agent cannot reach for it — only you
+can, by typing the command. That is deliberate: it rewrites `.env`,
+`src/app.module.ts` and `src/main.ts`, and every step needs your answer.
+Asking an agent what `TRUST_PROXY` does gets you an answer, not a wizard.
+
+Fourteen stages, one question per message, and **nothing is written until you
+submit.** Stage 14 shows the resolved `.env`, every file edit and every
+deletion, and asks once; only then does anything change, and the five CI gates
+run straight after.
+
+| Stage | Decides |
+|---|---|
+| 1 | Preflight — toolchain, `.env`, containers |
+| 2 | Deployment topology — load balancer, or an instance on its own elastic IP |
+| 3 | Rate limiting — window, allowance, or off |
+| 4 | Public surface — `NODE_ENV`, `PORT`, `SELF_URL`, `CORS_ORIGINS`, Swagger |
+| 5 | Database — `DATABASE_URL` or the discrete `DB_*` set |
+| 6 | Auth — JWT secret and expiry, Google OAuth, Auth0 |
+| 7 | Redis — keep it, or remove `cache` / `queues` |
+| 8 | Email — `CONSOLE`, SES, SendGrid or Resend |
+| 9 | Cloud storage — the S3 block, and whether the default controller stays |
+| 10 | Push notifications — Expo, and the same controller question |
+| 11 | Analytics — `CONSOLE` or PostHog |
+| 12 | Observability — OTLP endpoint, or tracing off |
+| 13 | Reference domain module — keep or delete `src/spaceship/` |
+| 14 | **Submit** — one confirmation, then everything is applied |
+
+Stage 2 is the one worth knowing about before you start, because it is the
+answer the rest lean on. Behind a load balancer — ECS, Elastic Beanstalk, an
+ALB, nginx, Cloudflare — the app never sees the client, so `TRUST_PROXY` has to
+name the hop count or every request looks like it came from the proxy and the
+whole deployment shares one rate-limit bucket. On an instance reached directly
+on its own elastic IP the same setting is a hole: with it on, a client sends
+its own `X-Forwarded-For` and decides what `req.ip` returns, which is what the
+limiter keys on. Off is the correct setting there, not the lazy one. The
+follow-up — one instance or several — decides whether the in-memory throttler
+counters are good enough, since N instances allow N times the configured limit.
+
+The security headers need no decision and the wizard says so rather than
+offering one: `src/main.ts` applies `helmet()` with its defaults, first in the
+middleware stack, and `src/swagger.bootstrap.unit.spec.ts` fails if the docs
+page ever needs something that policy does not allow.
+
+You can stop at any stage and re-run it later; the wizard keeps its answers in
+a scratch sheet outside the repository, and re-running it against a configured
+`.env` offers your current values as the defaults.
 
 ## Local development
 
