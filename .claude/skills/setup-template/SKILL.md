@@ -6,13 +6,18 @@ disable-model-invocation: true
 
 # Setting up the template for a new project
 
-Turns a clone of this template into a configured project by asking the
-developer, one decision at a time, and applying nothing until they submit.
+Turns a clone of this template into a configured project by asking one decision
+at a time, and applying nothing until the person running it submits.
+
+Whoever is running it: a backend developer who knows every key by name, and
+someone who has never opened this repository, are both expected users. The
+protocol below is written so the same fourteen questions serve both.
 
 ## The protocol
 
 1. **One stage per message.** Ask the stage's question with `AskUserQuestion`,
-   recommended option first. Never bundle two stages into one message.
+   recommended option first. Never bundle two stages into one message. Ask in
+   whatever language the person is writing in.
 2. **Nothing is written to the repo before stage 14.** Not `.env`, not
    `src/app.module.ts`, not a deleted directory. Reading and running
    `pnpm install` are fine; changing tracked files is not.
@@ -25,16 +30,57 @@ developer, one decision at a time, and applying nothing until they submit.
    recommended option and say they come from that file.
 5. **Skipping is an answer.** Every stage offers "leave as it ships" or "remove
    this module". Record which one.
+6. **Every question carries a way out.** See below — it is not optional, and it
+   is what makes the wizard usable by someone who is not a backend developer.
 
-`stages.md` in this directory holds the fourteen stages: the question, the
-options, what each answer resolves to, and what to verify afterwards. Read it
-when the developer starts the wizard, not before.
+`stages.md` in this directory holds the fourteen stages: the question, its
+plain-language framing, the options, what each answer resolves to, and what to
+verify afterwards. Read it when the person starts the wizard, not before.
+
+## Nobody has to already know the answer
+
+Stage 1 asks how much explaining to do, and that setting holds for the whole
+run. Independently of it, **every** question offers this as its last option:
+
+> **No sé qué es esto / I don't know — explain it**
+
+Picking it is not an error and not a detour. Answer it like this:
+
+1. **Say what the thing is** in two or three sentences, with no jargon and no
+   config keys. "Rate limiting" is "how many requests one person can make
+   before the app starts refusing them, so nobody can hammer it."
+2. **Say what actually changes** between the options, in consequences the
+   person can judge: what breaks, what it costs, what someone would notice.
+   Not "sets `TRUST_PROXY`" — "without this, the app thinks every visitor is
+   the same visitor."
+3. **Say which one you would pick and why**, in one sentence.
+4. **Ask the same question again.** Do not decide for them and move on.
+
+If they still cannot answer after that, the question is not theirs to answer.
+Offer to **park it**: record the stage as pending, keep the shipped default in
+the sheet, and carry on. Parked stages are listed on their own at the submit,
+as the handoff for whoever does know. A wizard that stalls at stage 5 because
+someone does not have the database URL is worse than one that finishes with
+three things marked pending.
+
+The option also covers "I want to talk about this first". Treat any answer that
+is a question as that option — explain, discuss for as long as they want, then
+re-ask.
+
+**Keep the option list to three substantive choices plus that one.** Four real
+options and an escape hatch does not fit, and a stage with four is a stage with
+a missing first question — ask the coarse one ("do you already have a mail
+provider?") and put the detail in the follow-up.
+
+**When explain-mode is on,** lead with two or three sentences of context before
+the question, every stage, without being asked. Keep the config key names out
+of the question and in the setup sheet, where they belong.
 
 ## Stage index
 
 | # | Stage | Decides |
 |---|---|---|
-| 1 | Preflight | toolchain, `.env`, containers |
+| 1 | Preflight | toolchain, `.env`, containers, and how much to explain |
 | 2 | Deployment topology | `TRUST_PROXY`, and what security headers depend on it |
 | 3 | Rate limiting | `RATE_LIMIT_TTL_MS`, `RATE_LIMIT_LIMIT`, `RATE_LIMIT_ENABLED` |
 | 4 | Public surface | `NODE_ENV`, `PORT`, `SELF_URL`, `CORS_ORIGINS`, `SWAGGER_ENABLED` |
@@ -59,8 +105,11 @@ Stage 14 is the only stage that changes the repository. Present, in this order:
    three edits each: the registration in `src/app.module.ts`, its scope in that
    file's `scopes` array, its keys in `.env.example`.
 3. **The deletions,** directory by directory.
-4. **What is left to the developer** — a migration to generate, a credential
-   they said they would fill in later.
+4. **What is left to someone else** — every parked stage, each as "what was
+   asked, what default is in place meanwhile, and what breaks if nobody
+   revisits it" — plus a migration to generate or a credential they said they
+   would fill in later. This is the handoff list; write it so the person
+   reading it was not in the conversation.
 
 Then ask once: apply, go back to a stage, or abort. On "apply", make the edits,
 then run the five gates and report each result:
@@ -105,3 +154,6 @@ wrong, not that the check is. Fix it before reporting done.
 | Removing a module without its scope | `src/app.module.ts` keeps a `scopes` entry for a scope nothing reads, and the keys stay in `.env.example`. |
 | Deleting a module `spaceship` imports, first | The tree stops compiling and the cause looks like the wrong module. |
 | Reporting done on a clean `tsc` | Three defects reached `master` that only booting the app found. Boot it when the wizard changed wiring. |
+| Answering "I don't know" with the explanation and then your own choice | The person learns nothing and owns a decision they did not make. Explain, then ask again. |
+| Letting a parked stage quietly become a default | It stops being a decision and becomes a surprise. Parked means listed at the submit, by name. |
+| Using key names as the question | `CORS_ORIGINS` is not a question. "Which websites are allowed to call this API?" is. |

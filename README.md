@@ -340,6 +340,16 @@ submit.** Stage 14 shows the resolved `.env`, every file edit and every
 deletion, and asks once; only then does anything change, and the five CI gates
 run straight after.
 
+**You do not have to know the answers.** Stage 1 asks how much you want
+explained, and every question after it carries a *"no sé qué es esto"* option:
+it explains the decision in plain terms, says which option it would pick and
+why, and then asks you again rather than deciding for you. If it is genuinely
+not your call — the database URL, the OTLP collector — you can park the
+question: the shipped default stays in place and the stage is listed at the
+submit as a handoff for whoever does know. A run where half the stages are
+parked still ends with a working local configuration and a clear list of what
+is missing.
+
 | Stage | Decides |
 |---|---|
 | 1 | Preflight — toolchain, `.env`, containers |
