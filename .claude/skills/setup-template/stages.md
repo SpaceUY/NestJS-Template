@@ -5,13 +5,20 @@ and record the answer in the setup sheet. Write nothing to the repository
 before stage 14.
 
 Each stage below gives the question, the options, what each answer resolves to,
-and what to check before moving on.
+and what to check before moving on. **Plain:** is the same question with the
+jargon taken out — use it verbatim when explain-mode is on, and as the
+explanation when someone picks "I don't know" at any other time.
+
+Every stage's option list ends with **"No sé qué es esto / I don't know —
+explain it"**. `SKILL.md` says what to do when it is picked: explain, say what
+you would choose, ask again, and offer to park it if they still cannot answer.
 
 ---
 
 ## 1. Preflight
 
-**No question yet.** Establish the ground and report it in one short message.
+Establish the ground first, then ask the one question that sets the tone for
+the other thirteen.
 
 ```bash
 node -v && pnpm -v          # Node 24.15.0, pnpm 10.15.1 — never npm or yarn
@@ -25,7 +32,25 @@ the recommended option at every later stage, and the developer is configuring an
 existing project rather than a fresh clone.
 
 Then say what the wizard will cover — the thirteen decisions in the stage index
-— and start stage 2.
+— and ask:
+
+> **How much should I explain as we go?**
+>
+> - **Explain each decision first** — what it is, what changes, what I'd pick.
+>   Slower, and you can answer everything without knowing the codebase.
+> - **Just the questions** — you know this stack; I'll keep it terse and use
+>   the config key names directly.
+> - **Somewhere in between** — terse by default, and I explain whenever you ask.
+
+Recommend the first. It costs a few extra lines per stage and it is the
+difference between a wizard a product manager can finish and one they abandon
+at stage 5.
+
+This setting is not permanent: "explicame esto" at any stage switches it on for
+that stage, and "dale, más corto" switches it off. Honour both immediately.
+
+Record the answer in the sheet — if the session is interrupted, the register is
+part of what you resume.
 
 ---
 
@@ -34,6 +59,11 @@ Then say what the wizard will cover — the thirteen decisions in the stage inde
 The first real decision, and the one most other defaults hang off. It is about
 what sits in front of the process, because that is what decides whether
 `req.ip` is the client or a proxy.
+
+**Plain:** when someone uses the app, does their request arrive here directly,
+or does it pass through something else first? The app has to know, because
+otherwise it cannot tell one visitor from another — it either counts everybody
+as the same person, or lets anyone claim to be somebody else.
 
 > **Where will this run?**
 >
@@ -94,6 +124,11 @@ line each:
 
 ## 3. Rate limiting
 
+**Plain:** how many requests may one person make before the app starts refusing
+them? This is the brake that stops somebody hammering the login page with a
+list of stolen passwords. Too tight and real users hit it; too loose and it is
+not a brake.
+
 > **What allowance should a client get?** The window and the number of requests
 > in it, per client.
 
@@ -117,7 +152,12 @@ of rotation.
 
 ## 4. Public surface
 
-Four values, one message. Recommend the `.env.example` defaults and ask for the
+**Plain:** a handful of things about how the app is reached from outside — is
+this the real deployment or a test one, what address it answers on, which
+websites are allowed to call it, and whether the interactive API documentation
+page is published for anyone who finds it.
+
+Five values, one message. Recommend the `.env.example` defaults and ask for the
 ones only the developer knows.
 
 | Key | Ask | Note |
@@ -135,6 +175,10 @@ the flag, do not lie about `NODE_ENV` — that would silently re-allow a wildcar
 ---
 
 ## 5. Database
+
+**Plain:** where the database lives and how to log into it. Either one long
+connection string or the five pieces listed separately — the same information,
+two spellings. If you do not have it, this is the most common thing to park.
 
 > **How is the connection configured?** A single `DATABASE_URL`, or the five
 > discrete `DB_*` keys?
@@ -165,6 +209,11 @@ No `--` before that path — pnpm 10 consumes it and TypeORM then fails with
 ---
 
 ## 6. Auth
+
+**Plain:** how people prove who they are. When someone logs in the app hands
+them a signed pass, and that signature needs a secret nobody else has — I can
+generate one. Then: do you also want a "log in with Google" button, or an
+Auth0 account?
 
 Three questions, asked together because they share a block.
 
@@ -198,6 +247,12 @@ either writes it. `src/auth/CLAUDE.md` has the detail.
 
 ## 7. Redis, cache and queues
 
+**Plain:** Redis is a fast scratch memory the app keeps beside it. Here it does
+two jobs: it remembers recent answers so they are not recomputed on every
+visit, and it holds the list of work to do later, like sending an email without
+making the user wait for it. As the template ships, the app expects it to be
+running.
+
 > **Does this project need Redis?** It backs two things here — the cache and
 > the BullMQ job queues — and `src/app.module.ts` registers both
 > unconditionally, so as it ships the app expects Redis reachable at runtime.
@@ -226,13 +281,25 @@ brokers at once means three live connections for one queue.
 
 ## 8. Email
 
-> **Which provider sends mail?** `CONSOLE`, `AWS_SES`, `SENDGRID` or `RESEND`.
+**Plain:** does the app need to send real emails yet — a welcome message, a
+password reset? Until it does, it can print them to the log instead, which
+needs no account and no keys and is the right answer while you are building.
 
-`CONSOLE` logs the message instead of sending it and needs nothing else — not
-even `EMAIL_FROM`. It is the right answer for a project that has not chosen a
-provider yet.
+Four adapters exist, which is one too many for a single question. Ask the
+coarse one first:
 
-Any other adapter makes `EMAIL_FROM` and that provider's credential **required**:
+> **Does this project send real email yet?**
+>
+> - **Not yet** — print messages to the log instead.
+> - **Yes, through AWS** — SES, using the same AWS credentials as file storage.
+> - **Yes, through a mail service** — SendGrid or Resend.
+
+`Not yet` is `EMAIL_ADAPTER=CONSOLE`: it logs the message instead of sending it
+and needs nothing else, not even `EMAIL_FROM`. `Yes, through a mail service`
+takes a follow-up for which of the two.
+
+Any adapter other than `CONSOLE` makes `EMAIL_FROM` and that provider's
+credential **required**:
 the app refuses to boot without them and the error names the missing variable.
 
 | Adapter | Also required |
@@ -252,6 +319,11 @@ instead of translating it into the module's error type. A caller that catches
 ---
 
 ## 9. Cloud storage
+
+**Plain:** does the app need to keep files people upload — photos, PDFs,
+attachments? They go to Amazon S3, which needs an account. Nothing breaks if
+you say no now: the app only complains the first time something actually tries
+to upload.
 
 > **Does this project upload files to S3?**
 
@@ -281,6 +353,10 @@ routes need a guard before the app is exposed and say so again at the submit.
 
 ## 10. Push notifications
 
+**Plain:** does the app need to send the notifications that pop up on a phone's
+screen? This goes through Expo, which is the usual route for a React Native
+app. No mobile app, no need for this.
+
 > **Does this project send push notifications through Expo?**
 
 **No** → remove the module. Nothing else imports it, so it is the three standard
@@ -303,6 +379,10 @@ line. Delivery here is best-effort — a failed send is not retried.
 
 ## 11. Analytics
 
+**Plain:** does the app need to record what people do in it — signed up,
+clicked, bought — so someone can look at that later? It either sends those to
+PostHog, or prints them to the log until somebody sets up an account.
+
 > **Where do product events go?** `CONSOLE` or `POSTHOG`.
 
 `CONSOLE` logs events instead of sending them. `POSTHOG` requires
@@ -317,6 +397,11 @@ Not needed at all? Three edits, like any other adapter module.
 ---
 
 ## 12. Observability
+
+**Plain:** tracing records how long each request spent in each part of the app,
+so that when something is slow you can see where instead of guessing. It needs
+somewhere to send those recordings. Without one, tracing is simply off and
+nothing else changes — this is a safe park.
 
 > **Is there an OTLP collector to send traces to?**
 
@@ -335,6 +420,12 @@ all-or-nothing process-wide — there is no per-module switch.
 ---
 
 ## 13. Reference domain module
+
+**Plain:** the template ships with one small worked example — a "spaceship"
+feature with its own screen's worth of endpoints, its own database table and a
+background email. It is there to show how the pieces fit, and it is written to
+be thrown away. Keep it while people are learning the codebase; delete it
+before the project ships.
 
 > **Keep `src/spaceship/`?** It is the worked example — an entity, a controller,
 > a cache-aside read, a queued email — written to be deleted. It imports nine of
@@ -359,14 +450,29 @@ of those, this stage runs before it at the submit — order the edits accordingl
 ## 14. Submit
 
 The only stage that writes. Follow the submit contract in `SKILL.md`: show the
-resolved `.env`, the file edits, the deletions and what is left to the
-developer; ask once; then apply, run the five gates, and report each result.
+resolved `.env`, the file edits, the deletions and what is left to someone
+else; ask once; then apply, run the five gates, and report each result.
 
-Two things to repeat at the top of the summary, if they apply, because they are
-the ones that become someone else's incident:
+**Write the summary in the register stage 1 established.** Someone who needed
+every stage explained will not read a list of environment keys, and a confirm
+step nobody understands is not a confirm step. In explain-mode, describe each
+group of changes in one plain sentence — "emails will be printed to the log
+instead of sent" — with the keys underneath for whoever reads it later.
 
-- default controllers kept without a guard (stages 9 and 10);
-- `RATE_LIMIT_ENABLED=false` with nothing in front actually rate-limiting.
+**The parked list is the most important part of the summary for a
+non-technical run,** and it goes above the file edits, not in a footnote. One
+line each: what was asked, what is in place meanwhile, and what happens if
+nobody comes back to it. If every stage was parked, say so plainly — the run
+still produced a working local configuration and a clear handoff, which is a
+success, not a failure.
+
+Two things to repeat at the top, if they apply, because they are the ones that
+become someone else's incident:
+
+- default controllers kept without a guard (stages 9 and 10) — in plain terms,
+  "anyone who can reach this app can upload files to it";
+- `RATE_LIMIT_ENABLED=false` with nothing in front actually rate-limiting — "no
+  limit on how fast someone can hammer this".
 
 After the gates pass, boot the app once against its real dependencies if the
 wizard changed any wiring in `src/app.module.ts`. A green `test:cov` mocks
