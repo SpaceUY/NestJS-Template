@@ -59,8 +59,19 @@ an unconfigured template still boots and still serves `POST /spaceships`.
 2. **Controllers do not log** — `src/common/observability/logger/PRACTICES.md`.
    Business logs go in the service.
 3. **DTOs** live in `dto/`, one class per operation, with `class-validator`
-   decorators and `@ApiProperty` on every field. The global `ValidationPipe`
-   runs with `forbidNonWhitelisted`, so an undeclared field is a 400.
+   decorators and `@ApiProperty` on every field.
+
+   **Do not rely on an undeclared field being rejected.** `src/main.ts` builds
+   the global pipe as `new ValidationPipe({ transform: true, forbidNonWhitelisted: true })`,
+   and `forbidNonWhitelisted` does nothing without `whitelist: true` — the
+   forbidden set is what whitelist stripping would have removed. Measured
+   2026-09-22 against the running app: `POST /spaceships` with an extra
+   `"hacker"` field answers `201`, not `400`. Nothing is persisted, because
+   TypeORM ignores a property that is not a column, but the guarantee the root
+   `CLAUDE.md` describes is not in force. Recorded, not fixed here: adding
+   `whitelist: true` changes the answer of every endpoint in the template and
+   is a decision for the template owner, not a side effect of restoring this
+   module.
 4. **Route parameters are `uuid`, never `id`.** The integer PK is internal
    (`src/database/CLAUDE.md` Rule 2). Every lookup here is `where: { uuid }`,
    and `SpaceshipResponseDto` exposes the captain as `captainUuid`, never the

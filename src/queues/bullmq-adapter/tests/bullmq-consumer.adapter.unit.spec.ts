@@ -85,6 +85,19 @@ describe('BullMqConsumerAdapter', () => {
       );
     });
 
+    // Regression: the adapter used to pass `concurrency: this.options.concurrency`
+    // unconditionally, so leaving it unset sent `concurrency: undefined` and
+    // real BullMQ threw "concurrency must be a finite number greater than 0" —
+    // every consumer failed to start, which the mocked Worker above cannot
+    // reproduce. Asserting the key's absence is what catches it.
+    it('omits concurrency entirely when none is configured', async () => {
+      await startWith(jest.fn(async () => {}));
+
+      const options = (Worker as unknown as jest.Mock).mock.calls[0][2];
+      expect(options).not.toHaveProperty('concurrency');
+      expect(options.connection).toEqual(connection);
+    });
+
     it('ignores a duplicate start for the same queue', async () => {
       const adapter = makeAdapter();
       await adapter.startConsuming(

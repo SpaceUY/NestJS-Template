@@ -57,7 +57,13 @@ export class BullMqConsumerAdapter extends QueueConsumerAdapter {
       worker = new Worker(queue, (job) => this._process(job, callback), {
         connection: this.options.connection,
         prefix: this.options.prefix,
-        concurrency: this.options.concurrency,
+        // Omitted rather than passed as undefined: BullMQ validates the key if
+        // it is present at all, and `concurrency: undefined` throws
+        // "concurrency must be a finite number greater than 0" — which is the
+        // opposite of this option's documented "defaults to BullMQ's default".
+        ...(this.options.concurrency !== undefined
+          ? { concurrency: this.options.concurrency }
+          : {}),
       });
     } catch (error) {
       throw this._consumeError(queue, error);
