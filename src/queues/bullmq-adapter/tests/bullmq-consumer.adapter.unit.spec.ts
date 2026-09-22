@@ -85,6 +85,19 @@ describe('BullMqConsumerAdapter', () => {
       );
     });
 
+    // Regression: the adapter used to pass `concurrency: this.options.concurrency`
+    // unconditionally, so leaving it unset sent `concurrency: undefined` and
+    // real BullMQ threw "concurrency must be a finite number greater than 0" —
+    // every consumer failed to start, which the mocked Worker above cannot
+    // reproduce. Asserting the key's absence is what catches it.
+    it('omits concurrency entirely when none is configured', async () => {
+      await startWith(jest.fn(async () => {}));
+
+      const options = (Worker as unknown as jest.Mock).mock.calls[0][2];
+      expect(options).not.toHaveProperty('concurrency');
+      expect(options.connection).toEqual(connection);
+    });
+
     it('ignores a duplicate start for the same queue', async () => {
       const adapter = makeAdapter();
       await adapter.startConsuming(
@@ -198,6 +211,28 @@ describe('BullMqConsumerAdapter', () => {
     it('stopConsuming on an unknown queue is a no-op', async () => {
       const adapter = makeAdapter();
       await expect(adapter.stopConsuming('nope')).resolves.toBeUndefined();
+    });
+
+    // Each worker holds an open Redis connection, so one left running keeps
+    // the process alive past app.close(). The module hooks stop the queues
+    // they registered; this covers a queue started by calling the adapter
+    // directly, and the case where an earlier stop in the same teardown threw.
+    // The sqs and rabbitmq adapters always had this hook; this one did not.
+    it('closes every remaining worker on module teardown', async () => {
+      const adapter = makeAdapter();
+      await adapter.startConsuming(
+        'orders',
+        jest.fn(async () => {}),
+      );
+      await adapter.startConsuming(
+        'invoices',
+        jest.fn(async () => {}),
+      );
+
+      await adapter.onModuleDestroy();
+
+      expect(mockWorkerClose).toHaveBeenCalledTimes(2);
+      expect(workersOf(adapter).size).toBe(0);
     });
   });
 

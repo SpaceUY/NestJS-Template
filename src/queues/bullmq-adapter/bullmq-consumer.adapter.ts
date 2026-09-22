@@ -1,4 +1,4 @@
-import { Injectable } from '@nestjs/common';
+import { Injectable, OnModuleDestroy } from '@nestjs/common';
 import { Job, UnrecoverableError, Worker } from 'bullmq';
 import { QueueConsumerAdapter } from '../abstract/consumer/queue-consumer.adapter';
 import { MessageContext } from '../abstract/consumer/queue-consumer.interfaces';
@@ -18,7 +18,10 @@ type ConsumerCallback = (
 ) => Promise<void>;
 
 @Injectable()
-export class BullMqConsumerAdapter extends QueueConsumerAdapter {
+export class BullMqConsumerAdapter
+  extends QueueConsumerAdapter
+  implements OnModuleDestroy
+{
   private readonly workers = new Map<string, Worker>();
 
   /**
@@ -57,7 +60,13 @@ export class BullMqConsumerAdapter extends QueueConsumerAdapter {
       worker = new Worker(queue, (job) => this._process(job, callback), {
         connection: this.options.connection,
         prefix: this.options.prefix,
-        concurrency: this.options.concurrency,
+        // Omitted rather than passed as undefined: BullMQ validates the key if
+        // it is present at all, and `concurrency: undefined` throws
+        // "concurrency must be a finite number greater than 0" — which is the
+        // opposite of this option's documented "defaults to BullMQ's default".
+        ...(this.options.concurrency !== undefined
+          ? { concurrency: this.options.concurrency }
+          : {}),
       });
     } catch (error) {
       throw this._consumeError(queue, error);
@@ -96,6 +105,25 @@ export class BullMqConsumerAdapter extends QueueConsumerAdapter {
       message: 'Stopped consuming BullMQ queue',
       data: { queue },
     });
+  }
+
+  /**
+   * Closes any worker still running at module teardown.
+   *
+   * `QueueConsumerModule` and `QueueConsumerFeatureModule` already call
+   * `stopConsuming` for every queue they registered; this covers the rest — a
+   * queue started by calling the adapter directly, or one left behind when an
+   * earlier `stopConsuming` in the same teardown threw. Each worker holds an
+   * open Redis connection, so one left running keeps the process alive after
+   * `app.close()`. The three sibling adapters (`sqs-adapter/`,
+   * `rabbitmq-adapter/`) have always done this; this one did not.
+   *
+   * @returns {Promise<void>} Resolves once every remaining worker is closed.
+   */
+  async onModuleDestroy(): Promise<void> {
+    await Promise.all(
+      [...this.workers.keys()].map((queue) => this.stopConsuming(queue)),
+    );
   }
 
   /**

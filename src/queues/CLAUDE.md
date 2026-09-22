@@ -99,6 +99,13 @@ executable example — the graph `src/queues/README.md`'s `## Registration`
 section describes. Changing any of that without running it is how a wiring bug reaches
 production.
 
+Its second `describe` compiles **two** domain modules, each with its own
+`forFeature` call. Every call returns a `DynamicModule` whose `module` is the
+same class, and Nest identifies a dynamic module by a token derived from that
+class plus its metadata — if two calls ever collapsed to one token, the second
+registration would be dropped and the app would boot clean with one queue
+silently unconsumed. Verified working; keep the case whenever this file moves.
+
 ## Reuse
 
 Scoped to the narrowest useful copy — `abstract/` plus one adapter directory,
@@ -123,6 +130,26 @@ the two congruent (`T7`).
 ## Known gaps
 
 See `docs/audit/2026-09-18-modularity-audit.md`.
+
+- **Every consumer failed to start, and no test could see it.** ~~`BullMqConsumerAdapter`
+  passed `concurrency: this.options.concurrency` unconditionally; BullMQ
+  validates the key whenever it is present, so leaving the option unset — its
+  interface documents it as "defaults to BullMQ's default" — made every
+  `new Worker(...)` throw `concurrency must be a finite number greater than 0`.~~
+  **Fixed 2026-09-22:** the key is omitted when undefined, the shape
+  `rabbitmq-adapter/` already used for `prefetch` and the producer for
+  `delay`/`priority`. It stayed hidden because nothing in the template
+  registered a consumer until `src/spaceship/` came back, and because the
+  adapter spec mocks `Worker` — a mock validates nothing. **When you add an
+  optional adapter option, omit it rather than pass `undefined`, and assert the
+  key's absence.**
+- **~~`BullMqConsumerAdapter` was the only adapter here with no `onModuleDestroy`.~~**
+  **Fixed 2026-09-22.** Both consumer registration paths stop the queues they
+  own, so the wired graph was covered; what was not is a queue started by
+  calling the adapter directly, or one left behind when an earlier
+  `stopConsuming` in the same teardown threw. Each worker holds an open Redis
+  connection, so one left running keeps the process alive past `app.close()`.
+  `sqs-adapter/` and `rabbitmq-adapter/` always closed theirs.
 
 - RabbitMQ and SQS adapters are complete but unwired: only BullMQ is
   registered in `src/app.module.ts`. That stays deliberate — registering three

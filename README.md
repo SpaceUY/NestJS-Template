@@ -24,7 +24,7 @@ Run `pnpm run docs:check` after editing any `CLAUDE.md`.
 
 ## What is in here
 
-Fifteen modules. "Companions" are the other `src/` directories that module's
+Sixteen modules. "Companions" are the other `src/` directories that module's
 imports reach into — the narrowest subtree that has to travel with it, taken
 from `pnpm run modularity:check -- --report`, which is the source of truth when
 this table drifts. Each module's own `README.md` has the recipes and its
@@ -45,13 +45,15 @@ this table drifts. Each module's own `README.md` has the recipes and its
 | [`health`](src/health/README.md) | Readiness (`GET /health`) and liveness (`GET /health/live`) for load balancers and container runtimes | — | logger, `cache` — both optional |
 | [`push-notification`](src/push-notification/README.md) | Push delivery | `expo` | logger, `config-provider` |
 | [`queues`](src/queues/README.md) | Producer and consumer abstractions for message queues | `bullmq`, `rabbitmq`, `sqs` | logger, `config-provider` |
+| [`spaceship`](src/spaceship/README.md) | **The reference domain module** — CRUD, cache-aside reads and a background email job. Written to be deleted, not lifted | — | nine of the other thirteen; see its README |
 | [`templates`](src/templates/README.md) | The template files and the typed registry naming them — no executable code | — | none |
 | [`templating`](src/templating/README.md) | Compiling a template to HTML | `pug` | `common/utils/` |
 
 "logger" above means `src/common/observability/logger/` specifically, not all
-of `src/common/`. Nine modules have an edge into `common`; seven of them reach
-only into that subtree, `auth` also uses `common/exception/`, and `templating`
-uses only `common/utils/` — one import, `nest-module-validation`. Four things
+of `src/common/`. Ten modules have an edge into `common`; seven of them reach
+only into that subtree. `auth` and `spaceship` also use `common/exception/`,
+and `templating` uses only `common/utils/` — one import,
+`nest-module-validation`. Four things
 the table cannot show:
 
 - **Config scopes live with their consumer, not with `config-provider`.** So a
@@ -152,9 +154,12 @@ above, which was only discovered during the 2026-09-19 `queues` measurement.
 `queues` is the one that changed. On 2026-09-18 it **did not lift** at all:
 copying it alone left 29 unresolved imports, and the only closure that
 compiled pulled in 11 of the template's 13 top-level `src/` directories
-(`EXT3`, `EXT4`). Removing the demo domain module and moving consumer
-registration to `QueueConsumerModule.forFeature` brought that down to the two
-companions above.
+(`EXT3`, `EXT4`). Moving consumer registration to
+`QueueConsumerModule.forFeature` brought that down to the two companions
+above — and it is the registration change, not the demo module's absence, that
+did it: `spaceship` is back in the tree today and `queues` still depends only
+on `common` and `config-provider`, because the binding now travels from the
+domain module to `queues` rather than the other way round.
 
 **This measures compile time, not boot time.** Every result above means
 `tsc --noEmit` exits 0 — it does not mean the lifted module works once
@@ -226,10 +231,18 @@ Two failure modes worth naming, because both look like success:
 The other supported workflow: clone the repository and delete what you don't
 need, keeping the rest wired together.
 
-There is no demo domain module to delete. What comes out cleanly is a module no
-other module imports: the seven adapter modules `analytics`, `cache`,
-`cloud-storage`, `email`, `push-notification`, `queues` and `templating`, and
-also `auth`, which is not an adapter module but has no inbound edges either
+**Start with `spaceship`.** It is the one demo module — the reference domain
+implementation — and it is the only thing here written to be thrown away.
+Nothing imports it, but it imports nine of the other thirteen directories, so
+removing it first is what makes several of them free-standing.
+[`src/spaceship/README.md`](src/spaceship/README.md)'s **Deleting it** is the
+seven-step checklist; it is longer than the three edits below because the
+module owns an entity, two config scopes and an email template.
+
+After that, what comes out cleanly is a module no other module imports: the
+seven adapter modules `analytics`, `cache`, `cloud-storage`, `email`,
+`push-notification`, `queues` and `templating`, and also `auth`, which is not
+an adapter module but has no inbound edges either once `spaceship` is gone
 (removing it leaves `database` with no importers left). Each of those is
 removed with the same three edits:
 
@@ -243,11 +256,15 @@ The rest of the tree is not free-standing. `pnpm run modularity:check --
 --report` prints the edges that say so, and today they are:
 
 - `common` is imported by `analytics`, `auth`, `cloud-storage`,
-  `config-provider`, `email`, `queues` and `templating`.
+  `config-provider`, `email`, `health`, `push-notification`, `queues`,
+  `spaceship` and `templating`.
 - `config-provider` is imported by `analytics`, `auth`, `cloud-storage`,
-  `database`, `email`, `push-notification` and `queues` — and imports `common`
-  itself.
-- `database` is imported by `auth` (23 specifiers).
+  `database`, `email`, `push-notification`, `queues` and `spaceship` — and
+  imports `common` itself.
+- `database` is imported by `auth` (23 specifiers) and `spaceship` (8).
+- `auth`, `email`, `queues`, `templates` and `templating` are imported by
+  `spaceship` and by nothing else; `cache` by `spaceship` and `health`. Delete
+  the demo module first and all six come out with the three edits above.
 
 So `common`, `config-provider` and `database` do not come out on their own:
 deleting any of them while something above still imports it leaves the tree
@@ -256,14 +273,16 @@ non-compiling. They go last, once everything that imports them has gone.
 One directory fits neither list, having no registration and no config scope in
 `src/app.module.ts`:
 
-- `src/templates/` holds two generic templates, `WELCOME` and `VERIFICATION`,
-  registered in `src/templates/template.const.ts`. Both are starting points, not
-  demo content — there is nothing here to strip. **Nothing imports it.** The
-  demo route that did, `GET /email`, was removed: unguarded, it sent a real
-  message to a hardcoded address from whatever provider the environment had
-  configured. The render-then-send pattern it showed is written up in
-  `src/email/README.md`. So this directory is free-standing today — take it or
-  delete it without touching anything else.
+- `src/templates/` holds three templates registered in
+  `src/templates/template.const.ts`. `WELCOME` and `VERIFICATION` are starting
+  points, not demo content — there is nothing to strip there.
+  `SPACESHIP_CREATED` is demo content and goes with `spaceship`, which is the
+  only thing that imports this directory. Once it has, `src/templates/` is
+  free-standing again — take it or delete it without touching anything else.
+  (The other importer it used to have, the `GET /email` demo route, was
+  removed: unguarded, it sent a real message to a hardcoded address from
+  whatever provider the environment had configured. The render-then-send
+  pattern it showed is written up in `src/email/README.md`.)
 
 Run `pnpm run modularity:check -- --report` for the current dependency graph
 before deleting anything, rather than trusting a copy of it that will drift.

@@ -122,4 +122,54 @@ describe('S3AdapterService', () => {
       );
     });
   });
+
+  // Regression: the client used to be built in the constructor, so an
+  // unconfigured S3 block (every field defaults to '') threw AWS's
+  // "Region is missing" during Nest's startup and took the whole application
+  // down — an app that never uploads a file could not boot from the shipped
+  // .env.example. The contract that block documents is "fails when you
+  // actually call it", and these two cases are that contract.
+  describe('when S3 is not configured', () => {
+    const unconfigured = { region: '', bucket: '', expiresInSeconds: 3600 };
+
+    it('constructs without touching the AWS SDK', () => {
+      expect(() => new S3AdapterService(unconfigured)).not.toThrow();
+      expect(S3Client).not.toHaveBeenCalled();
+    });
+
+    it('throws NOT_CONFIGURED on the first call instead of leaking the SDK error', async () => {
+      const service = new S3AdapterService(unconfigured);
+      let error: unknown;
+      try {
+        await service.uploadFile({
+          buffer: Buffer.from('content'),
+          mimetype: 'text/plain',
+        });
+      } catch (caughtError) {
+        error = caughtError;
+      }
+
+      expect(error).toBeInstanceOf(CloudStorageError);
+      expect((error as CloudStorageError).code).toBe(
+        CLOUD_STORAGE_ERRORS.NOT_CONFIGURED,
+      );
+      expect((error as CloudStorageError).message).toContain('AWS_REGION');
+    });
+  });
+
+  it('builds the client once and reuses it across calls', async () => {
+    mockedSend.mockResolvedValue({});
+    const service = new S3AdapterService(config);
+
+    await service.uploadFile({
+      buffer: Buffer.from('a'),
+      mimetype: 'text/plain',
+    });
+    await service.uploadFile({
+      buffer: Buffer.from('b'),
+      mimetype: 'text/plain',
+    });
+
+    expect(S3Client).toHaveBeenCalledTimes(1);
+  });
 });

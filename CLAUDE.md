@@ -34,6 +34,7 @@ Before changing anything under `src/<module>/`, read `src/<module>/CLAUDE.md`.
 | `src/templating` | `src/templating/CLAUDE.md` | `src/templating/README.md` |
 | `src/templates` | `src/templates/CLAUDE.md` | `src/templates/README.md` |
 | `src/queues` | `src/queues/CLAUDE.md` | `src/queues/README.md` |
+| `src/spaceship` | `src/spaceship/CLAUDE.md` | `src/spaceship/README.md` |
 
 Shared references: `docs/architecture/module-contract.md` (the adapter-module
 contract), `docs/audit/2026-09-11-template-audit.md` (known defects, the
@@ -117,6 +118,16 @@ abstract class (`EmailService`, `CacheService`, `LoggerService`,
 place: the `forRoot`/`forRootAsync`/`register` call in `src/app.module.ts`.
 Importing `S3AdapterService` or `ResendAdapterService` from a feature module is
 always wrong.
+
+One exception exists, and it is the only one:
+`src/spaceship/notification/notification.module.ts` aliases
+`BullMqProducerAdapter` behind an `instanceof` guard, because its job needs
+BullMQ's `attempts`/`backoff` and the abstract `QueueProducerService` exposes
+only broker-agnostic `delay`/`priority`. `src/queues/CLAUDE.md`'s Rule 1
+sanctions exactly this and requires the consuming module's guide to declare it
+— `src/spaceship/CLAUDE.md` does. Follow that shape, guard included, or do not
+take the exception at all: a bare `useExisting` alias turns a broker swap into
+a runtime failure inside the request path instead of a failure at startup.
 
 **T2 — All configuration flows through a config scope.** Never read
 `process.env` outside `src/config-provider/env-adapter/env-config.adapter.ts`,
@@ -203,9 +214,11 @@ migration file, never rely on `DB_SYNCHRONIZE` outside local development. See
 - **Entities:** extend `src/database/entities/base.entity.ts`. `id` (integer) is
   internal; `uuid` is the only identifier an API response may expose.
 - **Tests:** co-located. `*.unit.spec.ts` for isolated unit tests,
-  `*.di.spec.ts` for the one spec that boots a real Nest DI container
-  (`src/queues/abstract/tests/queue-consumer-feature.module.di.spec.ts`). No
-  plain `*.spec.ts` name is left under `src/` — finding `N4` is closed.
+  `*.di.spec.ts` for a spec that boots a real Nest DI container — there are two,
+  `src/queues/abstract/tests/queue-consumer-feature.module.di.spec.ts` and
+  `src/spaceship/spaceship.module.di.spec.ts`, and they are the two ends of the
+  same wiring. No plain `*.spec.ts` name is left under `src/` — finding `N4` is
+  closed.
 - **Git:** branches `feature/` `fix/` `chore/` `hotfix/`; conventional commits;
   PRs only, never a direct push to `master`.
 
@@ -307,7 +320,9 @@ first new cross-module violation instead of freezing a known set.
   (`docs/audit/evidence/extract-queues-closure-2026-09-19.txt`). `cache`
   (`EXT1`, `EXT6`) and `email` (`EXT2`, `EXT5`) date from 2026-09-18 and
   predate that correction; the other twelve top-level directories have never
-  been copied into a clean project and compiled. **Left open knowingly, by team
+  been copied into a clean project and compiled. `src/spaceship/` is the one
+  directory this does not apply to: it is the reference domain module, written
+  to be deleted rather than lifted, and its `## Reuse` says so. **Left open knowingly, by team
   decision on 2026-09-21.** Do not quote a per-module extraction cost outside
   `queues` as measured.
 

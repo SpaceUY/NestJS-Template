@@ -34,6 +34,14 @@ project that needs those adds a domain module that consumes `CloudStorageService
 Registered in `src/app.module.ts`, which currently wires `S3AdapterService`
 through `forRootAsync` with `useDefaultController: true`.
 
+Every field defaults to an empty string, and that is survivable: the `S3Client`
+is built on **first use**, not in the constructor, so an unconfigured S3 block
+costs a `CLOUD_STORAGE_NOT_CONFIGURED` error on the first upload rather than a
+boot failure. It was the second until 2026-09-22 — `new S3Client({ region: '' })`
+throws `Region is missing`, so `S3AdapterService`'s constructor took down every
+application that copied `.env.example` as shipped, including ones that never
+upload a file. Do not move the client back into the constructor.
+
 `LocalAdapterService` takes no configuration and writes to a project-level
 `/files` directory — development only. Because it needs no config it is the one
 adapter here that suits `forRoot`.

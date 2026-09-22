@@ -239,3 +239,109 @@ describe('QueueConsumerModule.forFeature (DI graph)', () => {
     expect(ctx.ack).toHaveBeenCalledTimes(1);
   });
 });
+
+/**
+ * The single-feature graph above is the documented example, but an application
+ * with two domain modules is the point of `forFeature` existing at all. Every
+ * `forFeature` call returns a DynamicModule whose `module` is the same class,
+ * `QueueConsumerFeatureModule`, and Nest identifies a dynamic module by a token
+ * derived from that class plus its metadata. If two calls ever collapsed to one
+ * token, the second registration would be dropped — and nothing would say so:
+ * the app would boot clean with one queue silently unconsumed.
+ */
+describe('QueueConsumerModule.forFeature with two domain modules', () => {
+  @Injectable()
+  class PayrollProcessor extends QueueConsumerHandler<{ runId: string }> {
+    readonly seen: string[] = [];
+    async handle(payload: { runId: string }): Promise<void> {
+      this.seen.push(payload.runId);
+    }
+  }
+
+  @Module({
+    imports: [
+      QueueConsumerModule.forFeature([
+        { queue: 'payroll', handler: PayrollProcessor },
+      ]),
+    ],
+    providers: [PayrollProcessor],
+  })
+  class PayrollModule {}
+
+  let moduleRef: TestingModule;
+  let startConsumingSpy: jest.SpyInstance;
+
+  beforeAll(async () => {
+    moduleRef = await Test.createTestingModule({
+      imports: [
+        LoggerAbstractModule.forRoot({
+          adapter: NestLoggerAdapter,
+          isGlobal: true,
+        }),
+        ConfigProviderAbstractModule.forRoot({
+          isGlobal: true,
+          sources: {
+            env: {
+              useValue: new StubConfigAdapter({
+                REDIS_HOST: 'localhost',
+                REDIS_PORT: '6379',
+              }),
+            },
+          },
+          scopes: [queuesTestScope],
+        }),
+        QueueConsumerModule.forRootAsync({
+          isGlobal: true,
+          inject: [queuesTestScope.KEY],
+          useFactory: (config: QueuesTestScopeConfig) =>
+            new BullMqConsumerAdapter({
+              connection: { host: config.host, port: config.port },
+            }),
+        }),
+        InvoicingModule,
+        PayrollModule,
+      ],
+    }).compile();
+
+    const adapter = moduleRef.get<BullMqConsumerAdapter>(QueueConsumerAdapter, {
+      strict: false,
+    });
+    startConsumingSpy = jest.spyOn(adapter, 'startConsuming');
+
+    await moduleRef.init();
+  });
+
+  afterAll(async () => {
+    await moduleRef?.close();
+  });
+
+  it('starts both queues, one per registration', () => {
+    const queues = startConsumingSpy.mock.calls.map(([queue]) => queue);
+
+    expect(queues).toHaveLength(2);
+    expect(queues).toEqual(expect.arrayContaining([QUEUE, 'payroll']));
+  });
+
+  it('binds each queue to its own module’s handler', async () => {
+    const calls = startConsumingSpy.mock.calls as [
+      string,
+      (payload: unknown, ctx: MessageContext) => Promise<void>,
+    ][];
+    const ctx = {
+      headers: {},
+      ack: jest.fn(async () => {}),
+      nack: jest.fn(async () => {}),
+    } as MessageContext;
+
+    const payrollCallback = calls.find(([queue]) => queue === 'payroll')?.[1];
+    await payrollCallback?.({ runId: 'RUN-7' }, ctx);
+
+    expect(
+      moduleRef.get<PayrollProcessor>(PayrollProcessor, { strict: false }).seen,
+    ).toEqual(['RUN-7']);
+    // The invoicing handler must not have been fed the payroll message.
+    expect(
+      moduleRef.get<InvoiceProcessor>(InvoiceProcessor, { strict: false }).seen,
+    ).toEqual([]);
+  });
+});

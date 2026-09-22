@@ -60,8 +60,20 @@ async function bootstrap(): Promise<void> {
       'x-requested-with',
     ],
   });
+  // `whitelist` is what makes `forbidNonWhitelisted` do anything: the
+  // "non-whitelisted" set is exactly what whitelist stripping would have
+  // removed, so the flag was inert on its own and an undeclared field reached
+  // the handler with a 201 instead of a 400. Behaviour change, deliberate: a
+  // request carrying a property no DTO declares is now rejected. That is the
+  // guarantee the root CLAUDE.md's `## Conventions` already promised, and what
+  // stops a client from smuggling a field a service later spreads into an
+  // entity.
   app.useGlobalPipes(
-    new ValidationPipe({ transform: true, forbidNonWhitelisted: true }),
+    new ValidationPipe({
+      transform: true,
+      whitelist: true,
+      forbidNonWhitelisted: true,
+    }),
   );
 
   // Gated on SWAGGER_ENABLED, which defaults to off in PROD. Nothing is built
