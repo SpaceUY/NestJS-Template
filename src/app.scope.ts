@@ -8,6 +8,7 @@ export type AppScopeConfig = {
   selfUrl: string;
   corsOrigins: string[];
   swaggerEnabled: boolean;
+  trustProxy: boolean | number | string;
 };
 
 // `CORS_ORIGINS` is a comma-separated list. Parsing lives here so the rule and
@@ -54,6 +55,18 @@ const validate = (raw: Record<string, unknown>): AppScopeConfig => {
       then: Joi.boolean().default(false),
       otherwise: Joi.boolean().default(true),
     }),
+    // Express's own `trust proxy` setting — what `req.ip`, `req.protocol` and
+    // secure-cookie handling are computed from. Off by default: an instance
+    // reachable directly (its own elastic IP, no load balancer in front)
+    // must keep seeing the real client IP, and turning this on there would
+    // let a spoofed `X-Forwarded-For` header lie about it. Behind a load
+    // balancer or reverse proxy, set it to the hop count to trust (`1` for a
+    // single ALB) or a specific address/CIDR list — see Express's `trust
+    // proxy` docs for the accepted shapes. `src/main.ts` applies this
+    // verbatim via `app.set('trust proxy', ...)`.
+    trustProxy: Joi.alternatives()
+      .try(Joi.boolean(), Joi.number().integer().min(0), Joi.string())
+      .default(false),
   });
 
   const { error, value } = schema.validate(raw, { abortEarly: false });
@@ -69,6 +82,7 @@ export const appScope = defineConfigScope<AppScopeConfig>(
     selfUrl: from.env('SELF_URL'),
     corsOrigins: from.env('CORS_ORIGINS'),
     swaggerEnabled: from.env('SWAGGER_ENABLED'),
+    trustProxy: from.env('TRUST_PROXY'),
   },
   validate,
 );

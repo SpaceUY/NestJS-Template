@@ -13,6 +13,7 @@ import { defineConfigScope } from './config-provider/abstract/define-config-scop
 export type RateLimitScopeConfig = {
   ttlMs: number;
   limit: number;
+  enabled: boolean;
 };
 
 /**
@@ -23,15 +24,24 @@ export type RateLimitScopeConfig = {
  * dashboard stays well under them, while credential stuffing against the
  * public auth routes does not.
  *
- * Neither value may be absent and neither may be zero. A `0` limit would lock
- * the API out entirely and a `0` window would disable the guard while leaving
- * it registered, which is the kind of silent off switch this scope exists to
- * prevent.
+ * Neither `ttlMs` nor `limit` may be absent and neither may be zero. A `0`
+ * limit would lock the API out entirely and a `0` window would disable the
+ * guard while leaving it registered, which is the kind of silent off switch
+ * this scope refuses to allow through those two knobs.
+ *
+ * `enabled` is the explicit, non-silent way to turn the guard off — for a
+ * deployment where something in front of the app already rate-limits (an API
+ * gateway, a WAF) or where per-instance in-memory counting
+ * (`ThrottlerModule.forRootAsync` in `src/app.module.ts`) is known to be
+ * wrong for the topology, e.g. several instances behind a load balancer with
+ * no shared counter store. Defaulting to `true` means an environment that
+ * never sets `RATE_LIMIT_ENABLED` keeps the guard on.
  */
 const validate = (raw: Record<string, unknown>): RateLimitScopeConfig => {
   const schema = Joi.object<RateLimitScopeConfig>({
     ttlMs: Joi.number().integer().min(1000).default(60_000),
     limit: Joi.number().integer().min(1).default(100),
+    enabled: Joi.boolean().default(true),
   });
 
   const { error, value } = schema.validate(raw, { abortEarly: false });
@@ -44,6 +54,7 @@ export const rateLimitScope = defineConfigScope<RateLimitScopeConfig>(
   {
     ttlMs: from.env('RATE_LIMIT_TTL_MS'),
     limit: from.env('RATE_LIMIT_LIMIT'),
+    enabled: from.env('RATE_LIMIT_ENABLED'),
   },
   validate,
 );

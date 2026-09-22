@@ -74,4 +74,24 @@ describe('appScope', () => {
       /swaggerEnabled/,
     );
   });
+
+  // Off by default: an instance reached directly on its own elastic IP must
+  // keep trusting nothing but its own view of the connection.
+  it('does not trust a proxy by default', () => {
+    expect(validate({}).trustProxy).toBe(false);
+  });
+
+  it('accepts a hop count for a load balancer in front', () => {
+    expect(validate({ trustProxy: '1' }).trustProxy).toBe(1);
+  });
+
+  it('accepts an explicit boolean', () => {
+    expect(validate({ trustProxy: 'true' }).trustProxy).toBe(true);
+  });
+
+  it('accepts an address list Express understands', () => {
+    expect(validate({ trustProxy: 'loopback, 10.0.0.0/8' }).trustProxy).toBe(
+      'loopback, 10.0.0.0/8',
+    );
+  });
 });
