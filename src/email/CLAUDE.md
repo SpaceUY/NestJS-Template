@@ -1,8 +1,7 @@
 # Email — module guide
 
-> Inherits the repo-root `CLAUDE.md` (always loaded) and
-> `docs/architecture/module-contract.md`. Read those first — this file adds
-> only what is specific to `src/email/`.
+> Inherits the repo-root `CLAUDE.md` (always loaded). Read it first — this file
+> adds only what is specific to `src/email/`.
 
 ## Scope
 
@@ -16,11 +15,10 @@ to `EmailService.sendEmail()` as `content: { html }`. `src/email/README.md`'s
 "Recipe: render, then send" section has the worked example. This separation is
 deliberate: it is what lets either side be swapped alone.
 
-No controller in the template demonstrates it any more. The demo `GET /email`
-route in `src/app.controller.ts` was deleted on `chore/template-hardening`: it
-was unguarded and triggered a real send to a hardcoded recipient as soon as a
-real adapter was configured. Do not reintroduce an example route that sends;
-the README recipe is where the pattern lives now.
+No controller demonstrates this, deliberately. An example route that sends is
+unguarded by nature and fires a real message at a hardcoded recipient the
+moment a real adapter is configured — do not add one. The README recipe is
+where the pattern belongs.
 
 ## Public surface
 
@@ -70,9 +68,9 @@ unset. This is the `analytics.scope.ts` pattern (`posthogApiKey` under
 object, so it never falls back to the ambient AWS credential chain — all three
 of its variables are genuinely mandatory, not merely conventional.
 
-`EMAIL_FROM` has no default. A plausible-looking one (it used to be
-`fake@example.com`) is the `C2` shape: a deploy that forgot the variable sends
-from the placeholder instead of refusing to start. Under `CONSOLE` the field
+`EMAIL_FROM` has no default, and must not be given a plausible-looking one: a
+placeholder means a deploy that forgot the variable sends from it instead of
+refusing to start. Under `CONSOLE` the field
 validates to `''`, which `ConsoleAdapterService` reads as "no default sender" —
 nothing is delivered from it either way, so cloning the template and booting it
 with no `.env` still works. `RESEND_EMAIL_FROM` is an optional Resend-only
@@ -178,25 +176,16 @@ the two congruent (`T7`).
 
 ## Known gaps
 
-See `docs/audit/2026-09-11-template-audit.md`.
+**The AWS SES adapter does not translate its provider's errors.**
+`aws-ses-adapter.service.ts` logs and re-throws the raw
+`@aws-sdk/client-ses` rejection, and never imports `EmailError` — so a caller
+that catches `EmailError`, as every other adapter here lets it, catches nothing
+when SES is the wired provider. The other three adapters go through
+`utils/execute-html-email-send.ts`, which does the translation. Route SES
+through it, or wrap its `catch` the same way, before relying on SES in
+production.
 
-- **`B1`** — ~~the email factory in `src/app.module.ts` references `emailConfig`,
-  `awsConfig` and `ConfigType`, none of which is imported; the app does not
-  compile. It should use the already-imported `emailScope`.~~ **Fixed by
-  switching the factory to the already-registered `emailScope`.**
-- **`D2`** — ~~`src/email/README.md` documents `utils/email-logger.adapter.ts`,
-  `abstract/email-logger.interface.ts` and `!src/config/email.config.ts`, none of
-  which exist, and still teaches `@nestjs/config`.~~ **Fixed:** the README now
-  points at the real `src/email/config/email.scope.ts`, drops the fictional
-  logger-adapter/interface and the `@nestjs/config` example, and documents
-  `src/email/utils/execute-html-email-send.ts`.
-- **`N7`** — ~~`abstract/templates.abstract.ts` is dead code.~~ **Fixed on
-  `chore/module-gaps`:** `!src/email/abstract/templates.abstract.ts` is deleted.
-  `TemplateService.compile` in `src/templating/` is the only compile contract.
-- **`N5`** — ~~no mocks.~~ **Fixed on `chore/module-gaps`:**
-  `src/email/abstract/mocks/email.service.mock.ts`.
-- **`G1`** — ~~no tests.~~ Partly closed on
-  `test/coverage-email-templating-push` (the send helper, the console adapter
-  and the resend adapter) and **fully closed on `test/coverage-remaining`:**
-  `aws-ses` and `sendgrid` have specs too, so every file in the module with
-  behaviour is covered.
+**Two `any`s live in `abstract/`, both with a per-line disable.** An interface
+type has no implicit index signature, so `Record<string, unknown>` rejects the
+template-params objects this module passes through. That is the only reason,
+and it is written at each line. Do not widen it into a file-level disable.

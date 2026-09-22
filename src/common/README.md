@@ -100,7 +100,8 @@ so it is the first thing to lift and the last thing to delete.
   root is compiled. Copy that `@types/` directory across and check that the
   destination's `tsconfig.json` really covers where you put it (under
   `"include": ["src"]` it does not, so move the file into `src/`). Otherwise
-  the interceptor fails to compile (`EXT7`).
+  the interceptor fails to compile — and no import error will point at the
+  cause, because nothing imports the file.
 
 **Removing it from the template instead.** You cannot, until every module that
 imports it has gone. `pnpm run modularity:check -- --report` names them.

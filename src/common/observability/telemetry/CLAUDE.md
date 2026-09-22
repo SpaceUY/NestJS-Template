@@ -1,15 +1,14 @@
 # Telemetry — module guide
 
-> Inherits the repo-root `CLAUDE.md` (always loaded),
-> `docs/architecture/module-contract.md` and `src/common/CLAUDE.md`. Read those
-> first — this file adds only what is specific to
+> Inherits the repo-root `CLAUDE.md` (always loaded) and `src/common/CLAUDE.md`.
+> Read those first — this file adds only what is specific to
 > `src/common/observability/telemetry/`.
 
-This module does not follow the adapter-module contract in
-`docs/architecture/module-contract.md` — there is one backend (OpenTelemetry),
-selected by whether `OTEL_EXPORTER_OTLP_ENDPOINT` is set, not a
-`forRoot`/`forRootAsync` registration. There is no abstract class to inject;
-`@Span()` and the SDK bootstrap are used directly.
+This module deliberately does not follow the adapter shape the rest of the
+template uses. There is one backend (OpenTelemetry), selected by whether
+`OTEL_EXPORTER_OTLP_ENDPOINT` is set, rather than a `forRoot`/`forRootAsync`
+registration; there is no abstract class to inject. `@Span()` and the SDK
+bootstrap are used directly.
 
 ## Scope
 
@@ -78,10 +77,7 @@ version of this section. Keep the two congruent (`T7`).
 
 ## Known gaps
 
-- ~~No automated check enforces that `main.ts`'s first import stays
-  `tracing.bootstrap` — a reordering during a future edit would silently
-  disable instrumentation patching rather than fail loudly.~~ **Fixed on
-  `test/tracing-import-order`:**
-  `src/common/observability/telemetry/tracing-import-order.unit.spec.ts` reads
-  `src/main.ts` and asserts both the position and the side-effect-only form of
-  that import, so a reorder fails `pnpm test` instead of going unnoticed.
+**Tracing is all-or-nothing and process-wide.** The SDK is started before Nest
+exists, so nothing here can be reconfigured per request or per module, and a
+misconfigured endpoint degrades to no traces rather than to an error. That is
+the cost of patching instrumentation before any other import runs.

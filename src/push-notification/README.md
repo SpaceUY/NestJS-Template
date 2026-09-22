@@ -305,9 +305,9 @@ pnpm add joi                # expo-adapter/config/expo.scope.ts
 
 **What you are also copying.** This module uses registration style B — the
 adapter ships its own `register`/`registerAsync` module and the abstract module
-aliases its token. Style A is what new modules use
-(`docs/architecture/module-contract.md`); the extra indirection here is
-historical, not a pattern to follow.
+aliases its token. Style A — the shape `src/cache/` uses, where the abstract
+module binds the adapter class directly — is what a new module should follow;
+the extra indirection here is not a pattern to copy.
 
 **Removing it from the template instead.** Nothing imports
 `src/push-notification/`; it comes out in three edits.

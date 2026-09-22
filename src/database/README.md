@@ -69,10 +69,14 @@ with `TypeOrmModule.forFeature` in `src/database/database.module.ts`.
 Migrations are always generated from the entities, never hand-written:
 
 ```bash
-pnpm run db:migration:generate -- src/database/migrations/AddThing
+pnpm run db:migration:generate src/database/migrations/AddThing
 pnpm run db:migration:run
 pnpm run db:migration:revert
 ```
+
+Note there is no `--` before the path. pnpm 10 swallows it when what follows is
+a positional argument, and the command fails with `Not enough non-option
+arguments: got 0, need at least 1`.
 
 `migration:generate` diffs the entities against a **live** database, so point
 `DATABASE_URL` (or the `DB_*` set) at one first — `docker-compose.yml` has one.
@@ -112,5 +116,7 @@ pnpm add joi                          # config/database.scope.ts
 exist for `src/auth/`. Dropping `auth` means dropping both and regenerating the
 baseline migration against an empty database.
 
-**Removing it from the template instead.** Only `src/auth/` imports it, for
-`User` and `AuthType`. It goes once `auth` has.
+**Removing it from the template instead.** Two modules import it: `src/auth/`
+(27 specifiers, for `User` and `AuthType`) and `src/spaceship/` (8, for the
+`Spaceship` entity, which lives here rather than in that module — Rule 1). It
+goes once both have.

@@ -23,9 +23,13 @@ src/templates/
 ├── onboarding/
 │   ├── welcome.interface.ts
 │   └── welcome.pug
+├── spaceship/                   # demo content — goes with src/spaceship/
+│   ├── spaceship-created.interface.ts
+│   └── spaceship-created.pug
 ├── template.const.ts            # central registry for names/paths/subjects
 ├── template-params.interface.ts # type map for template params
 ├── index.ts                     # asset exports (no modules here)
+├── template.const.unit.spec.ts  # registry consistency
 └── README.md
 ```
 
@@ -52,6 +56,10 @@ export const TEMPLATE_SUBJECTS = {
 } as const;
 ```
 
+The file itself carries a third entry, `SPACESHIP_CREATED`. That one is demo
+content belonging to the reference domain module and is removed with it — see
+`src/spaceship/README.md`'s deletion checklist, step 4.
+
 ## Notes
 
 - This folder should remain static (no Nest modules/providers).
@@ -75,10 +83,15 @@ reach `dist/`.
 **Peer dependencies.** None. Rendering them is `src/templating/`'s job, and
 that module is optional here — the registry is just paths and parameter types.
 
-**Removing it from the template instead.** Nothing imports this directory any
-more. `src/app.controller.ts` used to, for `TEMPLATE_PATHS` in the `GET /email`
-demo route, and that route was deleted — unguarded, it sent a real message to a
-hardcoded address. Deleting `src/templates/` today costs one thing only: the
-two starting-point templates and the typed registry pattern go with it, and
-whoever adds email later writes both from scratch. See
-`src/email/README.md`'s render-then-send recipe for how the pieces fit.
+**Removing it from the template instead.** One module imports it:
+`src/spaceship/`, whose notification processor reads `TEMPLATE_PATHS` and
+`TEMPLATE_SUBJECTS` for `SPACESHIP_CREATED`. (`src/app.controller.ts` used to as
+well, for the `GET /email` demo route, and that route was deleted — unguarded,
+it sent a real message to a hardcoded address.) So this directory comes out once
+the reference domain module has, and `src/templates/spaceship/` goes with that
+module rather than with the rest of this one.
+
+After that, deleting `src/templates/` costs one thing only: the two
+starting-point templates and the typed registry pattern go with it, and whoever
+adds email later writes both from scratch. See `src/email/README.md`'s
+render-then-send recipe for how the pieces fit.

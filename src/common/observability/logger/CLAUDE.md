@@ -1,8 +1,8 @@
 # Logger — module guide
 
-> Inherits the repo-root `CLAUDE.md` (always loaded),
-> `docs/architecture/module-contract.md` and `src/common/CLAUDE.md`. Read those
-> first — this file adds only what is specific to `src/common/observability/logger/`.
+> Inherits the repo-root `CLAUDE.md` (always loaded) and `src/common/CLAUDE.md`.
+> Read those first — this file adds only what is specific to
+> `src/common/observability/logger/`.
 
 **`src/common/observability/logger/PRACTICES.md` is binding.** It defines how to write a log
 line: structured `LogInput` only, past-tense event names, level by signal,
@@ -109,15 +109,16 @@ of this section. Keep the two congruent (`T7`).
 
 ## Known gaps
 
-See `docs/audit/2026-09-11-template-audit.md`.
+**This module ships no error type.** A logging failure surfaces as whatever the
+underlying transport throws. In practice that is invisible — the adapters do not
+throw on a write — but it means there is nothing to catch specifically, and a
+consumer cannot tell a logger failure from any other.
 
-- **`C5`** — ~~`src/auth/google/google.service.ts` logs the raw provider error on
-  the token path, against this module's own practices.~~ **Fixed on
-  `fix/security-defaults`:** it logs the error's constructor name only.
-- ~~Direct `@nestjs/common` `Logger` use persists in six files — the two
-  middleware classes and four files under `src/auth/`.~~ **Fixed on
-  `refactor/logger-consistency`:** all six take `@Optional()` `LoggerService`
-  with a `NestLoggerAdapter` fallback (rule 6), and their log lines are
-  `LogInput` objects instead of interpolated strings (rule 2). The two
-  remaining `new Logger(...)` calls in `src/` are the adapter itself and the
-  Redis adapter's deliberate self-containment.
+**It ships no test doubles.** A consumer asserting on log output hand-rolls a
+fake against `LoggerService`; the abstract class is small enough that a
+`jest.fn()` per method is usually all it takes. `src/cache/abstract/mocks/` is
+the shape to copy if you add them.
+
+**Two `new Logger(...)` calls remain in `src/` by design:** the
+`NestLoggerAdapter` itself, and the Redis cache adapter, which keeps its own so
+that `src/cache/` lifts with zero companion directories.

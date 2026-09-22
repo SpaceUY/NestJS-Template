@@ -10,7 +10,7 @@ const flag = (name, fallback) => {
 };
 
 const ROOT = flag('--root', process.cwd());
-const BASELINE = flag('--baseline', 'docs/audit/module-independence-baseline.json');
+const BASELINE = flag('--baseline', 'scripts/module-independence-baseline.json');
 const UPDATE = ARGV.includes('--update-baseline');
 const REPORT = ARGV.includes('--report');
 
@@ -19,7 +19,7 @@ const APP_ROOT = '(app)';
 
 // Tier order: a module may import its own tier or a LOWER-indexed one, never a
 // higher one. Platform code must not know about features; infrastructure must
-// not know about the demo domain. Derived from docs/architecture/module-contract.md.
+// not know about the demo domain.
 const TIER_ORDER = ['platform', 'infrastructure', 'feature', 'app'];
 const TIERS = {
   common: 'platform',

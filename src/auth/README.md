@@ -22,7 +22,7 @@ with it.
 |---|---|---|
 | Google OAuth | `GET /auth/google/web`, `GET /auth/google/callback`, `POST /auth/google/mobile/register`, `POST /auth/google/mobile/login` | Implemented — 404 while `GOOGLE_OAUTH_ENABLED=false` |
 | Auth0 | `POST /auth/auth0/login` | Implemented — 404 while `AUTH0_ENABLED=false` |
-| Email | none | **Not implemented, and no scaffold either.** The empty email controller directory and the empty `AuthService` were deleted (finding `R3`) rather than left to look like a starting point. `AuthType.EMAIL` is still the `User.authType` default, but no code path issues a token for it — write the login/registration flow yourself. |
+| Email | none | **Not implemented, and no scaffold either** — deliberately, rather than leaving empty files that look like a starting point. `AuthType.EMAIL` is still the `User.authType` default, but no code path issues a token for it: write the login/registration flow yourself. |
 
 ## Configuration
 
@@ -158,5 +158,4 @@ module authenticates anyone.
 
 ## Known gaps
 
-See `src/auth/CLAUDE.md`'s "Known gaps" section (`R3`, `N6`, `G1`; `C2` and
-`C5` are closed) and `docs/audit/2026-09-11-template-audit.md`.
+See `src/auth/CLAUDE.md`'s `## Known gaps`.

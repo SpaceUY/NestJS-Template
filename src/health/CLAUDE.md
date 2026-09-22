@@ -1,8 +1,7 @@
 # Health — module guide
 
-> Inherits the repo-root `CLAUDE.md` (always loaded) and
-> `docs/architecture/module-contract.md`. Read those first — this file adds
-> only what is specific to `src/health/`.
+> Inherits the repo-root `CLAUDE.md` (always loaded). Read it first — this file
+> adds only what is specific to `src/health/`.
 
 ## Scope
 
@@ -45,9 +44,9 @@ no `abstract/`, no `<provider>-adapter/` and no `forRoot`. Import
    rather than refusing. The database indicator gets its bound from terminus,
    `pingCheck('database').withTimeout(ms)` — never the `{ timeout }` option,
    which 12.x deprecates. `CacheHealthIndicator` still races its own timer
-   because it cannot use the builder (rule 5), and that timer must be cleared:
-   the uncleared one would be finding `H7` all over again — it held the event
-   loop open after a *successful* probe.
+   because it cannot use the builder (rule 5), and that timer must be cleared in
+   a `finally`. An uncleared one holds the event loop open after a *successful*
+   probe, which is a hang nothing in the suite will show you.
 5. **The failure reason is the error's class name** (`T4`). An `ioredis`
    connection error reads `connect ECONNREFUSED 10.0.0.4:6379` and can carry
    the password. Neither the response body nor the log line may quote it.
@@ -107,9 +106,10 @@ the two congruent (`T7`).
   carrying terminus's `{ status, info, error, details }` payload, and
   `src/common/middleware/request-exception.filter.ts` deliberately rebuilds
   every error body field by field rather than spreading the exception's own
-  payload — that is finding `C4`, and it is correct behaviour for every other
-  route. The status code is right, which is all a load balancer reads, but a
-  human gets nothing. `CacheHealthIndicator` compensates by logging its own
+  payload, which is correct behaviour for every other route — an internal error
+  must not reach a client. The status code is right, which is all a load
+  balancer reads, but a human gets nothing.
+  `CacheHealthIndicator` compensates by logging its own
   failure; `TypeOrmHealthIndicator` is terminus's and does not. Closing this
   properly means letting the filter pass a payload through for one route, which
   is a change to a security-motivated global — scope it deliberately.

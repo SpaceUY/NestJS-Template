@@ -298,8 +298,10 @@ pnpm add joi                    # config/email.scope.ts
 
 `abstract/` and `console-adapter/` need only `@nestjs/common`.
 
-**Removing it from the template instead.** Nothing outside `src/app.module.ts`
-imports this module any more: the demo route in `src/app.controller.ts` that
-used to inject `EmailService` and `emailScope` is gone. Drop the
-`EmailAbstractModule.forRootAsync(...)` registration and the `emailScope` entry
-in `src/app.module.ts`, delete `src/email/`, and the tree still compiles.
+**Removing it from the template instead.** One module imports it:
+`src/spaceship/`, whose notification processor injects `EmailService` and reads
+`emailScope`. (The demo route in `src/app.controller.ts` that used to do the
+same is gone.) So the order is: delete the reference domain module first, then
+drop the `EmailAbstractModule.forRootAsync(...)` registration and the
+`emailScope` entry in `src/app.module.ts`, delete `src/email/`, and the tree
+still compiles.

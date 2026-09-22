@@ -1,12 +1,12 @@
 # Push notification — module guide
 
-> Inherits the repo-root `CLAUDE.md` (always loaded) and
-> `docs/architecture/module-contract.md`. Read those first — this file adds
-> only what is specific to `src/push-notification/`.
+> Inherits the repo-root `CLAUDE.md` (always loaded). Read it first — this file
+> adds only what is specific to `src/push-notification/`.
 
-**This module uses style-B registration** (adapter as module + provider token).
-It is the older shape. Read the "two registration styles" section of the contract
-before changing anything here, and do not copy style B into a new module.
+**This module uses style-B registration**: the adapter ships its own
+`register`/`registerAsync` module and the abstract module aliases its token.
+Style A — what `src/cache/` does, where the abstract module binds the adapter
+class itself — is what a new module should use. Do not copy style B.
 
 ## Scope
 
@@ -120,70 +120,30 @@ Two companions: `src/config-provider/` (plus `joi`) for
 The logger is `@Optional()`, so the module registers without
 `LoggerAbstractModule`; the import still has to resolve.
 
-You are also copying registration style B — the adapter ships its own
-`register`/`registerAsync` module and the abstract module aliases its token.
-That is historical, not the pattern to follow
-(`docs/architecture/module-contract.md`); `forRootAsync` exists on both sides
-now (`N3`), so the indirection is the only thing left of it.
+You are also copying registration style B, described at the top of this file.
+Both sides expose `forRoot`/`forRootAsync`, so the extra indirection is all that
+distinguishes it — harmless here, not a shape to reproduce.
 
 `src/push-notification/README.md`'s `## Reuse` is the human version of this
 section. Keep the two congruent.
 
 ## Known gaps
 
-See `docs/audit/2026-09-11-template-audit.md` and `docs/audit/2026-09-18-modularity-audit.md`.
+**A device push token is a credential, and this is the module that handles
+them.** Rule 5 forbids logging one, and the hard part is that Expo does not put
+the token only in a token field: it builds its error *prose* out of the token,
+so logging `ExpoPushErrorTicket.message` leaks it just as surely. That is why
+`_providerErrorOf` surfaces `details.error` and nothing else, on all three
+surfaces — the log line, the thrown error and the chunk report. A fixture that
+puts a bare code like `'DeviceNotRegistered'` in `message` will not catch a
+regression here; fixtures must carry Expo's real message shape.
 
-- **`N1`** — ~~`push-notification-abstract.module.ts.ts` has a doubled extension.~~
-  **Fixed on `chore/dead-code-and-error-model`.**
-- **`N2`** — ~~`PUSH_NOTIFICATION_ERRORS` contains three entries whose codes are all
-  `CLOUD_STORAGE_*` copy-paste leftovers, and they describe file upload, not push.~~
-  **Fixed on `chore/dead-code-and-error-model`:** the codes are now
-  `PUSH_NOTIFICATION_*` and describe push failures, in the `cache.error.ts`
-  shape.
-- **`N3`** — ~~no `forRootAsync`; the file ends with `// TODO: Add forRootAsync`.
-  Also, `forRoot` mutates the caller's `controllers` array with `push`.~~
-  **Fixed on `chore/module-gaps`:** `forRootAsync` takes the factory shape every
-  other abstract module in the template uses, and both paths build a fresh
-  controllers array. The adapter-as-module style itself (style B) is unchanged.
-- **`D4`** — ~~`src/push-notification/README.md` teaches `@nestjs/config` and
-  `npm`.~~ **Fixed (`@nestjs/config`):** every registration example now injects
-  `expoScope` via `@Inject(expoScope.KEY)` and types the factory parameter as
-  `ExpoScopeConfig`, matching `src/app.module.ts`. The `npm` half of this bullet
-  is `DOC9`'s installation-line defect
-  (`docs/audit/2026-09-18-modularity-audit.md`), not `D4`'s — fixed separately
-  in this same branch.
-- **`G1`** — ~~the send and chunking paths are still untested.~~ **Fixed on
-  `test/coverage-email-templating-push`:** `expo-adapter.send.unit.spec.ts`.
-- **`H5`** — ~~the chunk report logged the failing device token
-  (`getExpoPushNotificationChunkReport`), against rule 5. Found writing the test
-  above.~~ **Fixed on the same branch:** the log line names no token; the token
-  is still returned in the report, which is where the caller needs it.
-- ~~`H5`'s fix was half a fix, and the test that proved it was fixed could not
-  have caught the other half: both send paths still logged
-  `ExpoPushErrorTicket.message`, and Expo builds that prose out of the push
-  token, so the credential kept reaching the log through the message instead of
-  through the token field. The rule-5 specs passed because their fixtures put
-  the bare code `'DeviceNotRegistered'` in `message` — nothing like what Expo
-  actually sends. Flagged by a commit security review, not by the suite.~~
-  **Fixed on `fix/expo-provider-text-leak`:** `_providerErrorOf` surfaces
-  `details.error` and nothing else, on all three surfaces (log, thrown error,
-  report `message`); the fixtures now carry Expo's real message shape, and both
-  new specs fail against the previous code.
-- **`N5`** — ~~no `abstract/mocks/`.~~ **Fixed on `chore/module-gaps`:**
-  `src/push-notification/abstract/mocks/push-notification.service.mock.ts`.
-- ~~`ExpoAdapterService` wrote seven `console.*` lines and carried a
-  `// TODO: Integrate log provider in this service`, so the one module that
-  handles device credentials was the one module outside the logging contract —
-  no context, no trace id, no telemetry hook.~~ **Fixed on
-  `refactor/push-notification-logger`:** `PushNotificationService` now owns a
-  `logger` and a `setLogger` the same way `EmailService` does, and the adapter
-  takes `@Optional() LoggerService`. That adds `src/common/observability/logger/`
-  as a second companion directory for reuse — a deliberate trade, taken because
-  four sibling infrastructure modules already depend on it and a second bespoke
-  logger port (the `cache` route) would fragment the contract further.
-- **`M15`** — ~~`PushNotificationException` is defined but never constructed;
-  adapter failures escape as the raw SDK error or `InternalServerErrorException`
-  instead (Rule 7, Rule 6 when that finding was written).~~ **Fixed on `chore/dead-code-and-error-model`:**
-  `PushNotificationException` is gone, `ExpoAdapterService` throws
-  `PushNotificationError` on every failure path, and the controller's mapping
-  is covered by a spec.
+**Delivery is best-effort and the report is the only record.** A chunk can
+partially fail, and the caller gets the failing tokens back in the report
+rather than as an exception. Nothing retries, and nothing prunes a token Expo
+reports as unregistered — a project that sends at volume needs both, and the
+report is where to build them from.
+
+**The config parameter is decorated with `@Inject`,** unlike every other adapter
+here, which takes a plain constructor parameter. It works; it is just the one
+place the shape differs, so do not read it as the convention.

@@ -416,5 +416,6 @@ may validate with Zod or anything else.
 
 **Removing it from the template instead.** You cannot, while anything above it
 still owns a scope: `analytics`, `auth`, `cloud-storage`, `database`, `email`,
-`push-notification` and `queues` all import from here. It goes last, once those
-have gone or been rewired.
+`push-notification`, `queues` and `spaceship` all import from here — eight
+modules, the widest inbound set after `common`. It goes last, once those have
+gone or been rewired.

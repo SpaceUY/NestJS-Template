@@ -1,8 +1,7 @@
 # Queues — module guide
 
-> Inherits the repo-root `CLAUDE.md` (always loaded) and
-> `docs/architecture/module-contract.md`. Read those first — this file adds
-> only what is specific to `src/queues/`.
+> Inherits the repo-root `CLAUDE.md` (always loaded). Read it first — this file
+> adds only what is specific to `src/queues/`.
 
 ## Scope
 
@@ -33,7 +32,7 @@ this module only ever sees the binding.
 | `MessageContext` | `abstract/consumer/queue-consumer.interfaces.ts` | Per-message `ack()`/`nack()`, `messageId`, `deliveryCount` |
 | `QueueProducerError`, `QUEUE_PRODUCER_ERRORS` | `abstract/producer/queue-producer.error.ts` | Producer error type/codes — `send`/`dispatch` never leak a raw broker error |
 | `QueueConsumerError`, `QUEUE_CONSUMER_ERRORS` | `abstract/consumer/queue-consumer.error.ts` | Consumer error type/codes |
-| `BullMqProducerAdapter`, `BullMqConsumerAdapter` | `bullmq-adapter/` | The wired default. Named outside this module only in `src/app.module.ts` |
+| `BullMqProducerAdapter`, `BullMqConsumerAdapter` | `bullmq-adapter/` | The wired default. Named outside this module in `src/app.module.ts`, and — for the producer only — in `src/spaceship/notification/`, which is the `T1` exception Rule 1 below sanctions |
 | `RabbitMqProducerAdapter`/`RabbitMqConsumerAdapter`, `Sqs*Adapter` | `rabbitmq-adapter/`, `sqs-adapter/` | Available, not wired anywhere today |
 
 ## Configuration
@@ -51,11 +50,12 @@ adapter's own connection config and is registered in
    `dispatch` (broker-agnostic `delay`/`priority`) are needed. A consumer
    needing adapter-specific options (BullMQ `attempts`/`backoff`, etc.)
    injects the concrete adapter class directly and is coupled to that
-   broker by design. The template ships no provider that makes the concrete
-   class injectable — a project that wants one aliases it in its own wiring;
-   `src/queues/README.md`'s `## Registration` section has the recipe and the guard it
-   needs. Note this coupling in the consuming module's own guide; don't hide
-   it.
+   broker by design. Nothing here makes the concrete class injectable — the
+   consuming module aliases it in its own wiring, behind an `instanceof` guard
+   so that a broker swap fails at startup rather than inside a request.
+   `src/spaceship/notification/notification.module.ts` is the worked example,
+   and `src/queues/README.md`'s `## Registration` section has the recipe. Note
+   this coupling in the consuming module's own guide; don't hide it.
 2. A domain module registers its own consumers with
    `QueueConsumerModule.forFeature([{ queue, handler }])` and declares the
    handler class in its own `providers`. The handler's dependencies then
@@ -129,33 +129,29 @@ the two congruent (`T7`).
 
 ## Known gaps
 
-See `docs/audit/2026-09-18-modularity-audit.md`.
+**An optional adapter option must be omitted, never passed as `undefined`.**
+BullMQ validates a key whenever it is present, so `concurrency: undefined`
+throws `concurrency must be a finite number greater than 0` and the worker never
+starts — the queue then sits there accepting jobs that nothing consumes, with
+the application booting clean. `bullmq-adapter/` spreads the key conditionally;
+`rabbitmq-adapter/` does the same for `prefetch`, and the producers for
+`delay`/`priority`. Follow that shape, and assert the key's *absence* in the
+spec.
 
-- **Every consumer failed to start, and no test could see it.** ~~`BullMqConsumerAdapter`
-  passed `concurrency: this.options.concurrency` unconditionally; BullMQ
-  validates the key whenever it is present, so leaving the option unset — its
-  interface documents it as "defaults to BullMQ's default" — made every
-  `new Worker(...)` throw `concurrency must be a finite number greater than 0`.~~
-  **Fixed 2026-09-22:** the key is omitted when undefined, the shape
-  `rabbitmq-adapter/` already used for `prefetch` and the producer for
-  `delay`/`priority`. It stayed hidden because nothing in the template
-  registered a consumer until `src/spaceship/` came back, and because the
-  adapter spec mocks `Worker` — a mock validates nothing. **When you add an
-  optional adapter option, omit it rather than pass `undefined`, and assert the
-  key's absence.**
-- **~~`BullMqConsumerAdapter` was the only adapter here with no `onModuleDestroy`.~~**
-  **Fixed 2026-09-22.** Both consumer registration paths stop the queues they
-  own, so the wired graph was covered; what was not is a queue started by
-  calling the adapter directly, or one left behind when an earlier
-  `stopConsuming` in the same teardown threw. Each worker holds an open Redis
-  connection, so one left running keeps the process alive past `app.close()`.
-  `sqs-adapter/` and `rabbitmq-adapter/` always closed theirs.
+**A spec that mocks the broker validates nothing about the broker.** The adapter
+specs mock `Worker`, so they cannot see an option the real BullMQ would reject.
+`abstract/tests/queue-consumer-feature.module.di.spec.ts` compiles a real Nest
+graph for the registration path; anything beyond that needs the application
+actually running against Redis.
 
-- RabbitMQ and SQS adapters are complete but unwired: only BullMQ is
-  registered in `src/app.module.ts`. That stays deliberate — registering three
-  brokers at once would mean three live connections for one queue. What was
-  missing was the recipe, and it is now written: `README.md`'s
-  **Switching the template's broker** gives the exact `src/app.module.ts` edit
-  for each, plus the one extra step SQS needs (it has no config scope in this
-  template — `!src/queues/sqs-adapter/config/sqs.scope.ts` — so you write one
-  first) and the three behaviours that do not survive the switch.
+**Every consumer holds an open connection, so teardown has to close them.**
+All three consumer adapters implement `onModuleDestroy` and stop every queue
+they own, including one started by calling the adapter directly. A worker left
+running keeps the process alive past `app.close()`.
+
+**RabbitMQ and SQS are complete but unwired.** Only BullMQ is registered in
+`src/app.module.ts`, deliberately: registering three brokers at once means three
+live connections for one queue. `README.md`'s **Switching the template's broker**
+has the exact edit for each, the extra step SQS needs — it ships no config
+scope, so you write one first — and the three behaviours that do not survive the
+switch.

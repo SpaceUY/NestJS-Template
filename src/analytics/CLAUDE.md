@@ -1,9 +1,7 @@
 # Analytics — module guide
 
-> Inherits the repo-root `CLAUDE.md` (always loaded),
-> `docs/architecture/module-contract.md` and `src/common/CLAUDE.md`. Read those
-> first — this file adds only what is specific to
-> `src/analytics/`.
+> Inherits the repo-root `CLAUDE.md` (always loaded) and `src/common/CLAUDE.md`.
+> Read those first — this file adds only what is specific to `src/analytics/`.
 
 ## Scope
 
@@ -75,10 +73,13 @@ Keep the two congruent (`T7`).
 
 ## Known gaps
 
-- **`G1`** — ~~no adapter-level tests for `ConsoleAdapterService` or
-  `PosthogAdapterService`; only the abstract module's wiring was covered.~~
-  **Fixed on `test/coverage-remaining`:** both adapters have a spec.
-- ~~`config/analytics.scope.ts`'s `validate` function takes an untyped `raw`
-  parameter, relying on `tsconfig.json` not being in strict mode (`TS1`) to
-  avoid a `noImplicitAny` error.~~ **Fixed on `chore/typescript-strict`:** it
-  is `(raw: Record<string, unknown>): AnalyticsScopeConfig`.
+**This module ships no error type, on purpose.** Every other module here
+translates its provider's failures into its own error class; analytics
+deliberately does not, because `capture()` is fire-and-forget (Rule 2) — a
+failed event is logged and dropped, never raised at the call site. If you ever
+need a caller to know that capture failed, that decision has to be revisited
+first; do not bolt a throw onto the current contract.
+
+**It ships no test doubles.** A consumer that wants to assert on captured events
+hand-rolls a fake against `AnalyticsService`. `src/cache/abstract/mocks/` is the
+shape to copy if you add them.
