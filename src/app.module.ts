@@ -95,22 +95,30 @@ import { RedisCacheAdapterService } from './cache/redis-adapter/redis-adapter.se
         // Health probes are exempt, or the load balancer reads the 429 it
         // caused and takes healthy instances out of rotation. See
         // src/common/rate-limit/rate-limit-skip.util.ts.
-        skipIf: skipUnthrottledPath,
+        //
+        // RATE_LIMIT_ENABLED=false takes the same path rather than a
+        // separate off switch: skipping every request is exactly what
+        // disabling means, and it keeps `RateLimitModule`'s fail-fast
+        // guarantee intact — the guard stays bound, it just never blocks.
+        // Reach for this when something in front of the app already
+        // rate-limits, or when per-instance in-memory counting (note 1
+        // below) is wrong for the deployment. See src/rate-limit.scope.ts.
+        skipIf: (context) => !rateLimit.enabled || skipUnthrottledPath(context),
       }),
     }),
-    // Two things to know before this runs behind a load balancer, both left
-    // as they are on purpose rather than decided here:
+    // Two things to know before this runs behind a load balancer:
     //
     // 1. The counters live in this process's memory — the default
     //    ThrottlerStorage is per-instance, so N instances allow N times the
     //    configured limit. That is the accepted cost of keeping the cache off
     //    the request path; pass a shared `storage` here if the limit ever has
-    //    to be exact across instances.
+    //    to be exact across instances, or set RATE_LIMIT_ENABLED=false and
+    //    rate-limit in front of the app instead.
     // 2. The client is identified by its IP, which behind a proxy is the
-    //    proxy's unless Express is told to trust it. Enabling `trust proxy`
-    //    changes `req.ip`, `req.protocol` and secure-cookie handling
-    //    application-wide, so it belongs to whoever owns the deployment, not
-    //    to this line.
+    //    proxy's unless Express is told to trust it. TRUST_PROXY
+    //    (src/app.scope.ts, applied in src/main.ts) is that switch — off by
+    //    default for an instance reached directly on its own elastic IP, set
+    //    to a hop count or address list behind a load balancer.
     RateLimitModule,
     QueueProducerModule.forRootAsync({
       isGlobal: true,

@@ -1,15 +1,23 @@
 import './common/observability/telemetry/tracing.bootstrap';
 import { ValidationPipe } from '@nestjs/common';
 import { NestFactory } from '@nestjs/core';
+import { NestExpressApplication } from '@nestjs/platform-express';
 import helmet from 'helmet';
 import { AppModule } from './app.module';
 import { appScope, AppScopeConfig } from './app.scope';
 import { setupSwagger } from './swagger.bootstrap';
 
 async function bootstrap(): Promise<void> {
-  const app = await NestFactory.create(AppModule);
+  const app = await NestFactory.create<NestExpressApplication>(AppModule);
   const appConf = app.get<AppScopeConfig>(appScope.KEY);
   app.enableShutdownHooks();
+
+  // Off by default (see src/app.scope.ts). Set TRUST_PROXY to the hop count
+  // or address list a real deployment needs — a load balancer in front, or an
+  // EC2 instance reachable on its own elastic IP, decide this differently and
+  // it must stay a deployment choice, not a hardcoded one. It has to run
+  // before anything reads req.ip, which includes the rate limiter.
+  app.set('trust proxy', appConf.trustProxy);
 
   // First in the middleware stack, so every response carries the headers —
   // including the Swagger page mounted further down.

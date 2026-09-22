@@ -117,4 +117,33 @@ describe('RateLimitModule', () => {
 
     await isolated.close();
   });
+
+  // What src/app.module.ts does for RATE_LIMIT_ENABLED=false: fold the
+  // disabled check into skipIf rather than removing RateLimitModule, so the
+  // guard stays bound and simply never blocks.
+  it('never limits anything once skipIf is forced true', async () => {
+    const enabled = false;
+    const moduleRef = await Test.createTestingModule({
+      imports: [
+        ThrottlerModule.forRoot({
+          throttlers: [{ ttl: 60_000, limit: LIMIT }],
+          skipIf: (context) => !enabled || skipUnthrottledPath(context),
+        }),
+        RateLimitModule,
+      ],
+      controllers: [StandInAuthController],
+    }).compile();
+
+    const disabled = moduleRef.createNestApplication();
+    await disabled.init();
+
+    for (let attempt = 0; attempt < LIMIT * 4; attempt += 1) {
+      const res = await request(disabled.getHttpServer()).get(
+        '/auth/auth0/login',
+      );
+      expect(res.status).toBe(200);
+    }
+
+    await disabled.close();
+  });
 });

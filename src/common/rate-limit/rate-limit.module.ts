@@ -13,7 +13,10 @@ import { ThrottlerGuard } from '@nestjs/throttler';
  *
  * Importing it without registering `ThrottlerModule` fails at startup rather
  * than silently leaving the API unlimited, which is the failure mode worth
- * having.
+ * having. Turning rate limiting off on purpose (`RATE_LIMIT_ENABLED=false`,
+ * see `src/rate-limit.scope.ts`) does not remove this module — it makes the
+ * guard's `skipIf` always true instead, so the binding this module provides
+ * stays intact either way.
  */
 @Module({
   providers: [

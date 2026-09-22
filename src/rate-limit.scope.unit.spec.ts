@@ -9,14 +9,25 @@ const validate = (raw: Record<string, unknown>): RateLimitScopeConfig => {
 
 describe('rateLimitScope', () => {
   it('falls back to 100 requests a minute when nothing is configured', () => {
-    expect(validate({})).toEqual({ ttlMs: 60_000, limit: 100 });
+    expect(validate({})).toEqual({ ttlMs: 60_000, limit: 100, enabled: true });
   });
 
   it('coerces the strings an environment source hands it', () => {
     expect(validate({ ttlMs: '15000', limit: '20' })).toEqual({
       ttlMs: 15_000,
       limit: 20,
+      enabled: true,
     });
+  });
+
+  // The explicit off switch: unlike ttlMs/limit at 0, this does not fail
+  // validation, because it is not a silent way to disable the guard.
+  it('lets the guard be turned off explicitly', () => {
+    expect(validate({ enabled: 'false' }).enabled).toBe(false);
+  });
+
+  it('refuses an ENABLED value that is not a boolean', () => {
+    expect(() => validate({ enabled: 'sometimes' })).toThrow(/enabled/);
   });
 
   // A limit of 0 answers 429 to every request, including the first. That is

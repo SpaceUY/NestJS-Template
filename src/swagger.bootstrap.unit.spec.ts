@@ -12,6 +12,7 @@ const appConf = (overrides: Partial<AppScopeConfig> = {}): AppScopeConfig => ({
   selfUrl: 'http://localhost:5000',
   corsOrigins: ['*'],
   swaggerEnabled: true,
+  trustProxy: false,
   ...overrides,
 });
 
