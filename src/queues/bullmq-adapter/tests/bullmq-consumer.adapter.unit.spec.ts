@@ -212,6 +212,28 @@ describe('BullMqConsumerAdapter', () => {
       const adapter = makeAdapter();
       await expect(adapter.stopConsuming('nope')).resolves.toBeUndefined();
     });
+
+    // Each worker holds an open Redis connection, so one left running keeps
+    // the process alive past app.close(). The module hooks stop the queues
+    // they registered; this covers a queue started by calling the adapter
+    // directly, and the case where an earlier stop in the same teardown threw.
+    // The sqs and rabbitmq adapters always had this hook; this one did not.
+    it('closes every remaining worker on module teardown', async () => {
+      const adapter = makeAdapter();
+      await adapter.startConsuming(
+        'orders',
+        jest.fn(async () => {}),
+      );
+      await adapter.startConsuming(
+        'invoices',
+        jest.fn(async () => {}),
+      );
+
+      await adapter.onModuleDestroy();
+
+      expect(mockWorkerClose).toHaveBeenCalledTimes(2);
+      expect(workersOf(adapter).size).toBe(0);
+    });
   });
 
   describe('error handling', () => {
