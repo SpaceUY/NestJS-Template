@@ -61,6 +61,9 @@ import { rabbitmqScope } from './queues/rabbitmq-adapter/config/rabbitmq.scope';
 import { CacheAbstractModule } from './cache/abstract/cache-abstract.module';
 import { HealthModule } from './health/health.module';
 import { RedisCacheAdapterService } from './cache/redis-adapter/redis-adapter.service';
+import { SpaceshipModule } from './spaceship/spaceship.module';
+import { spaceshipCacheScope } from './spaceship/config/spaceship-cache.scope';
+import { notificationRecipientsScope } from './spaceship/notification/config/notification-recipients.scope';
 @Module({
   imports: [
     ConfigProviderAbstractModule.forRootAsync({
@@ -83,6 +86,10 @@ import { RedisCacheAdapterService } from './cache/redis-adapter/redis-adapter.se
         redisScope,
         rabbitmqScope,
         rateLimitScope,
+        // Both belong to the reference domain module and go with it — see
+        // src/spaceship/README.md's `## Reuse` for the full removal list.
+        spaceshipCacheScope,
+        notificationRecipientsScope,
       ],
     }),
     AuthModule,
@@ -243,6 +250,9 @@ import { RedisCacheAdapterService } from './cache/redis-adapter/redis-adapter.se
           : new AnalyticsConsoleAdapterService(logger),
       isGlobal: true,
     }),
+    // The reference domain module. A real project deletes it and writes its
+    // own in the same shape — src/spaceship/CLAUDE.md says how.
+    SpaceshipModule,
   ],
   controllers: [AppController],
   providers: [AppService],

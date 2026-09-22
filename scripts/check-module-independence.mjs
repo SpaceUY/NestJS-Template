@@ -34,6 +34,7 @@ const TIERS = {
   templating: 'infrastructure',
   auth: 'feature',
   templates: 'feature',
+  spaceship: 'feature',
   [APP_ROOT]: 'app',
 };
 

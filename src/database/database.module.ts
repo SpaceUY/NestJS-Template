@@ -1,6 +1,7 @@
 import { Global, Module } from '@nestjs/common';
 import { TypeOrmModule, TypeOrmModuleOptions } from '@nestjs/typeorm';
 import { User } from './entities/user.entity';
+import { Spaceship } from './entities/spaceship.entity';
 import { databaseScope, DatabaseScopeConfig } from './config/database.scope';
 
 /**
@@ -51,7 +52,7 @@ export function buildTypeOrmOptions(
       inject: [databaseScope.KEY],
       useFactory: buildTypeOrmOptions,
     }),
-    TypeOrmModule.forFeature([User]),
+    TypeOrmModule.forFeature([User, Spaceship]),
   ],
   exports: [TypeOrmModule],
 })
