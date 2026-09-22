@@ -105,8 +105,8 @@ a BullMQ queue, consumed in the same process by
 The registration follows `src/queues/CLAUDE.md` Rule 2: this module declares
 `SpaceshipNotificationProcessor` in its own `providers` and binds it with
 `QueueConsumerModule.forFeature`. Nothing under `src/queues/` names a class
-from here — that is what keeps `queues` liftable, and it is why the
-`(app)`/`queues`/`spaceship` cycle recorded as `M5` cannot come back.
+from here — that is what keeps `queues` liftable, and it is what stops an
+`(app)` → `queues` → `spaceship` import cycle from forming.
 
 One coupling is deliberate and is the documented `T1` exception of
 `src/queues/CLAUDE.md` Rule 1: `notification.producer.ts` injects the
@@ -144,9 +144,9 @@ configured maximum back to the consumer.
 11. Write the specs — `*.unit.spec.ts` beside each file, plus a
     `<domain>.module.di.spec.ts` if the module has wiring a unit test cannot
     see.
-12. Write `src/<domain>/CLAUDE.md` and `README.md` from the skeleton in
-    `docs/architecture/module-contract.md` and add the row to the module map in
-    the root `CLAUDE.md` (invariant `T7`).
+12. Write `src/<domain>/CLAUDE.md` and `README.md` — copy the section order of
+    this file, which is the order `pnpm run docs:check` enforces — and add the
+    row to the module map in the root `CLAUDE.md` (invariant `T7`).
 
 ## Tests
 
@@ -211,22 +211,21 @@ Keep the two congruent (`T7`).
 
 ## Known gaps
 
-See `docs/audit/2026-09-11-template-audit.md`.
+**A cached `captain` keeps its dates as strings.** `reviveSpaceship` converts
+the spaceship's own `createdAt`/`updatedAt`/`deletedAt` back to `Date`, and
+nothing else. That is safe only because the repository's `select` loads no date
+from the `captain` relation, so none is ever written to the cache — widen that
+`select` and `reviveSpaceship` has to widen with it, or a cache hit and a cache
+miss stop agreeing on types.
 
-- **`R1`** — ~~no handler declares a return type or an `@ApiResponse`.~~
-  **Fixed:** every handler declares both.
-- **`R2`** — ~~a missing spaceship yields `200` with `data: null` instead of
-  `404`.~~ **Fixed:** `findByUuidOrFail` throws `RequestException`.
-- **`N4`** — ~~two test files use the legacy `*.spec.ts` name.~~ **Fixed:**
-  every spec here is `*.unit.spec.ts`, or `*.di.spec.ts` for the one that
-  compiles a real container.
-- **`N6`/`M1`** — ~~`spaceship.module.ts` imports `AuthModule` by absolute
-  path.~~ **Fixed:** the specifier is relative (`T5`).
-- **`R3`** — ~~this module depends on a top-level `user` directory holding a
-  single decorator and no module.~~ **Fixed upstream on
-  `chore/auth-owns-current-user`:** that directory is gone and `CurrentUser`
-  lives in `src/auth/decorators/`.
-- The two `Date` fields on a cached `Spaceship`'s `captain` relation are not
-  revived — only the spaceship's own are. The repository's `select` loads no
-  date from `captain`, so none is ever written to the cache; if that `select`
-  widens, `reviveSpaceship` has to widen with it.
+**The producer and the processor share one attempts number through config.**
+`SPACESHIP_NOTIFICATION_MAX_ATTEMPTS` feeds the producer's `options.attempts`
+and the processor's retries-exhausted check independently. They must agree:
+`MessageContext` is broker-agnostic by design and cannot report the configured
+maximum back to the consumer, so a mismatch shows up as a job that logs
+"giving up" on the wrong delivery.
+
+**Notification delivery is not transactional.** `createSpaceship` catches and
+logs a producer failure, so the row exists whether or not the email was ever
+enqueued. That is the intended trade — the notification is not part of the
+write — but it means a dropped queue message is invisible to the caller.

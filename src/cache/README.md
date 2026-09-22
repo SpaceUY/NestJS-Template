@@ -294,7 +294,7 @@ you need — this one is written for both. What follows is the second case: what
 **What travels with it.** Nothing — this is the one adapter module that imports
 from no other module of the template. `pnpm run modularity:check -- --report`
 prints no outgoing edge for `cache`, and that is deliberate: it is the reference
-implementation of `docs/architecture/module-contract.md`.
+implementation of the adapter shape every other module here follows.
 
 The one thing to know is config. `src/app.module.ts` feeds the adapter from
 `src/redis.scope.ts`, an application-level scope shared with
@@ -311,6 +311,13 @@ pnpm add ioredis        # redis-adapter/ only
 
 `abstract/` needs only `@nestjs/common`.
 
-**Removing it from the template instead.** Nothing imports `src/cache/`; it
-comes out in three edits, and `src/redis.scope.ts` goes only once
+**Removing it from the template instead.** Two modules import it: `src/health/`
+(the cache probe, `@Optional()` — dropping it costs one indicator) and
+`src/spaceship/` (the cache-aside read behind `GET /spaceships`). Once both have
+gone it comes out in three edits, and `src/redis.scope.ts` goes only once
 `src/queues/` has gone too.
+
+Note that no edge leaves `cache` in either direction of use: it imports nothing,
+which is what makes it lift with zero companions. Being *imported* is a
+different question from being *dependent*, and only the second one blocks
+extraction.

@@ -1,8 +1,7 @@
 # Config provider — module guide
 
-> Inherits the repo-root `CLAUDE.md` (always loaded) and
-> `docs/architecture/module-contract.md`. Read those first — this file adds
-> only what is specific to `src/config-provider/`.
+> Inherits the repo-root `CLAUDE.md` (always loaded). Read it first — this file
+> adds only what is specific to `src/config-provider/`.
 
 ## Scope
 
@@ -85,9 +84,7 @@ is not listed there is never resolved and its `KEY` will not inject.
    values that genuinely change at runtime (feature flags, rate limits, rotating
    credentials). Application config must stay static.
 9. Every key a scope reads must appear in `.env.example`, and no key that
-   nothing reads may stay there. The file was reconciled against the code on
-   `fix/security-defaults` (finding `C1`) — keep it that way when you add a
-   field.
+   nothing reads may stay there. Add the key in the same change as the field.
 10. Misconfiguration must fail at startup, not at first use. Unknown source names
    and duplicate scope keys already throw during module construction; keep new
    checks in the same place.
@@ -132,17 +129,16 @@ section. Keep the two congruent.
 
 ## Known gaps
 
-See `docs/audit/2026-09-11-template-audit.md`.
+**Nothing enforces that a scope's keys appear in `.env.example`.** A scope that
+reads a variable nobody declared boots fine until the key is genuinely needed,
+and then fails at whatever moment first reaches it. When you add a scope, add
+its keys to that file in the same change.
 
-- **`D3`** — ~~`src/config-provider/README.md` names a `config-provider-error-codes.ts`
-  that does not exist; the real file is `abstract/config-provider.error.ts`.~~
-  **Fixed:** the README now names the real `abstract/config-provider.error.ts`.
-- **`C1`** — ~~`.env.example` is missing most keys the scopes read.~~ **Fixed
-  on `fix/security-defaults`:** every key the code reads is declared, grouped
-  by scope, and the dead `QUEUE_ADAPTER` entry is gone.
-- **`C2`** — ~~`jwtScope` defaults its secret to a public literal.~~ **Fixed on
-  `fix/security-defaults`:** `JWT_SECRET` is required.
-- **`TS2`** — ~~`src/app.scope.ts` and `src/email/config/email.scope.ts` take an
-  untyped `raw`.~~ **Fixed on `chore/typescript-strict`:** all three scopes
-  with an implicit `raw` — those two plus `src/analytics/config/analytics.scope.ts`
-  — are typed, and strict mode now rejects the shape.
+**This module ships no test doubles.** A consumer mocking configuration
+hand-rolls a fake; `src/cache/abstract/mocks/` is the shape to copy if you add
+them.
+
+**A scope's `validate` runs on raw strings.** Everything arrives from the
+environment as text, so a schema that omits a coercion silently hands a
+consumer `"3600"` where it declared `number`. Joi's `.number()` does the
+conversion — use it rather than casting downstream.

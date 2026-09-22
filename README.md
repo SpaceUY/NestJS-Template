@@ -14,11 +14,13 @@ This is the SpaceDev reusable NestJS template. Each top-level directory under
 `src/` is a module designed to be lifted into another project on its own.
 
 - `CLAUDE.md` — project invariants, commands and the module map. Start here.
-- `docs/architecture/module-contract.md` — the contract every adapter module implements.
-- `docs/audit/2026-09-11-template-audit.md` — known defects, cited by ID from each module guide.
-- `docs/audit/2026-09-18-modularity-audit.md` — the modularity/extraction/documentation findings, and its reconciliation of the older audit.
 - `src/<module>/CLAUDE.md` — rules, public surface and extraction recipe for that module.
 - `src/<module>/README.md` — human-facing recipes and examples for that module.
+
+Each module's two files are self-contained on purpose: they describe how that
+module works and what it needs elsewhere, and they reference nothing outside
+their own directory. A module copied into another project takes its
+documentation with it and none of it dangles.
 
 Run `pnpm run docs:check` after editing any `CLAUDE.md`.
 
@@ -70,7 +72,7 @@ the table cannot show:
 - **`common` has a companion that is not a directory under `src/`.** Its
   middleware only type-checks because of the ambient `Express.User`
   augmentation in the repo-root `@types/` directory, which no import statement
-  names. Step 3 of the recipe below covers it; `EXT7` is the finding.
+  names. Step 3 of the recipe below covers it.
 
 Only `cache`, `email` and `queues` have been measured by actually copying them
 into a clean project; the numbers and the caveats are below.
@@ -110,10 +112,9 @@ and Jest — which is exactly this repo's `tsconfig.json` since the 2026-09-21
 Nest 12 upgrade. Into that scaffold a module copies across unchanged.
 Extensionless relative imports stay legal because the package is CommonJS;
 `nodenext` is only how TypeScript reads the `exports` map that every Nest 12
-package now ships. Evidence for the older, wider gap:
-`docs/audit/evidence/extract-queues-2026-09-19.txt`, measured 2026-09-19
-against `@nestjs/cli` 12.0.3 and TypeScript 6.0.3, before this template moved
-to `nodenext`.
+package now ships. The wider gap this paragraph replaces was measured against
+`@nestjs/cli` 12.0.3 and TypeScript 6.0.3, before this template moved to
+`nodenext`.
 
 One thing does not travel with the source, whichever answer you give: **a
 CommonJS destination on Jest must start Jest with
@@ -129,11 +130,10 @@ this template's CommonJS settings, for the reason given in the prerequisite
 above, before any template code was copied in.
 
 - **`cache`** lifts with **zero** companion directories — `tsc --noEmit` exits
-  0 (`EXT1`). Needs the npm package `ioredis`. Measured 2026-09-18
-  (`docs/audit/2026-09-18-modularity-audit.md`, `### Extraction`).
-- **`email`** lifts with **two** companions, `common` and `config-provider`
-  (`EXT5`). Needs `resend`, `@sendgrid/mail`, `@aws-sdk/client-ses`, `joi`.
-  Measured 2026-09-18, same source.
+  0. Needs the npm package `ioredis`. Measured 2026-09-18.
+- **`email`** lifts with **two** companions, `common` and `config-provider`.
+  Needs `resend`, `@sendgrid/mail`, `@aws-sdk/client-ses`, `joi`. Measured
+  2026-09-18.
 - **`queues`** lifts with **two** companions,
   `src/common/observability/logger/` and `src/config-provider/`. Copying
   `src/queues/` alone leaves **19** unresolved imports; with both companions
@@ -144,28 +144,24 @@ above, before any template code was copied in.
   bring their own — `class-transformer`, `pino`, `winston`,
   `@opentelemetry/api` and `@opentelemetry/sdk-trace-node` for the logger,
   `@aws-sdk/client-secrets-manager` and `dotenv` for `config-provider`.
-  Measured 2026-09-19: `docs/audit/evidence/extract-queues-2026-09-19.txt`
-  and `extract-queues-closure-2026-09-19.txt`.
+  Measured 2026-09-19.
 
 The `cache` and `email` figures were measured on 2026-09-18 and have not been
 re-verified since; in particular they predate the scaffold change described
 above, which was only discovered during the 2026-09-19 `queues` measurement.
 
-`queues` is the one that changed. On 2026-09-18 it **did not lift** at all:
-copying it alone left 29 unresolved imports, and the only closure that
-compiled pulled in 11 of the template's 13 top-level `src/` directories
-(`EXT3`, `EXT4`). Moving consumer registration to
-`QueueConsumerModule.forFeature` brought that down to the two companions
-above — and it is the registration change, not the demo module's absence, that
-did it: `spaceship` is back in the tree today and `queues` still depends only
-on `common` and `config-provider`, because the binding now travels from the
-domain module to `queues` rather than the other way round.
+`queues` is the one that changed, and the reason is worth keeping: it used not
+to lift at all, because the root module named the demo domain's handler. Moving
+consumer registration to `QueueConsumerModule.forFeature` — where the domain
+module binds its own handler — brought its closure down to the two companions
+above. The binding now travels from the domain module to `queues` and never the
+other way, which is why `spaceship` can sit in the tree without `queues`
+depending on anything but `common` and `config-provider`.
 
 **This measures compile time, not boot time.** Every result above means
 `tsc --noEmit` exits 0 — it does not mean the lifted module works once
 running. Whether, say, `cache`'s `forRootAsync` resolves when the host project
-registers no matching config scope is untested; the audit does not answer it,
-and neither does this README.
+registers no matching config scope is untested — nothing here answers that.
 
 ### Handing this to Claude
 
@@ -183,11 +179,12 @@ Give it the path and the module, and say to follow this section:
 What the agent should then do, in this order:
 
 1. **Read three files before copying anything** — the template's root
-   `CLAUDE.md` (invariants `T1`-`T8`, which the copied code assumes),
-   `src/<module>/CLAUDE.md`'s `## Scope` and `## Reuse`, and
-   `docs/architecture/module-contract.md` if the module will gain an adapter
-   here. `## Reuse` is the authoritative list of what travels with it; the
-   catalogue table above is the summary, that section is the detail.
+   `CLAUDE.md` (invariants `T1`-`T8`, which the copied code assumes), and
+   `src/<module>/CLAUDE.md`'s `## Scope` and `## Reuse`. If the module will gain
+   an adapter in the destination, read `src/cache/CLAUDE.md` too — it is the
+   reference implementation of the shape. `## Reuse` is the authoritative list
+   of what travels with the module; the catalogue table above is the summary,
+   that section is the detail.
 2. **Settle the module system first**, before deciding anything else. Check
    the destination's `package.json` for `"type": "module"` and its
    `tsconfig.json` for `"moduleResolution"`. If the destination is ESM, this
@@ -261,7 +258,7 @@ The rest of the tree is not free-standing. `pnpm run modularity:check --
 - `config-provider` is imported by `analytics`, `auth`, `cloud-storage`,
   `database`, `email`, `push-notification`, `queues` and `spaceship` — and
   imports `common` itself.
-- `database` is imported by `auth` (23 specifiers) and `spaceship` (8).
+- `database` is imported by `auth` (27 specifiers) and `spaceship` (8).
 - `auth`, `email`, `queues`, `templates` and `templating` are imported by
   `spaceship` and by nothing else; `cache` by `spaceship` and `health`. Delete
   the demo module first and all six come out with the three edits above.
@@ -315,7 +312,7 @@ providers off.
 
 One rule that file states and that is easy to get wrong: a blank value is a
 value, not an omission. `KEY=` hands the config scope an empty string, and Joi
-rejects an empty string for every key but eight. To leave something unset,
+rejects an empty string for every key but nine. To leave something unset,
 comment the line out — which is why the optional blocks in that file ship
 commented rather than empty.
 
@@ -329,8 +326,11 @@ pnpm run db:migration:run     # creates the schema on a fresh database
 ```
 
 Redis backs the BullMQ background job queues: `src/app.module.ts` wires both
-the producer and the consumer adapter against it, even though the template
-ships no queue handlers of its own. See `REDIS_HOST` / `REDIS_PORT` /
+the producer and the consumer adapter against it, and the reference domain
+module ships one handler — `src/spaceship/notification/`, which emails several
+employees after a spaceship is created and registers itself with
+`QueueConsumerModule.forFeature`. Delete that module and the brokers stay
+wired with nothing consuming them. See `REDIS_HOST` / `REDIS_PORT` /
 `REDIS_PASSWORD` in `.env.example`. The app depends on Redis at runtime, not
 just in tests.
 
@@ -377,8 +377,8 @@ $ pnpm run test:cov
 **`pnpm run test:e2e` exists but proves nothing.** `test/app.e2e-spec.ts` is
 24 lines of unmodified Nest scaffold: it boots the whole `AppModule` and
 expects `'Hello World!'` on `GET /`, so it needs a live database and Redis and
-runs nowhere — not locally by default, and not in CI. This is **accepted debt**
-(`H4`), recorded deliberately rather than papered over: a green boilerplate
+runs nowhere — not locally by default, and not in CI. This is **accepted
+debt**, recorded deliberately rather than papered over: a green boilerplate
 e2e run would be worse than none. Closing it means either writing real e2e
 specs with `postgres` and `redis` services in `bitbucket-pipelines.yml`, or
 deleting the file, `test/jest-e2e.json` and the script. Do not half-fix it.
@@ -401,9 +401,8 @@ Two of those differ from what you would reach for locally, and both
 differences are the point:
 
 - **`lint:ci`, never `lint`.** `lint` carries `--fix`, so running it in a
-  pipeline repairs formatting drift instead of failing on it — that was
-  finding `L3`. Use `pnpm run lint` while you work, `pnpm run lint:ci` to
-  predict CI.
+  pipeline repairs formatting drift instead of failing on it. Use
+  `pnpm run lint` while you work, `pnpm run lint:ci` to predict CI.
 - **`test:cov`, never `test`.** The `coverageThreshold` in `package.json` is a
   floor, and Jest only enforces it when coverage is actually collected. Under
   plain `pnpm test` the threshold is inert. The floor today is 95% statements,

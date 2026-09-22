@@ -1,11 +1,13 @@
 # Cache — module guide
 
-> Inherits the repo-root `CLAUDE.md` (always loaded) and
-> `docs/architecture/module-contract.md`. Read those first — this file adds
-> only what is specific to `src/cache/`.
+> Inherits the repo-root `CLAUDE.md` (always loaded). Read it first — this file
+> adds only what is specific to `src/cache/`.
 
-This module is the reference implementation of the contract: style-A
-registration, error translation, and the only module that ships mocks.
+This module is the reference implementation of the template's adapter shape:
+`abstract/` holds the contract, the dynamic module, the error type and the
+tokens; each `<provider>-adapter/` directory holds one implementation; every
+provider error is translated into the module's own; and it is the one module
+that ships test doubles for its consumers.
 
 ## Scope
 
@@ -102,8 +104,8 @@ rather than booting with a cache that answers wrong.
 
 Copy `src/cache/abstract/` plus the adapter directories you want. No edge
 leaves this module — `pnpm run modularity:check -- --report` prints none for
-`cache`, which is what makes it the only adapter module that lifts with zero
-companions (`EXT1`). `abstract/` depends only on `@nestjs/common`;
+`cache`, which is what makes it the one adapter module that lifts with zero
+companion directories. `abstract/` depends only on `@nestjs/common`;
 `redis-adapter/` needs `ioredis`.
 
 Config is the one thing to carry over deliberately: `src/app.module.ts` feeds
@@ -118,35 +120,15 @@ the two congruent (`T7`).
 
 ## Known gaps
 
-See `docs/audit/2026-09-11-template-audit.md`.
+**The config scope is not part of this module.** `src/redis.scope.ts` lives at
+application level because one Redis instance backs both this module and
+`src/queues/bullmq-adapter/`, and neither owns it — the same way
+`src/app.scope.ts` is application-level rather than any module's. It is a
+deliberate, narrow exception to "a scope lives next to the module that consumes
+it" (`src/config-provider/CLAUDE.md`), and it costs this module its otherwise
+complete self-containment: lifting `src/cache/` means also taking that scope, or
+writing a cache-local one. `## Reuse` above has the third option — hand the
+adapter a plain config object instead.
 
-- **`D4`** — ~~`src/cache/README.md` still shows `@nestjs/config` `ConfigType`
-  registration; the project uses config-provider scopes and `@nestjs/config` is
-  not a dependency.~~ **Fixed:** the README's `forRootAsync` example now injects
-  `redisScope` via `@Inject(redisScope.KEY)` and types the factory parameter as
-  `RedisScopeConfig`, matching `src/app.module.ts`.
-- **`G1`** — ~~no adapter or extension tests.~~ **Fixed on
-  `test/coverage-cache-common`:** `redis-adapter.service`, both redis
-  extensions, `client.ts` and `utils/logger.ts` all have specs.
-- **`H7`** — ~~`verifyConnection` raced the probe against a `setTimeout` it
-  never cleared, so a successful startup left a 5s timer holding the event
-  loop open.~~ **Fixed on `fix/redis-startup-timeout`:**
-  `createTimeoutPromise` returns a `cancel` and `verifyConnection` calls it in
-  a `finally`; two specs assert `jest.getTimerCount()` is `0` after the probe
-  settles either way.
-- **`L2`** — ~~`src/cache/redis-adapter/utils/logger.ts:25` disables a rule named
-  `ts/no-explicit-any`, which does not exist; ESLint errors on the bogus name and
-  flags the `any` anyway. The prefix should be `@typescript-eslint/`.~~ **Fixed:
-  the prefix was corrected to `@typescript-eslint/`.**
-- ~~`!src/cache/redis-adapter/config/redis-cache.scope.ts` and
-  `!src/queues/bullmq-adapter/config/bullmq-redis.scope.ts` were near-duplicate
-  Joi schemas pointed at the same Redis instance, added independently for
-  cache and BullMQ.~~ **Fixed:** consolidated into the shared `redisScope`
-  (`src/redis.scope.ts`) both `CacheAbstractModule` and `BullmqAdapterModule`
-  now inject. This is a deliberate, narrow exception to "a scope lives next
-  to the module that consumes it" (`src/config-provider/CLAUDE.md`): Redis is
-  genuinely shared infrastructure here, not owned by either module, the same
-  way `src/app.scope.ts` is application-level rather than owned by one
-  module. The tradeoff: `src/cache/` is no longer fully self-contained for
-  reuse — copying it elsewhere now also means copying `src/redis.scope.ts` (or
-  reintroducing a cache-local scope).
+**`keys('*')` is available and dangerous.** `CacheKeysExtension` scans the
+keyspace; against a production Redis that is a blocking operation. Rule 7.

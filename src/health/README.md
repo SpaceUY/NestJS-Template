@@ -56,8 +56,8 @@ global `ResponseInterceptor` adds to every route:
 
 When something is down the endpoint answers **503**. Be aware that the body
 then says only that the request failed, not which dependency — the global
-exception filter rebuilds error bodies field by field on purpose (finding
-`C4`). The status code is what a load balancer reads, so failover works
+exception filter rebuilds error bodies field by field on purpose, so that no
+internal detail reaches a client. The status code is what a load balancer reads, so failover works
 correctly; for the *reason*, read the logs. `CacheHealthIndicator` logs its
 own failure with the error's class name. This is written up in
 `src/health/CLAUDE.md`'s `## Known gaps`.

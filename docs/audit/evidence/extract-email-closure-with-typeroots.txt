@@ -1,5 +1,0 @@
-src/config-provider/abstract/config-provider-abstract.module.ts(223,11): error TS2322: Type '({ provide: string; useValue: ConfigProviderService; useFactory?: undefined; inject?: undefined; } | { provide: string; useFactory: (logger?: LoggerService) => ConfigProviderService; inject: { ...; }[]; useValue?: undefined; })[]' is not assignable to type 'Provider[]'.
-  Type '{ provide: string; useValue: ConfigProviderService; useFactory?: undefined; inject?: undefined; } | { provide: string; useFactory: (logger?: LoggerService) => ConfigProviderService; inject: { ...; }[]; useValue?: undefined; }' is not assignable to type 'Provider'.
-    Type '{ provide: string; useValue: ConfigProviderService; useFactory?: undefined; inject?: undefined; }' is not assignable to type 'Provider'.
-      Type '{ provide: string; useValue: ConfigProviderService; useFactory?: undefined; inject?: undefined; }' is not assignable to type 'FactoryProvider<any>'.
-        Property 'useFactory' is optional in type '{ provide: string; useValue: ConfigProviderService; useFactory?: undefined; inject?: undefined; }' but required in type 'FactoryProvider<any>'.

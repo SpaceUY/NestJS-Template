@@ -176,7 +176,7 @@ The rest of the module is covered too, one spec per file:
   `AuthTokenModule` and sign a real token to prove `expiresIn` is applied, and
   dropped when `ignoreExpiration` is set.
 - `src/auth/google/google.service.unit.spec.ts` — both `register` and `login`
-  end to end against a mocked `OAuth2Client`, and the `C5` invariant: the
+  end to end against a mocked `OAuth2Client`, and the redaction invariant: the
   provider error's message never reaches the log, and an application-level
   rejection is not logged as a provider failure at all.
 - `src/auth/google/google.strategy.unit.spec.ts` — existing user, first
@@ -205,8 +205,7 @@ The rest of the module is covered too, one spec per file:
 
 Mock the `User` repository with `getRepositoryToken(User)`, and `OAuth2Client`
 with a plain jest object. Name files `*.unit.spec.ts`.
-The empty email provider directory and its legacy-named controller stub were
-deleted (finding `R3`); there is no email/password provider to test yet.
+There is no email/password provider to test yet — see `## Known gaps`.
 
 ## Reuse
 
@@ -216,36 +215,29 @@ first. `auth` depends on `database` for both `User` and `AuthType`. The logger
 is `@Optional()` everywhere it is used here, so the module boots without
 `LoggerAbstractModule` registered; the import still has to resolve.
 `src/auth/google/` and `src/auth/auth0/` are independently droppable: each
-is a directory, a scope and one entry in `AuthModule`'s imports. The email
-provider directory no longer exists — it was an empty scaffold (finding `R3`),
-and email/password login is not implemented; write it yourself.
+is a directory, a scope and one entry in `AuthModule`'s imports. There is no email
+provider directory: email/password login is not implemented and ships no
+scaffold — write it yourself.
 
 `src/auth/README.md`'s `## Reuse` is the human version of this section — the
 peer-dependency list and the step order. Keep the two congruent.
 
 ## Known gaps
 
-See `docs/audit/2026-09-11-template-audit.md`.
+**Email/password login does not exist.** `AuthType.EMAIL` is the `User.authType`
+default and no code path issues a token for it, so an app that registers this
+module and nothing else authenticates nobody. There is no scaffold to fill in
+either — deliberately, so that empty files do not read as a half-built feature.
+Write the login and registration flow yourself; `src/auth/google/` is the shape
+to follow for issuing a token once an identity is established.
 
-- **`C2`** — ~~`jwtScope` defaults `secret` to `'Not A Safe Secret'`, so an app with
-  no `JWT_SECRET` signs tokens with a public constant.~~ **Fixed on
-  `fix/security-defaults`:** `secret` is `Joi.string().required()` with no
-  default, so the app refuses to boot without `JWT_SECRET`.
-- **`C5`** — ~~raw provider errors logged on the Google token path.~~ **Fixed on
-  `fix/security-defaults`:** both catch blocks log the error's constructor name
-  only, and no longer log at all when the failure is an expected
-  `RequestException`.
-- **`R3`** — ~~`auth.service.ts` is an empty `@Injectable()` that `AuthModule`
-  still exports, alongside an empty email controller and module.~~
-  **Fixed on `chore/dead-code-and-error-model`:** both deleted, and `AuthModule`
-  no longer provides or exports `AuthService`.
-- **`N6`** — ~~`src/auth/jwt.strategy.ts`, `src/auth/google/google.controller.ts`
-  and `src/auth/google/google.service.ts` use absolute `src/...` imports, against
-  invariant `T5`.~~ **Fixed on `feature/queues-decoupling`** (also tracked as
-  `M1`): every specifier in those files is relative now, and
-  `docs/audit/module-independence-baseline.json` records no `abs-import`
-  entry at all, so `pnpm run modularity:check` fails on the next one.
-- **`G1`** — ~~no tests.~~ **Fixed on `test/coverage-auth`:** every service,
-  strategy and controller in the module has a spec. The last gap — the
-  `GoogleModule` / `Auth0Module` constructor log when a provider is registered
-  while disabled — closed on `test/coverage-remaining`.
+**There is no refresh-token flow and no revocation.** `AuthTokenService` signs
+and verifies; a token is valid until it expires, and nothing can invalidate one
+early. A project that needs logout-everywhere adds a store and checks it in
+`JwtStrategy`.
+
+**This module owns no entity.** `User` and `AuthType` live in
+`src/database/entities/`, and five files here inject their TypeORM repository
+directly, so `auth` cannot be lifted without either taking that entity or
+re-pointing those lookups at the destination's own user table. It is the widest
+coupling this module has, and the reason `## Reuse` names `database` first.

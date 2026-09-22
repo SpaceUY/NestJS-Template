@@ -111,9 +111,10 @@ pnpm add -D @types/pug      # pug-adapter/
 
 `abstract/` needs only `@nestjs/common`.
 
-**Removing it from the template instead.** Nothing outside `src/app.module.ts`
-imports this module any more: the demo route in `src/app.controller.ts` that
-injected `TemplateService` is gone. Drop the `TemplateModule.forRoot(...)`
-registration in `src/app.module.ts`, delete `src/templating/`, and the tree
-still compiles — `src/templates/` is only paths and parameter types, so it can
-stay or go independently.
+**Removing it from the template instead.** One module injects `TemplateService`:
+`src/spaceship/`, whose notification processor renders the email it sends. (The
+demo route in `src/app.controller.ts` that used to inject it is gone.) So the
+order is: delete the reference domain module first, then drop the
+`TemplateModule.forRoot(...)` registration in `src/app.module.ts` and delete
+`src/templating/`, and the tree still compiles. `src/templates/` is only paths
+and parameter types, so it can stay or go independently.

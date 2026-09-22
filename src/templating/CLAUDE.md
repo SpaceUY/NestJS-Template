@@ -1,8 +1,7 @@
 # Templating — module guide
 
-> Inherits the repo-root `CLAUDE.md` (always loaded) and
-> `docs/architecture/module-contract.md`. Read those first — this file adds
-> only what is specific to `src/templating/`.
+> Inherits the repo-root `CLAUDE.md` (always loaded). Read it first — this file
+> adds only what is specific to `src/templating/`.
 
 **Style-B registration** (adapter as module + provider token), like
 `src/push-notification/`. Do not copy the style into a new module.
@@ -17,9 +16,9 @@ Does not own: the template files. Those are assets in `src/templates/` — see
 compiled HTML. The caller joins the halves — pass the string `compile()`
 returns to `EmailService.sendEmail()` as `content: { html }`. The worked
 example is in `src/email/README.md` ("Recipe: render, then send"), and
-`src/templating/README.md` points at it. No controller demonstrates it any
-more: the demo `GET /email` route in `src/app.controller.ts` was deleted on
-`chore/template-hardening` because it was unguarded and sent for real.
+`src/templating/README.md` points at it. No controller demonstrates it, and
+none should: a demo route that renders and sends fires a real message as soon
+as a real email adapter is configured.
 
 ## Public surface
 
@@ -90,15 +89,14 @@ Keep the two congruent.
 
 ## Known gaps
 
-See `docs/audit/2026-09-11-template-audit.md`.
+**This module ships no error type, and the adapter does not catch.**
+`PugAdapterService` lets pug's own error escape, so a caller sees a `pug`
+exception rather than a templating one — the only module here that leaks its
+provider's error. Adding one means creating `abstract/template.error.ts` first,
+since there is nothing to translate into; `src/cache/abstract/cache.error.ts` is
+the shape to copy.
 
-- **`N3`** — ~~`TemplateModule` has no `forRootAsync`, and no
-  `validateAdapterModule` guard on any async path.~~ **Fixed on
-  `chore/module-gaps`:** `forRootAsync` exists in the factory shape the rest of
-  the template uses. It takes no adapter module, so there is nothing for
-  `validateAdapterModule` to guard there; `forRoot` still guards its own.
-- **`N7`** — ~~`!src/templates/template-renderer.interface.ts` duplicates this
-  contract and is dead.~~ **Fixed on `chore/module-gaps`:**
-  `!src/templates/template-renderer.interface.ts` is deleted.
-- **`G1`** — ~~no tests.~~ **Fixed on `test/coverage-email-templating-push`:**
-  the module and the pug adapter both have specs.
+**The directory shape is flatter than the rest of the template.** `abstract/`
+holds only the service and a const, and the dynamic module sits at the module
+root in `template.module.ts` rather than under `abstract/`. It works; it is just
+not the shape a new module should copy.

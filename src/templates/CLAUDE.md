@@ -20,6 +20,7 @@ service in this directory, and none may be added.** Compilation lives in
 | `Template`, `TemplateParamsMap` | `src/templates/template-params.interface.ts` | Template union and parameter type map |
 | `WelcomeParams` | `src/templates/onboarding/welcome.interface.ts` | Parameters for the welcome template |
 | `VerificationParams` | `src/templates/auth/verification.interface.ts` | Parameters for the verification template |
+| `SpaceshipCreatedParams` | `src/templates/spaceship/spaceship-created.interface.ts` | Parameters for the demo template. Demo content: it and its `.pug` go with `src/spaceship/`, along with the `SPACESHIP_CREATED` entries in all three registry maps |
 | barrel | `src/templates/index.ts` | Re-exports the registry and the param types |
 
 ## Rules
@@ -59,10 +60,11 @@ Keep the two congruent (`T7`).
 
 ## Known gaps
 
-See `docs/audit/2026-09-11-template-audit.md`.
+**The registry is checked for consistency, not for correctness.**
+`template.const.unit.spec.ts` proves every key exists in all three maps and that
+every path resolves to a file. Nothing proves a template's `.pug` actually
+accepts the params its interface declares — that mismatch surfaces at render
+time, in `src/templating/`.
 
-- **`N7`** — ~~`template-renderer.interface.ts` is dead code duplicating
-  `TemplateService`.~~ **Fixed on `chore/module-gaps`:**
-  `!src/templates/template-renderer.interface.ts` is deleted.
-- **`G1`** — ~~no registry-consistency test.~~ **Fixed on
-  `test/coverage-email-templating-push`:** `template.const.unit.spec.ts`.
+**Paths are repo-relative, so the process working directory matters.** A
+consumer that starts the app from another directory renders nothing. Rule 3.

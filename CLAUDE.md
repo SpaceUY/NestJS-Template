@@ -36,11 +36,16 @@ Before changing anything under `src/<module>/`, read `src/<module>/CLAUDE.md`.
 | `src/queues` | `src/queues/CLAUDE.md` | `src/queues/README.md` |
 | `src/spaceship` | `src/spaceship/CLAUDE.md` | `src/spaceship/README.md` |
 
-Shared references: `docs/architecture/module-contract.md` (the adapter-module
-contract), `docs/audit/2026-09-11-template-audit.md` (known defects, the
-`B`/`N`/`D`/`C`/`TS`/`L`/`R`/`G` series) and `docs/audit/2026-09-18-modularity-audit.md`
-(the `M`/`EXT`/`DOC` series, and its reconciliation of the older audit),
-`src/common/observability/logger/PRACTICES.md` (logging rules).
+One shared reference lives outside a module guide:
+`src/common/observability/logger/PRACTICES.md`, which is binding on every log
+line written anywhere in the tree.
+
+Nothing else in this repository documents its own past. There are no audit
+files, no finding IDs and no plan documents, deliberately: a module is copied
+into another project on its own, and a guide that cites a path outside its
+directory becomes a dangling pointer the moment it lands there. Each guide
+states what its module does, how to implement against it, and what it needs in
+order to compile elsewhere. History belongs in `git log`.
 
 ## Commands
 
@@ -56,10 +61,15 @@ pnpm run lint                 # eslint --fix
 pnpm run lint:ci              # eslint, no --fix — what CI runs
 pnpm run docs:check           # validates every CLAUDE.md
 pnpm run modularity:check     # module import graph vs. the recorded baseline
-pnpm run db:migration:generate -- src/database/migrations/<Name>
+pnpm run db:migration:generate src/database/migrations/<Name>
 pnpm run db:migration:run
 pnpm run db:migration:revert
 ```
+
+No `--` before the migration path. pnpm 10 consumes it when what follows is a
+positional argument, and TypeORM then fails with `Not enough non-option
+arguments: got 0, need at least 1`. A flag survives it, which is why
+`pnpm run modularity:check -- --report` still works as written elsewhere.
 
 A local Postgres is available through `docker-compose.yml`.
 
@@ -141,10 +151,8 @@ register it in `src/app.module.ts`, inject it with `@Inject(xScope.KEY)`. See
 
 **T3 — Every module owns its error type.** An adapter catches the provider SDK's
 error and rethrows the module's own error class, so no caller ever depends on
-`ioredis`, `@aws-sdk/*` or `resend` internals. Two shapes remain, and they are
-the two the template wants (finding `N2`, closed on
-`chore/dead-code-and-error-model`; `ApiException` and
-`PushNotificationException` are gone): the POJO-constant + `Error`-subclass
+`ioredis`, `@aws-sdk/*` or `resend` internals. Exactly two shapes exist here,
+and a third is not welcome: the POJO-constant + `Error`-subclass
 form used by `src/cache/abstract/cache.error.ts` for infrastructure, and
 `RequestException` for the HTTP layer. Follow the first for a new module.
 
@@ -155,8 +163,8 @@ error. See `src/common/observability/logger/PRACTICES.md`.
 **T5 — Imports inside a module are relative.** `../abstract/cache.service` —
 never `src/cache/abstract/cache.service`. A module that reaches for an absolute
 `src/...` specifier stops working the moment it is copied into another repo.
-No file violates this today (findings `N6`/`M1`, closed 2026-09-19); keep it
-that way — `pnpm run modularity:check` fails on the first absolute specifier.
+No file violates this today; keep it that way —
+`pnpm run modularity:check` fails on the first absolute specifier.
 
 **T6 — Named exports, explicit return types, no `any`.** No default exports.
 Every function and method declares its return type.
@@ -188,8 +196,9 @@ removing it from the template costs. The two describe the same move and must
 agree.
 
 A new top-level directory under `src/` is not done until it has both, the guide
-built from the skeleton in `docs/architecture/module-contract.md` and listed in
-the module map above. `pnpm run docs:check` verifies the map entry, the six
+following the section order every other guide uses — `## Scope`,
+`## Public surface`, `## Rules`, `## Tests`, `## Reuse`, `## Known gaps` — and
+listed in the module map above. `pnpm run docs:check` verifies the map entry, the six
 required guide sections, the README beside each guide and its `## Reuse`
 heading; it cannot detect a guide that was never written at all, so that part
 is on you.
@@ -209,16 +218,19 @@ migration file, never rely on `DB_SYNCHRONIZE` outside local development. See
 - **Layering:** Controller → Service → Repository. Controllers orchestrate and
   never log (`src/common/observability/logger/PRACTICES.md`); business logic lives in services.
 - **DTOs:** `class-validator` decorators plus `@ApiProperty`. The global
-  `ValidationPipe` in `src/main.ts` runs with `transform` and
-  `forbidNonWhitelisted`.
+  `ValidationPipe` in `src/main.ts` runs with `transform`, `whitelist` and
+  `forbidNonWhitelisted`, so **a request carrying a property no DTO declares is
+  rejected with `400`, on every endpoint.** That became true on 2026-09-22:
+  before it, `forbidNonWhitelisted` stood without `whitelist`, which is inert,
+  and an undeclared field was accepted silently. A project that took this
+  template earlier and sends extra fields will see the difference at runtime.
 - **Entities:** extend `src/database/entities/base.entity.ts`. `id` (integer) is
   internal; `uuid` is the only identifier an API response may expose.
 - **Tests:** co-located. `*.unit.spec.ts` for isolated unit tests,
   `*.di.spec.ts` for a spec that boots a real Nest DI container — there are two,
   `src/queues/abstract/tests/queue-consumer-feature.module.di.spec.ts` and
   `src/spaceship/spaceship.module.di.spec.ts`, and they are the two ends of the
-  same wiring. No plain `*.spec.ts` name is left under `src/` — finding `N4` is
-  closed.
+  same wiring. No plain `*.spec.ts` name is left under `src/`.
 - **Git:** branches `feature/` `fix/` `chore/` `hotfix/`; conventional commits;
   PRs only, never a direct push to `master`.
 
@@ -241,128 +253,64 @@ when you want to know what the pipeline will say.
 
 ## Known template-wide gaps
 
-Recorded in `docs/audit/2026-09-11-template-audit.md` (the
-`B`/`N`/`D`/`C`/`TS`/`L`/`R`/`G` series) and
-`docs/audit/2026-09-18-modularity-audit.md` (the `M`/`EXT`/`DOC` series).
-**Read `## Status as of 2026-09-21` at the top of the second file first** — it
-is the one place that says what is actually open today. Both audit bodies are
-frozen records of the day they were written, annotated in place since.
+These hold across the template today. Each one is also stated in the guide of
+the module it belongs to; they are collected here because they shape what you
+can promise a project that adopts this repo.
 
-Every finding in both audits was re-verified against the tree on 2026-09-21:
-**51 of 69 are closed.** Of the 2026-09-11 audit's 32, 31 are closed and `N5`
-is narrowed but open. Of the 2026-09-18 audit's 37, 20 are closed, 12 remain
-(ten of them code defects in one module each, plus `EXT7` and `EXT9`), and
-five `EXT` rows are reference measurements rather than defects. The ones that
-will bite you first are below.
+**The e2e suite proves nothing.** `test/app.e2e-spec.ts` is the unmodified Nest
+scaffold: it boots the whole `AppModule` and expects `'Hello World!'` on
+`GET /`, so it needs a live database and Redis and runs nowhere — not locally
+by default, and not in CI, which does not call `test:e2e`. This is accepted
+debt, not an oversight. Closing it means either writing real e2e specs with
+`postgres` and `redis` services in `bitbucket-pipelines.yml`, or deleting the
+file, `test/jest-e2e.json` and the script. Do not half-fix it: a green
+boilerplate e2e run is worse than none.
 
-**Every gate passes.** `docs:check`, `modularity:check`, `lint:ci`, `test:cov`
-and `build` were measured green on 2026-09-21 against NestJS 12 and TypeScript
-6, along with `tsc --noEmit`: 706 specs across 85 suites, coverage 96.13%
-statements / 89.63% branches against a floor of 95 / 88. `pnpm run modularity:check` runs against a zero-violation
-baseline (`docs/audit/module-independence-baseline.json`), so it fails on the
-first new cross-module violation instead of freezing a known set.
+**Three adapters do not translate their provider's errors,** against `T3`.
+`src/email/aws-ses-adapter/` re-throws the raw `@aws-sdk/client-ses` rejection;
+`src/cloud-storage/local-adapter/` wraps neither `mkdir` nor `writeFile` and
+re-throws every non-`ENOENT` failure raw; `src/templating/pug-adapter/` has no
+`try`/`catch` at all, and `templating` ships no error type to translate into in
+the first place. `common/observability/logger` and `analytics` ship no error
+class either — analytics by design, since capture is fire-and-forget.
 
-### Open today
+**Five modules ship no reusable test doubles.** `cache`, `cloud-storage`,
+`email` and `push-notification` have `abstract/mocks/`; `config-provider`,
+`queues`, `templating`, `common/observability/logger` and `analytics` do not, so
+a consumer of any of those hand-rolls its own.
 
-- **`H4`** — `test/app.e2e-spec.ts` is 24 lines of Nest scaffold: it boots the
-  whole `AppModule` and expects `'Hello World!'` on `GET /`. It needs a live
-  database and Redis, so it runs nowhere and CI does not call `test:e2e`.
-  **Accepted as debt on 2026-09-21**, deliberately: the template keeps
-  promising a suite that proves nothing, and that is the known cost. Closing it
-  means either writing real e2e specs with `postgres` and `redis` services in
-  `bitbucket-pipelines.yml`, or deleting the file, `test/jest-e2e.json` and the
-  `test:e2e` script. Do not half-fix it — a green boilerplate e2e run is worse
-  than none.
-- **`N5`** — reusable test doubles are still missing from five modules.
-  `src/cache/abstract/mocks/`, `src/cloud-storage/abstract/mocks/`,
-  `src/email/abstract/mocks/` and `src/push-notification/abstract/mocks/`
-  exist; `config-provider`, `queues`, `templating`,
-  `common/observability/logger` and `analytics` ship none, so a consumer of any
-  of those hand-rolls the double.
-- **Rule 4 of the adapter contract is unmet in four modules.** An adapter must
-  translate the provider SDK's error into the module's own (`T3`), and these do
-  not: `M18` — `src/email/aws-ses-adapter/aws-ses-adapter.service.ts` re-throws
-  the raw `@aws-sdk/client-ses` rejection and never imports `EmailError`;
-  `M17` — `src/cloud-storage/local-adapter/local-adapter.service.ts` wraps
-  neither `mkdir` nor `writeFile` and re-throws every non-`ENOENT` error raw;
-  `M12` — `src/templating/pug-adapter/pug-adapter.service.ts` has no
-  `try`/`catch` at all, and `templating` ships no error type to translate into;
-  `M13`/`M16` — `common/observability/logger` and `analytics` ship no error
-  class either, `analytics` by documented fire-and-forget design.
-- **Shape deviations, no proven extraction cost.** `M11` — `templating`'s
-  `abstract/` holds only the service and a const, with the dynamic module at
-  `src/templating/template.module.ts`. `M10` — `queues` splits the contract
-  across `abstract/producer/` and `abstract/consumer/`; deliberate, documented
-  in `src/queues/CLAUDE.md`, and the bespoke root module it used to carry is
-  gone. `M14` — `src/push-notification/expo-adapter/expo-adapter.service.ts` is
-  the one adapter decorating its config parameter with `@Inject`. `M8` — the
-  `TIERS` map in `scripts/check-module-independence.mjs` tiers `database` as
-  `infrastructure` and `templates` as `feature`; both calls are disputed and
-  neither currently masks a violation.
-- **`EXT7` — `common` has an extraction dependency no import graph can see.**
-  `src/common/middleware/response.interceptor.ts` reads `user.id`, which type-
-  checks only because the repo root ships `@types/express/index.d.ts` and
-  `tsconfig.json` declares no `include`, so every `.d.ts` under the project
-  root is compiled. Copying `common` elsewhere means copying that file *and*
-  landing it somewhere the destination's `tsconfig.json` actually covers.
-  `src/common/CLAUDE.md` and `src/common/README.md` both say so now. `EXT9` is
-  the general form: a green `modularity:check` is not proof a module extracts
-  cleanly.
-- **RabbitMQ and SQS are complete but unwired.** Only BullMQ is registered in
-  `src/app.module.ts`. Deliberate — three brokers registered at once means
-  three live connections for one queue. `src/queues/README.md`'s *Switching the
-  template's broker* has the exact edit for each.
-- **Extraction cost is measured for one module only.** `queues` was re-measured
-  on 2026-09-19 after the discovery that a fresh `@nestjs/cli` scaffold is ESM
-  while this template emits CommonJS — which is what made the earlier probes
-  measure the wrong thing. It closes at two companions,
-  `src/common/observability/logger/` and `src/config-provider/`
-  (`docs/audit/evidence/extract-queues-closure-2026-09-19.txt`). `cache`
-  (`EXT1`, `EXT6`) and `email` (`EXT2`, `EXT5`) date from 2026-09-18 and
-  predate that correction; the other twelve top-level directories have never
-  been copied into a clean project and compiled. `src/spaceship/` is the one
-  directory this does not apply to: it is the reference domain module, written
-  to be deleted rather than lifted, and its `## Reuse` says so. **Left open knowingly, by team
-  decision on 2026-09-21.** Do not quote a per-module extraction cost outside
-  `queues` as measured.
+**A green `modularity:check` is not proof a module extracts cleanly.** The
+checker reads import specifiers, and not every coupling has one — `src/common/`
+depends on an ambient type declared in the repo-root `@types/` directory that no
+import statement names. Extraction has been measured, by copying the directory
+into a clean project and compiling, for `cache`, `email` and `queues` only. Do
+not quote a companion count for any other module as measured.
 
-  Every one of those numbers is now also older than the toolchain. The
-  2026-09-21 Nest 12 upgrade moved this repo to `"module": "nodenext"`, which
-  is what `nest new --type cjs` emits, so the scaffold and the template now
-  differ only by `"type": "module"` — the gap the 2026-09-19 evidence file
-  describes is narrower than it records. Re-measuring was not part of that
-  work.
+**Three modules deviate from the shape the rest share.** `templating`'s
+`abstract/` holds only the service and a const, with its dynamic module at the
+module root; `queues` splits its contract across `abstract/producer/` and
+`abstract/consumer/` because it is the one bidirectional module here;
+`push-notification` uses style-B registration and decorates its adapter's config
+parameter with `@Inject`. All three are documented where they live. Copy
+`src/cache/` instead — it is the reference shape.
 
-### Closed, kept here because they are cited
+**RabbitMQ and SQS are complete but unwired.** Only BullMQ is registered in
+`src/app.module.ts`, deliberately: three brokers registered at once means three
+live connections for one queue. `src/queues/README.md`'s *Switching the
+template's broker* has the exact edit for each.
 
-- **`B1`** — ~~`src/app.module.ts` does not compile: `emailConfig`, `awsConfig` and
-  `ConfigType` are referenced but never imported.~~ **Fixed on `fix/build-and-lint`.**
-- **`B2`** — ~~`package.json` declares `dotenv` twice.~~ **Fixed** — declared once.
-- **`B3`** — ~~`Dockerfile` uses `apk` on a Debian image and runs `prisma generate`
-  in a TypeORM project.~~ **Fixed on `fix/container-and-deploy-build`:** the image
-  installs `dumb-init` with `apt-get` and no Prisma call remains in `Dockerfile`
-  or `docker-script.sh`.
-- **`L1`** — ~~`pnpm run lint` exits 1 with 23 errors, so the pipeline is red on
-  every PR, because `eslint.config.mjs` spreads the recommended configs *after*
-  its own rules block.~~ **Fixed on `fix/build-and-lint`** for the 23 errors;
-  the ordering half was fixed on `chore/eslint-flat-config` (`H1`).
-- **`L3`** — ~~the `lint` script runs with `--fix` and CI runs that script, so CI
-  cannot detect formatting drift.~~ **Fixed on `chore/ci-test-gate`:** the tree
-  is Prettier-clean, `lint` keeps `--fix` for local use, and CI runs `lint:ci`.
-- **`G2`** — ~~CI never runs `pnpm test`.~~ **Fixed on `chore/ci-test-gate`:** the
-  `test-build` step runs `pnpm test` between `lint:ci` and `build`, and runs on
-  `staging` and `master` before their deploy step as well as on pull requests.
-  `test:e2e` is still not in the pipeline — that is `H4`, above.
-- **`TS1`** — ~~`tsconfig.json` is not in strict mode.~~ **Fixed on
-  `chore/typescript-strict`:** `"strict": true` is on and `tsc --noEmit` is
-  clean. `TS2` and `TS3` closed with it; the `any` half closed on
-  `refactor/no-explicit-any` — two remain, both documented (`T6`).
-- **`M1`-`M7`, `N6`** — ~~absolute `src/...` imports, the `(app)`/`queues`/`spaceship`
-  cycle, and the `auth`/`database` and `common`/`config-provider` cycles.~~
-  **Fixed on `feature/queues-decoupling` (2026-09-19):** the graph has zero
-  violations and zero cycles.
-- **`C1`-`C5`, `D1`-`D5`, `N1`-`N4`, `N7`, `R1`-`R4`, `G1`, `M15`, `DOC1`-`DOC10`**
-  — all closed; each is struck with its own evidence in the audit files.
+**The five gates pass.** `docs:check`, `modularity:check`, `lint:ci`, `test:cov`
+and `build` are green, as is `tsc --noEmit` under `"strict": true`. The coverage
+floor is 95% statements, 88% branches, 94% functions and 95% lines, set just
+under the real numbers so it fails on a regression rather than on ambition.
+`modularity:check` runs against a zero-violation baseline
+(`scripts/module-independence-baseline.json`), so it fails on the first new
+cross-module violation instead of freezing a known set.
 
-Do not fix the open ones opportunistically as part of unrelated work. They are
-tracked; raise them, scope them, fix them deliberately.
+**Three defects reached `master` because only running the application found
+them:** a consumer option passed as `undefined` that stopped every worker from
+starting, a provider client built eagerly with empty config that stopped the app
+booting from its own `.env.example`, and a `ValidationPipe` option that was
+inert without its companion. A green `test:cov` saw none of them, because each
+sat in wiring that the specs mock. When you add an optional adapter option or a
+provider client, boot the app before believing the suite.

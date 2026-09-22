@@ -1,8 +1,7 @@
 # Common — module guide
 
-> Inherits the repo-root `CLAUDE.md` (always loaded) and
-> `docs/architecture/module-contract.md`. Read those first — this file adds
-> only what is specific to `src/common/`.
+> Inherits the repo-root `CLAUDE.md` (always loaded). Read it first — this file
+> adds only what is specific to `src/common/`.
 
 ## Scope
 
@@ -30,17 +29,17 @@ instead. A helper used by exactly one module belongs in that module.
 
 ## Internal
 
-`ApiException` was deleted from `src/common/exception/` on
-`chore/dead-code-and-error-model`. It was a plain `Error` with no HTTP status,
-and its only callers — three validation throws in the cloud-storage default
-controller — answered `500` where `400` was intended. They now throw
-`BadRequestException`. If you need a new error shape here, it is one of the two
-in Rule 1, not a third.
+There is no `ApiException` here, and none may be added. A plain `Error`
+carrying no HTTP status answers `500` wherever it surfaces, which is how
+validation failures end up as server errors. Throw Nest's own
+`BadRequestException` for a bad request, or a `RequestException` built from an
+`Exceptions` entry. If you need a new error shape, it is one of the two in
+Rule 1, not a third.
 
-`ERROR_CODES`/`ErrorCode` went with it. `!src/common/enums.ts` was a generic
-code list whose only consumer was that same `ApiException` path (finding `H2`).
-Error codes belong to the module that raises them — `EMAIL_ERRORS`,
-`CACHE_ERRORS` and siblings — or to an `Exceptions` entry.
+There is no generic `ERROR_CODES` enum here, and none may be added. Error codes
+belong to the module that raises them — `EMAIL_ERRORS`, `CACHE_ERRORS` and
+siblings — or to an `Exceptions` entry. A shared code list in `common` outlives
+every module that used it and drifts into a dumping ground.
 
 ## Rules
 
@@ -122,7 +121,7 @@ every `.d.ts` under the project root is part of the program. Copy the root
 `@types/` directory into the destination and make sure its `tsconfig.json`
 actually compiles that path — a destination with `"include": ["src"]` will
 not, and the file has to move under `src/` there. Without it the interceptor
-fails to compile (`EXT7`).
+fails to compile, and no error message names the missing declaration.
 
 Was `typeRoots`; it is not any more. Under TypeScript 6 a `typeRoots` entry no
 longer pulls `@types/*` packages in automatically, so this repo names them in
@@ -135,21 +134,16 @@ the two congruent (`T7`).
 
 ## Known gaps
 
-See `docs/audit/2026-09-11-template-audit.md` and `docs/audit/2026-09-18-modularity-audit.md`.
+**This module has a dependency no import statement names.**
+`src/common/middleware/response.interceptor.ts` reads `user.id`, which
+type-checks only because the repo root ships `@types/express/index.d.ts` and
+this repo's `tsconfig.json` declares no `include`, so every `.d.ts` under the
+project root is part of the program. Lifting `src/common/` means copying that
+`@types/` directory *and* landing it somewhere the destination's `tsconfig.json`
+actually covers — under `"include": ["src"]` it does not. Nothing will point at
+this when it breaks: the compiler reports the interceptor, not the missing
+ambient type. `## Reuse` below repeats it, because it is the one thing a reader
+of that section cannot discover from the source.
 
-- **`N2`** — ~~four competing error models across the template.~~ **Fixed on
-  `chore/dead-code-and-error-model`:** two remain, and they are the two Rule 1
-  describes — a module error (`CacheError`, `PushNotificationError`, …) for
-  infrastructure, and `RequestException` for the HTTP layer.
-  `PushNotificationException` and `ApiException` are both gone.
-- **`C4`** — ~~the filter spreads `exception.getResponse()` into the body and
-  catches only `HttpException`.~~ **Fixed on `fix/security-defaults`:**
-  `@Catch()` with a body built field by field, covered by
-  `request-exception.filter.unit.spec.ts`.
-- **`H2`** — ~~`ERROR_CODES`/`ErrorCode` have no consumers left after `N2`
-  collapsed the error models.~~ **Fixed on `chore/module-gaps`:**
-  `!src/common/enums.ts` is deleted along with its public-surface row.
-- **`G1`** — ~~`RequestExceptionFilter` is covered; the rest of the middleware,
-  the utils and the decorators are not.~~ **Fixed on
-  `test/coverage-cache-common`:** `ResponseInterceptor`, `validateAdapterModule`,
-  `@Html()` and `MiddlewareModule`'s own wiring all have specs now.
+**A green `modularity:check` does not prove this module extracts cleanly.** The
+checker reads import specifiers; the coupling above has none.

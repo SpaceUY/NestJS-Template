@@ -1,8 +1,7 @@
 # Cloud storage — module guide
 
-> Inherits the repo-root `CLAUDE.md` (always loaded) and
-> `docs/architecture/module-contract.md`. Read those first — this file adds
-> only what is specific to `src/cloud-storage/`.
+> Inherits the repo-root `CLAUDE.md` (always loaded). Read it first — this file
+> adds only what is specific to `src/cloud-storage/`.
 
 ## Scope
 
@@ -120,26 +119,16 @@ section. Keep the two congruent (`T7`).
 
 ## Known gaps
 
-See `docs/audit/2026-09-11-template-audit.md`.
+**The local adapter does not translate its errors.**
+`local-adapter/local-adapter.service.ts` wraps neither `mkdir` nor `writeFile`,
+and re-throws any non-`ENOENT` failure raw — so a caller that catches
+`CloudStorageError` catches nothing when the local adapter is wired. The S3
+adapter does translate. Since the local adapter is development-only this rarely
+bites, but it is the one place here where the module's error contract does not
+hold.
 
-- **`D1`** — ~~`src/cloud-storage/README.md` documents an orchestrator, a targets
-  enum, a tokens file, a config file and an IPFS adapter, all under a
-  `!src/modules/infrastructure/` path. None of it exists.~~ **Fixed:** the
-  README now describes the real tree and registration examples; the
-  orchestrator/targets/tokens/IPFS sections were never-built design and were
-  removed rather than described.
-- **`N2`** — ~~`src/cloud-storage/abstract/cloud-storage.controller.ts` throws
-  `ApiException`, a plain `Error` carrying no HTTP status, so three validation
-  failures answer `500` where `400` was intended.~~ **Fixed on
-  `chore/dead-code-and-error-model`:** the three throws are
-  `BadRequestException`, `ApiException` is deleted, and this module no longer
-  imports `src/common/exception/` at all. `!src/common/enums.ts` was deleted
-  outright afterwards (finding `H2`) — it had no consumers left.
-- **`N5`** — ~~no `abstract/mocks/`.~~ **Fixed on `chore/module-gaps`:**
-  `src/cloud-storage/abstract/mocks/cloud-storage.service.mock.ts`.
-- **`C1`** — ~~`AWS_REGION` and `AWS_S3_EXPIRES_IN_SECONDS` are missing from
-  `.env.example`.~~ **Fixed on `fix/security-defaults`:** both are declared.
-- **`G1`** — ~~`cloud-storage.controller.ts` was the one file here with no
-  spec.~~ **Fixed on `test/coverage-remaining`:**
-  `src/cloud-storage/abstract/cloud-storage.controller.unit.spec.ts` covers the
-  three handlers and their guard clauses.
+**Unconfigured S3 fails at first use, not at boot.** The client is built lazily
+precisely so an app that never uploads anything can run without AWS keys. The
+cost is that a missing `AWS_REGION` surfaces as
+`CLOUD_STORAGE_NOT_CONFIGURED` on the first call rather than as a startup
+failure — deliberate, but it means configuration errors travel to runtime.
