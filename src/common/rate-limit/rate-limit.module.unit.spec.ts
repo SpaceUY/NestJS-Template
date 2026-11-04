@@ -1,5 +1,6 @@
 import { Controller, Get, INestApplication } from '@nestjs/common';
 import { Test } from '@nestjs/testing';
+import { NodeAdapter } from '@nestjs/platform-node';
 import { ThrottlerModule } from '@nestjs/throttler';
 import request from 'supertest';
 import { RateLimitModule } from './rate-limit.module';
@@ -51,7 +52,7 @@ describe('RateLimitModule', () => {
       controllers: [StandInHealthController, StandInAuthController],
     }).compile();
 
-    app = moduleRef.createNestApplication();
+    app = moduleRef.createNestApplication(new NodeAdapter());
     await app.init();
   });
 
@@ -103,7 +104,7 @@ describe('RateLimitModule', () => {
       controllers: [StandInHealthController, StandInAuthController],
     }).compile();
 
-    const isolated = moduleRef.createNestApplication();
+    const isolated = moduleRef.createNestApplication(new NodeAdapter());
     await isolated.init();
 
     for (let attempt = 0; attempt < LIMIT * 4; attempt += 1) {
@@ -134,7 +135,7 @@ describe('RateLimitModule', () => {
       controllers: [StandInAuthController],
     }).compile();
 
-    const disabled = moduleRef.createNestApplication();
+    const disabled = moduleRef.createNestApplication(new NodeAdapter());
     await disabled.init();
 
     for (let attempt = 0; attempt < LIMIT * 4; attempt += 1) {

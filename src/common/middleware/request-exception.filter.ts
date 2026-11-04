@@ -7,7 +7,7 @@ import {
   Inject,
   Optional,
 } from '@nestjs/common';
-import { Response } from 'express';
+import { NodeResponse } from '@nestjs/platform-node';
 import { LoggerService } from '../observability/logger/abstract/logger.service';
 import { NestLoggerAdapter } from '../observability/logger/nest-adapter/nest-logger.adapter';
 
@@ -41,7 +41,7 @@ export class RequestExceptionFilter implements ExceptionFilter {
 
   catch(exception: unknown, host: ArgumentsHost): void {
     const ctx = host.switchToHttp();
-    const res = ctx.getResponse<Response>();
+    const res = ctx.getResponse<NodeResponse>();
 
     if (exception instanceof HttpException) {
       const statusCode = exception.getStatus();

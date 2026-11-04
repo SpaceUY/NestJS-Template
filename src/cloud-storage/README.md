@@ -197,6 +197,7 @@ you want, then bring:
 
 ```bash
 pnpm add @nestjs/swagger class-validator          # abstract/
+pnpm add @nestjs/platform-node                    # abstract/ (the controller's FileInterceptor)
 pnpm add -D @types/multer                         # abstract/
 pnpm add @aws-sdk/client-s3 @aws-sdk/s3-request-presigner   # s3-adapter/
 pnpm add uuid                                     # local-adapter/

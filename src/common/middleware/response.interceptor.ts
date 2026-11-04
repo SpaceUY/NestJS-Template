@@ -7,9 +7,11 @@ import {
 } from '@nestjs/common';
 import { Observable } from 'rxjs';
 import { map } from 'rxjs/operators';
-import { Request, Response } from 'express';
+import { NodeRequest, NodeResponse } from '@nestjs/platform-node';
 import { LoggerService } from '../observability/logger/abstract/logger.service';
 import { NestLoggerAdapter } from '../observability/logger/nest-adapter/nest-logger.adapter';
+
+type AuthenticatedRequest = NodeRequest & { user?: Express.User };
 
 export class ResponseInterceptor implements NestInterceptor {
   private readonly logger: LoggerService;
@@ -29,8 +31,8 @@ export class ResponseInterceptor implements NestInterceptor {
     return next.handle().pipe(
       map((data) => (data === undefined ? {} : data)),
       map((data) => {
-        const req: Request = ctx.switchToHttp().getRequest();
-        const res: Response = ctx.switchToHttp().getResponse();
+        const req: AuthenticatedRequest = ctx.switchToHttp().getRequest();
+        const res: NodeResponse = ctx.switchToHttp().getResponse();
 
         this.log(req, res);
 
@@ -43,7 +45,7 @@ export class ResponseInterceptor implements NestInterceptor {
     );
   }
 
-  private log(req: Request, res: Response): void {
+  private log(req: AuthenticatedRequest, res: NodeResponse): void {
     const { method, url, ip, user } = req;
     const { statusCode } = res;
 

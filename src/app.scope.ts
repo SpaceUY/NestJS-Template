@@ -55,15 +55,16 @@ const validate = (raw: Record<string, unknown>): AppScopeConfig => {
       then: Joi.boolean().default(false),
       otherwise: Joi.boolean().default(true),
     }),
-    // Express's own `trust proxy` setting — what `req.ip`, `req.protocol` and
+    // The adapter's `trustProxy` setting — what `req.ip`, `req.protocol` and
     // secure-cookie handling are computed from. Off by default: an instance
     // reachable directly (its own elastic IP, no load balancer in front)
     // must keep seeing the real client IP, and turning this on there would
     // let a spoofed `X-Forwarded-For` header lie about it. Behind a load
     // balancer or reverse proxy, set it to the hop count to trust (`1` for a
-    // single ALB) or a specific address/CIDR list — see Express's `trust
-    // proxy` docs for the accepted shapes. `src/main.ts` applies this
-    // verbatim via `app.set('trust proxy', ...)`.
+    // single ALB) or a specific address/CIDR list (`loopback`, `10.0.0.0/8`,
+    // comma-separated). `src/main.ts` applies it through
+    // `src/trust-proxy.bootstrap.ts`, which is what makes a hop count work:
+    // `NodeAdapter` on its own treats a bare number as "trust no proxy".
     trustProxy: Joi.alternatives()
       .try(Joi.boolean(), Joi.number().integer().min(0), Joi.string())
       .default(false),

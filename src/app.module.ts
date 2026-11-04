@@ -122,7 +122,7 @@ import { notificationRecipientsScope } from './spaceship/notification/config/not
     //    to be exact across instances, or set RATE_LIMIT_ENABLED=false and
     //    rate-limit in front of the app instead.
     // 2. The client is identified by its IP, which behind a proxy is the
-    //    proxy's unless Express is told to trust it. TRUST_PROXY
+    //    proxy's unless the HTTP adapter is told to trust it. TRUST_PROXY
     //    (src/app.scope.ts, applied in src/main.ts) is that switch — off by
     //    default for an instance reached directly on its own elastic IP, set
     //    to a hop count or address list behind a load balancer.

@@ -1,5 +1,6 @@
 import { Controller, Get, INestApplication } from '@nestjs/common';
 import { Test } from '@nestjs/testing';
+import { NodeAdapter } from '@nestjs/platform-node';
 import { OpenAPIObject, SwaggerModule } from '@nestjs/swagger';
 import helmet from 'helmet';
 import request from 'supertest';
@@ -112,7 +113,7 @@ describe('Swagger UI under helmet defaults', () => {
       controllers: [ThingsController],
     }).compile();
 
-    app = moduleRef.createNestApplication();
+    app = moduleRef.createNestApplication(new NodeAdapter());
     app.use(helmet());
     setupSwagger(app, appConf());
     await app.init();
