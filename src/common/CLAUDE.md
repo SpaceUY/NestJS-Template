@@ -112,7 +112,9 @@ target project wants the `{ success, data }` envelope; otherwise take the filter
 and leave the interceptor. Both classes reference
 `src/common/observability/logger/` — through `@Optional()` injection, so they
 boot without it, but the import has to resolve; bring that subtree or replace
-the two constructors. The interceptor also needs `rxjs`, plus a real
+the two constructors. Both classes take their request and response types from
+`@nestjs/platform-node` (`NodeRequest`, `NodeResponse`), so that package has to
+be installed. The interceptor also needs `rxjs`, plus a real
 non-import dependency: `src/common/middleware/response.interceptor.ts:54`
 (`user.id`) only type-checks because of the ambient global type augmentation
 the repo root ships in `@types/express/index.d.ts`. No import statement

@@ -1,5 +1,6 @@
 import { Controller, Get } from '@nestjs/common';
 import { Test } from '@nestjs/testing';
+import { NodeAdapter } from '@nestjs/platform-node';
 import request from 'supertest';
 import { Html } from './html-content-type';
 
@@ -22,7 +23,7 @@ describe('@Html()', () => {
     const moduleRef = await Test.createTestingModule({
       controllers: [PagesController],
     }).compile();
-    const app = moduleRef.createNestApplication();
+    const app = moduleRef.createNestApplication(new NodeAdapter());
     await app.init();
 
     const html = await request(app.getHttpServer()).get('/pages/html');

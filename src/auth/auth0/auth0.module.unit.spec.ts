@@ -1,5 +1,6 @@
 import { Global, Module, Type } from '@nestjs/common';
 import { Test } from '@nestjs/testing';
+import { NodeAdapter } from '@nestjs/platform-node';
 import request from 'supertest';
 import { getRepositoryToken } from '@nestjs/typeorm';
 import { Auth0Module } from './auth0.module';
@@ -105,7 +106,7 @@ describe('Auth0Module', () => {
       const moduleRef = await Test.createTestingModule({
         imports: [contextModule(configWithoutCredentials()), Auth0Module],
       }).compile();
-      const app = moduleRef.createNestApplication();
+      const app = moduleRef.createNestApplication(new NodeAdapter());
       await app.init();
 
       await request(app.getHttpServer())
@@ -141,7 +142,7 @@ describe('Auth0Module', () => {
       const moduleRef = await Test.createTestingModule({
         imports: [contextModule(config(true)), Auth0Module],
       }).compile();
-      const app = moduleRef.createNestApplication();
+      const app = moduleRef.createNestApplication(new NodeAdapter());
       await app.init();
 
       await request(app.getHttpServer())

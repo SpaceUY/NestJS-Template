@@ -91,8 +91,9 @@ so it is the first thing to lift and the last thing to delete.
 - `middleware/` is opinionated about response shape — copy it only if the
   target project wants the `{ success, data }` envelope. Both classes import
   `observability/logger/` (optionally injected, so no DI requirement — but the
-  import must resolve). It needs `rxjs`, and one non-import dependency worth
-  knowing about:
+  import must resolve). It needs `rxjs` and `@nestjs/platform-node`, whose
+  `NodeRequest` and `NodeResponse` types the two classes use, and one
+  non-import dependency worth knowing about:
   `src/common/middleware/response.interceptor.ts` only type-checks because of
   the ambient `Express.User` augmentation the repo root ships in
   `@types/express/index.d.ts`. Nothing imports it — it applies because this

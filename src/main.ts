@@ -1,14 +1,19 @@
 import './common/observability/telemetry/tracing.bootstrap';
 import { ValidationPipe } from '@nestjs/common';
 import { NestFactory } from '@nestjs/core';
-import { NestExpressApplication } from '@nestjs/platform-express';
+import { NestNodeApplication, NodeAdapter } from '@nestjs/platform-node';
 import helmet from 'helmet';
 import { AppModule } from './app.module';
 import { appScope, AppScopeConfig } from './app.scope';
 import { setupSwagger } from './swagger.bootstrap';
+import { createDeferredTrustProxy } from './trust-proxy.bootstrap';
 
 async function bootstrap(): Promise<void> {
-  const app = await NestFactory.create<NestExpressApplication>(AppModule);
+  const trustProxy = createDeferredTrustProxy();
+  const app = await NestFactory.create<NestNodeApplication>(
+    AppModule,
+    new NodeAdapter({ trustProxy: trustProxy.trust }),
+  );
   const appConf = app.get<AppScopeConfig>(appScope.KEY);
   app.enableShutdownHooks();
 
@@ -16,8 +21,10 @@ async function bootstrap(): Promise<void> {
   // or address list a real deployment needs — a load balancer in front, or an
   // EC2 instance reachable on its own elastic IP, decide this differently and
   // it must stay a deployment choice, not a hardcoded one. It has to run
-  // before anything reads req.ip, which includes the rate limiter.
-  app.set('trust proxy', appConf.trustProxy);
+  // before anything reads req.ip, which includes the rate limiter. The
+  // adapter was built with a function that trusts nothing; this is what
+  // switches it to the configured value — see src/trust-proxy.bootstrap.ts.
+  trustProxy.apply(appConf.trustProxy);
 
   // First in the middleware stack, so every response carries the headers —
   // including the Swagger page mounted further down.

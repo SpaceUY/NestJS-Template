@@ -106,8 +106,10 @@ shape `src/cache/abstract/mocks/` uses.
 
 Copy `src/cloud-storage/abstract/` plus the adapters you want.
 
-- `abstract/` needs `@nestjs/common`, `@nestjs/swagger`, `class-validator` and
-  `@types/multer`.
+- `abstract/` needs `@nestjs/common`, `@nestjs/swagger`, `class-validator`,
+  `@types/multer` and — for the controller's `FileInterceptor` —
+  `@nestjs/platform-node`. The controller is tied to `NodeAdapter`; under
+  another HTTP adapter, swap that import or drop the controller.
 - `s3-adapter/` needs `@aws-sdk/client-s3` and `@aws-sdk/s3-request-presigner`,
   and its scope depends on `src/config-provider/`.
 - `local-adapter/` needs `uuid` and nothing else.

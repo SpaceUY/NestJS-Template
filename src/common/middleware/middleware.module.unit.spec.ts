@@ -1,5 +1,6 @@
 import { Controller, Get, INestApplication, Logger } from '@nestjs/common';
 import { Test } from '@nestjs/testing';
+import { NodeAdapter } from '@nestjs/platform-node';
 import request from 'supertest';
 import { RequestException } from '../exception/core/ExceptionBase';
 import { Exceptions } from '../exception/exceptions';
@@ -62,7 +63,7 @@ describe('MiddlewareModule', () => {
       controllers: [ThingsController],
     }).compile();
 
-    app = moduleRef.createNestApplication();
+    app = moduleRef.createNestApplication(new NodeAdapter());
     await app.init();
   });
 
@@ -120,7 +121,7 @@ describe('MiddlewareModule with a registered LoggerService', () => {
       controllers: [ThingsController],
     }).compile();
 
-    app = moduleRef.createNestApplication();
+    app = moduleRef.createNestApplication(new NodeAdapter());
     await app.init();
   });
 
