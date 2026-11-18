@@ -1,28 +1,15 @@
 export type CardNetwork = 'MASTERCARD' | 'VISA';
 
-export type WalletProvider = 'APPLE_PAY' | 'GOOGLE_PAY' | 'OTHER';
-
-export const WALLET_PROVIDERS: readonly WalletProvider[] = [
-  'APPLE_PAY',
-  'GOOGLE_PAY',
-  'OTHER',
-];
-
-// The module's own vocabulary: processor adapters translate their statuses to these.
-export const WALLET_PROVISIONING_STATUSES = [
-  'REQUESTED',
-  'OTP_PENDING',
-  'OTP_SENT',
-  'ACTIVATED',
-  'SUSPENDED',
-  'DISABLED',
-  'INACTIVE',
-  'ABANDONED',
-  'FAILED',
-] as const;
-
-export type WalletProvisioningStatus =
-  (typeof WALLET_PROVISIONING_STATUSES)[number];
+// The column vocabulary lives with the entity (src/database cannot import from a feature).
+export {
+  WALLET_PROVISIONING_STATUSES,
+  type WalletProvider,
+  type WalletProvisioningStatus,
+} from '../../database/entities/wallet-provisioning.entity';
+import type {
+  WalletProvider,
+  WalletProvisioningStatus,
+} from '../../database/entities/wallet-provisioning.entity';
 
 export type ResolvedCard = {
   uuid: string;
