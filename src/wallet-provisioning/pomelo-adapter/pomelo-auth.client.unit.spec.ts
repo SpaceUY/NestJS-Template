@@ -89,4 +89,13 @@ describe('PomeloAuthClient', () => {
       }),
     );
   });
+
+  it('uses the time budget it is given for the token call', async () => {
+    mockedPost.mockResolvedValue({
+      status: 200,
+      body: { access_token: 'tok', expires_in: 3600 },
+    });
+    await new PomeloAuthClient(config as never).getToken(1200);
+    expect(mockedPost.mock.calls[0]?.[3]).toBe(1200);
+  });
 });

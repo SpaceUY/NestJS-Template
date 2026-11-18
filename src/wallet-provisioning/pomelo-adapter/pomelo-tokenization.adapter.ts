@@ -96,12 +96,22 @@ export class PomeloTokenizationAdapter extends TokenizationProvider {
         { cardExternalId: card.externalId },
       );
     }
-    const token = await this.auth.getToken();
+    // One budget for the token and the call, so a cold token cache cannot double the wait.
+    const deadline = Date.now() + this.config.requestTimeoutMs;
+    const token = await this.auth.getToken(this.config.requestTimeoutMs);
+    const remainingMs = deadline - Date.now();
+    if (remainingMs <= 0) {
+      throw new WalletProvisioningError(
+        WALLET_PROVISIONING_ERRORS.PROVIDER_TIMEOUT,
+        `Pomelo did not answer within ${this.config.requestTimeoutMs} ms`,
+        { cardExternalId: card.externalId },
+      );
+    }
     const { status, body: response } = await postJson(
       `${this.config.baseUrl}${path}`,
       body,
       { Authorization: `Bearer ${token}` },
-      this.config.requestTimeoutMs,
+      remainingMs,
     );
     if (status === 401) this.auth.invalidate();
     const data = (response as { data?: Data } | null)?.data;

@@ -41,8 +41,11 @@ Routes (behind `AuthGuard('jwt')`, user by `uuid`):
 | `POST /cards/me/wallet/apple-pay` | `{ cardId?, certificates[], nonce, nonceSignature }` (base64) | `{ activationData, encryptedPassData, ephemeralPublicKey }` |
 | `POST /cards/me/wallet/google-pay` | `{ cardId?, serverSessionId }` | `{ opc, googleOpc }` |
 
-400 `WALLET_CARD_NOT_ELIGIBLE` when the card is missing, inactive or someone else's; 502
-`WALLET_PROVIDER_UNAVAILABLE` when the processor fails. Pomelo webhooks:
+The template's `ResponseInterceptor` wraps successes as `{ success: true, data: <response> }`; the
+app (and the Wallet extension template) read `data`. Errors arrive as
+`{ success: false, statusCode, message }`: 400 when the card is missing, inactive or someone
+else's (`WALLET_CARD_NOT_ELIGIBLE` internally; the code is not in the body), 502 when the
+processor fails (`WALLET_PROVIDER_UNAVAILABLE`). Pomelo webhooks:
 `POST /wallet-provisioning/webhooks/pomelo/token-lifecycle` and `.../token-notification`.
 
 ## Rules

@@ -331,4 +331,13 @@ describe('TokenEventsService', () => {
       data: { cardExternalId: 'crd-1' },
     });
   });
+
+  it('does not remind when the card is no longer active', async () => {
+    resolver.findByExternalId.mockResolvedValue({ ...card, isActive: false });
+    repository.add({ tokenExternalId: 'tok-1', status: 'OTP_SENT' });
+    await expect(
+      service.apply(event({ kind: 'ABANDONED', status: undefined })),
+    ).resolves.toEqual({ previousStatus: 'OTP_SENT', status: 'ABANDONED' });
+    expect(hooks.onProvisioningAbandoned).not.toHaveBeenCalled();
+  });
 });

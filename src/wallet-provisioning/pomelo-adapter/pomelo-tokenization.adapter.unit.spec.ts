@@ -36,6 +36,8 @@ describe('PomeloTokenizationAdapter', () => {
   let adapter: PomeloTokenizationAdapter;
 
   beforeEach(() => {
+    // Frozen clock: the call's timeout is what the token request left of the budget.
+    jest.useFakeTimers().setSystemTime(new Date('2026-11-18T12:00:00Z'));
     mockedPost.mockReset();
     auth = {
       getToken: jest.fn().mockResolvedValue('tok'),
@@ -159,5 +161,38 @@ describe('PomeloTokenizationAdapter', () => {
         code: WALLET_PROVISIONING_ERRORS.PROVIDER_REQUEST_FAILED,
       }),
     );
+  });
+
+  afterEach(() => jest.useRealTimers());
+
+  describe('one time budget for the token and the call', () => {
+    it('gives the provisioning call only what the token request left of the budget', async () => {
+      auth.getToken.mockImplementation(async () => {
+        jest.setSystemTime(Date.now() + 5000);
+        return 'tok';
+      });
+      mockedPost.mockResolvedValue({
+        status: 200,
+        body: { data: { opc: 'O', google_opc: 'G' } },
+      });
+      await adapter.getGooglePayData(mastercard, { serverSessionId: 'SID' });
+      expect(auth.getToken).toHaveBeenCalledWith(6500);
+      expect(mockedPost.mock.calls[0]?.[3]).toBe(1500);
+    });
+
+    it('throws PROVIDER_TIMEOUT without calling Pomelo when the token used the whole budget', async () => {
+      auth.getToken.mockImplementation(async () => {
+        jest.setSystemTime(Date.now() + 6500);
+        return 'tok';
+      });
+      await expect(
+        adapter.getGooglePayData(mastercard, { serverSessionId: 'SID' }),
+      ).rejects.toEqual(
+        expect.objectContaining({
+          code: WALLET_PROVISIONING_ERRORS.PROVIDER_TIMEOUT,
+        }),
+      );
+      expect(mockedPost).not.toHaveBeenCalled();
+    });
   });
 });

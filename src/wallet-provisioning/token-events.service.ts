@@ -133,6 +133,8 @@ export class TokenEventsService {
     card: OwnedCard,
   ): Promise<void> {
     if (status !== 'ABANDONED' || !PENDING_STATUSES.has(previous)) return;
+    // A card blocked meanwhile cannot be added: a reminder would only lead to a 400.
+    if (!card.isActive) return;
     if (
       await this.repository.existsInWallet(event.cardExternalId, event.wallet)
     ) {

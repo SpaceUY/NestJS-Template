@@ -13,6 +13,8 @@ export abstract class CardResolver {
     cardUuid?: string,
   ): Promise<ResolvedCard | null>;
 
+  // Any status: webhooks also report tokens of blocked or cancelled cards. Filtering to active
+  // cards here would silently drop their SUSPENDED and DISABLED events.
   abstract findByExternalId(externalId: string): Promise<OwnedCard | null>;
 }
 

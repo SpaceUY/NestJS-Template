@@ -23,7 +23,10 @@ export class PomeloAuthClient {
     private readonly config: PomeloTokenizationScopeConfig,
   ) {}
 
-  async getToken(): Promise<string> {
+  /** `timeoutMs`: what is left of the caller's budget; defaults to the whole request timeout. */
+  async getToken(
+    timeoutMs: number = this.config.requestTimeoutMs,
+  ): Promise<string> {
     if (this.cached && Date.now() < this.cached.expiresAt) {
       return this.cached.token;
     }
@@ -36,7 +39,7 @@ export class PomeloAuthClient {
         grant_type: 'client_credentials',
       },
       {},
-      this.config.requestTimeoutMs,
+      timeoutMs,
     );
     const token = body as Partial<PomeloTokenResponse> | null;
     if (!isSuccess(status) || !token?.access_token) {
