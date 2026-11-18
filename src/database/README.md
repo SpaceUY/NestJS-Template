@@ -41,12 +41,12 @@ export class AppModule {}
 `databaseScope` accepts either a URL or the discrete set, and prefers the URL
 when both are present:
 
-| Variable | Notes |
-|---|---|
-| `DATABASE_URL` | Full connection string. If set, the `DB_*` host keys are ignored |
-| `DB_HOST`, `DB_PORT`, `DB_USER`, `DB_PASS`, `DB_NAME` | The discrete alternative; `DB_PORT` defaults to `5432` |
-| `DB_SYNCHRONIZE` | Local development only. Defaults to `false` and must stay `false` outside it |
-| `DB_LOGGING` | Query logging |
+| Variable                                              | Notes                                                                        |
+| ----------------------------------------------------- | ---------------------------------------------------------------------------- |
+| `DATABASE_URL`                                        | Full connection string. If set, the `DB_*` host keys are ignored             |
+| `DB_HOST`, `DB_PORT`, `DB_USER`, `DB_PASS`, `DB_NAME` | The discrete alternative; `DB_PORT` defaults to `5432`                       |
+| `DB_SYNCHRONIZE`                                      | Local development only. Defaults to `false` and must stay `false` outside it |
+| `DB_LOGGING`                                          | Query logging                                                                |
 
 `buildTypeOrmOptions` throws at startup when neither form is complete, rather
 than letting the app boot and fail on the first query.

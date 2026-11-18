@@ -14,16 +14,16 @@ that owns the data.
 
 ## Public surface
 
-| Import | From | Purpose |
-|---|---|---|
-| `DatabaseModule` | `src/database/database.module.ts` | Imported once by `src/app.module.ts` |
-| `buildTypeOrmOptions` | `src/database/database.module.ts` | The connection factory, exported so it can be tested |
-| `BaseEntity` | `src/database/entities/base.entity.ts` | Every entity extends it |
-| `User` | `src/database/entities/user.entity.ts` | Auth identity |
-| `AuthType` | `src/database/entities/auth-type.enum.ts` | `EMAIL` / `GOOGLE` / `AUTH0`; stored on `User.authType` |
-| `Spaceship` | `src/database/entities/spaceship.entity.ts` | The reference domain module's entity (Rule 1 puts it here, not in `src/spaceship/`). It goes when that module goes — `src/spaceship/CLAUDE.md`'s `## Reuse` has the order |
-| `databaseScope`, `DatabaseScopeConfig` | `src/database/config/database.scope.ts` | Connection config |
-| `AppDataSource` | `src/database/data-source.ts` | TypeORM CLI entry point only — never import from application code |
+| Import                                 | From                                        | Purpose                                                                                                                                                                   |
+| -------------------------------------- | ------------------------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| `DatabaseModule`                       | `src/database/database.module.ts`           | Imported once by `src/app.module.ts`                                                                                                                                      |
+| `buildTypeOrmOptions`                  | `src/database/database.module.ts`           | The connection factory, exported so it can be tested                                                                                                                      |
+| `BaseEntity`                           | `src/database/entities/base.entity.ts`      | Every entity extends it                                                                                                                                                   |
+| `User`                                 | `src/database/entities/user.entity.ts`      | Auth identity                                                                                                                                                             |
+| `AuthType`                             | `src/database/entities/auth-type.enum.ts`   | `EMAIL` / `GOOGLE` / `AUTH0`; stored on `User.authType`                                                                                                                   |
+| `Spaceship`                            | `src/database/entities/spaceship.entity.ts` | The reference domain module's entity (Rule 1 puts it here, not in `src/spaceship/`). It goes when that module goes — `src/spaceship/CLAUDE.md`'s `## Reuse` has the order |
+| `databaseScope`, `DatabaseScopeConfig` | `src/database/config/database.scope.ts`     | Connection config                                                                                                                                                         |
+| `AppDataSource`                        | `src/database/data-source.ts`               | TypeORM CLI entry point only — never import from application code                                                                                                         |
 
 ## Configuration
 
@@ -51,10 +51,12 @@ change a key.
    and TypeORM filters it out of ordinary finds. Never `delete()`.
 4. Schema changes are migrations, always generated, never hand-written
    (invariant `T8`):
+
    ```bash
    pnpm run db:migration:generate src/database/migrations/AddThing
    pnpm run db:migration:run
    ```
+
    No `--` before the path: pnpm 10 consumes it when a positional argument
    follows, and TypeORM then reports `Not enough non-option arguments`.
 
@@ -62,6 +64,7 @@ change a key.
    entities against a **live** database, so point `DB_*`/`DATABASE_URL` at one
    first — `docker-compose.yml` has one. Generating against a database that is
    behind produces a migration that repeats work already in the directory.
+
 5. `DB_SYNCHRONIZE` is for local development only. It defaults to `false` and
    must stay `false` in staging and production.
 6. Index every foreign key and every column that appears in a `WHERE`. Declare
