@@ -52,6 +52,7 @@ this table drifts. Each module's own `README.md` has the recipes and its
 | [`spaceship`](src/spaceship/README.md) | **The reference domain module** — CRUD, cache-aside reads and a background email job. Written to be deleted, not lifted | — | nine of the other thirteen; see its README |
 | [`templates`](src/templates/README.md) | The template files and the typed registry naming them — no executable code | — | none |
 | [`templating`](src/templating/README.md) | Compiling a template to HTML | `pug` | `common/utils/` |
+| [`wallet-provisioning`](src/wallet-provisioning/README.md) | Adding a card to Apple Wallet and Google Wallet (push provisioning): app endpoints, token webhooks and their state machine | `pomelo` (removable) | `auth`, `database`, logger, `config-provider` |
 
 "logger" above means `src/common/observability/logger/` specifically, not all
 of `src/common/`. Ten modules have an edge into `common`; seven of them reach

@@ -25,7 +25,7 @@ const ipList = Joi.alternatives()
   .try(
     Joi.array().items(Joi.string().ip()),
     Joi.string()
-      .allow('')
+
       .custom((value: string) =>
         value
           .split(',')
@@ -33,8 +33,10 @@ const ipList = Joi.alternatives()
           .filter(Boolean),
       ),
   )
+  .empty('')
   .default([]);
 
+// A blank optional variable (as copied from .env.example) counts as unset.
 const schema = Joi.object<PomeloTokenizationScopeConfig>({
   baseUrl: Joi.string()
     .uri({ scheme: ['https', 'http'] })
@@ -44,17 +46,22 @@ const schema = Joi.object<PomeloTokenizationScopeConfig>({
   audience: Joi.string().required(),
   webhookApiSecret: Joi.string().base64().required(),
   allowedIps: ipList,
-  requestTimeoutMs: Joi.number().integer().positive().less(7000).default(6500),
-  mastercardApplePayPath: Joi.string().default(
-    '/token-provisioning/mastercard/apple-pay',
-  ),
-  mastercardGooglePayPath: Joi.string().default(
-    '/token-provisioning/v2/mastercard/google-pay',
-  ),
-  visaApplePayPath: Joi.string().default(
-    '/token-provisioning/v2/visa/apple-pay',
-  ),
-  visaGooglePayPath: Joi.string().optional(),
+  requestTimeoutMs: Joi.number()
+    .integer()
+    .positive()
+    .less(7000)
+    .empty('')
+    .default(6500),
+  mastercardApplePayPath: Joi.string()
+    .empty('')
+    .default('/token-provisioning/mastercard/apple-pay'),
+  mastercardGooglePayPath: Joi.string()
+    .empty('')
+    .default('/token-provisioning/v2/mastercard/google-pay'),
+  visaApplePayPath: Joi.string()
+    .empty('')
+    .default('/token-provisioning/v2/visa/apple-pay'),
+  visaGooglePayPath: Joi.string().empty('').optional(),
 });
 
 export const pomeloTokenizationScope =

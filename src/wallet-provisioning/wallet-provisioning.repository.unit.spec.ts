@@ -2,6 +2,7 @@ import {
   Between,
   In,
   IsNull,
+  LessThanOrEqual,
   MoreThanOrEqual,
   QueryFailedError,
   Repository,
@@ -170,6 +171,19 @@ describe('WalletProvisioningRepository', () => {
     await repository.findPaginated({ from }, { skip: 0, take: 10 });
     expect(typeorm.findAndCount).toHaveBeenCalledWith(
       expect.objectContaining({ where: { createdAt: MoreThanOrEqual(from) } }),
+    );
+  });
+
+  it('findPaginated supports a range open at the start, and no filters at all', async () => {
+    const to = new Date('2026-11-18T00:00:00Z');
+    typeorm.findAndCount.mockResolvedValue([[], 0]);
+    await repository.findPaginated({ to }, { skip: 0, take: 10 });
+    await repository.findPaginated({}, { skip: 0, take: 10 });
+    expect(typeorm.findAndCount.mock.calls[0]?.[0]).toEqual(
+      expect.objectContaining({ where: { createdAt: LessThanOrEqual(to) } }),
+    );
+    expect(typeorm.findAndCount.mock.calls[1]?.[0]).toEqual(
+      expect.objectContaining({ where: {} }),
     );
   });
 });

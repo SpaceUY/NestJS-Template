@@ -59,4 +59,22 @@ describe('pomeloTokenizationScope', () => {
       }).visaGooglePayPath,
     ).toBe('/token-provisioning/v2/visa/google-pay');
   });
+
+  it('treats blank optional values, as copied from .env.example, as unset', () => {
+    const blank = {
+      allowedIps: '',
+      requestTimeoutMs: '',
+      mastercardApplePayPath: '',
+      mastercardGooglePayPath: '',
+      visaApplePayPath: '',
+      visaGooglePayPath: '',
+    };
+    expect(validate({ ...required, ...blank })).toEqual(validate(required));
+  });
+
+  it('still requires the credentials when they are blank', () => {
+    expect(() => validate({ ...required, clientSecret: '' })).toThrow(
+      /clientSecret/,
+    );
+  });
 });

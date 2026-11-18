@@ -8,7 +8,7 @@ import { CardResolver } from './card-resolver';
 import { WalletProvisioningHooks } from './wallet-provisioning-hooks';
 
 export type WalletProvisioningModuleOptions = {
-  // A module that provides and exports `TokenizationProvider` (e.g. PomeloAdapterModule).
+  // A module that provides and exports `TokenizationProvider` (a processor adapter's module).
   adapter: Type | DynamicModule;
   cardResolver: Type<CardResolver>;
   hooks: Type<WalletProvisioningHooks>;

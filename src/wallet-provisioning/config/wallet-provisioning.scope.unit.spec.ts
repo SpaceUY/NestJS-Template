@@ -34,4 +34,13 @@ describe('walletProvisioningScope', () => {
       }
     },
   );
+
+  it('treats blank values, as copied from .env.example, as unset', () => {
+    expect(
+      validate({ requestDedupeSeconds: '', claimWindowMinutes: '' }),
+    ).toEqual({
+      requestDedupeSeconds: 60,
+      claimWindowMinutes: 30,
+    });
+  });
 });

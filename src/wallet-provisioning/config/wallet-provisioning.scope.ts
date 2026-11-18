@@ -9,9 +9,10 @@ export type WalletProvisioningScopeConfig = {
   claimWindowMinutes: number;
 };
 
+// A blank variable (as copied from .env.example) counts as unset.
 const schema = Joi.object<WalletProvisioningScopeConfig>({
-  requestDedupeSeconds: Joi.number().integer().positive().default(60),
-  claimWindowMinutes: Joi.number().integer().positive().default(30),
+  requestDedupeSeconds: Joi.number().integer().positive().empty('').default(60),
+  claimWindowMinutes: Joi.number().integer().positive().empty('').default(30),
 });
 
 export const walletProvisioningScope =

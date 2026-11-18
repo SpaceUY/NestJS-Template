@@ -166,7 +166,7 @@ describe('WalletProvisioningService', () => {
     provider.getGooglePayData.mockRejectedValue(
       new WalletProvisioningError(
         WALLET_PROVISIONING_ERRORS.PROVIDER_TIMEOUT,
-        'Pomelo said: nonce=Tk9OQ0U=',
+        'Processor said: nonce=Tk9OQ0U=',
       ),
     );
     const call = service.getGooglePayData('user-uuid', {
