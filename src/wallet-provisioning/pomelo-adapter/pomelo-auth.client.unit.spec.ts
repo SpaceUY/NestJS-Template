@@ -63,6 +63,31 @@ describe('PomeloAuthClient', () => {
     await expect(client.getToken()).resolves.toBe('second');
   });
 
+  it.each([
+    ['missing', {}],
+    ['zero', { expires_in: 0 }],
+    ['not a number', { expires_in: 'soon' }],
+  ])(
+    'caches a token whose expires_in is %s for a short default lifetime',
+    async (_label, extra) => {
+      mockedPost
+        .mockResolvedValueOnce({
+          status: 200,
+          body: { access_token: 'first', ...extra },
+        })
+        .mockResolvedValueOnce({
+          status: 200,
+          body: { access_token: 'second', ...extra },
+        });
+      const client = new PomeloAuthClient(config as never);
+      await client.getToken();
+      jest.advanceTimersByTime(60_000);
+      await expect(client.getToken()).resolves.toBe('first');
+      jest.advanceTimersByTime(5 * 60_000);
+      await expect(client.getToken()).resolves.toBe('second');
+    },
+  );
+
   it('forgets the token when invalidated', async () => {
     mockedPost.mockResolvedValue({
       status: 200,

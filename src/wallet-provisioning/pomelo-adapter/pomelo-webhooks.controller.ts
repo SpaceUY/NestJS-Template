@@ -7,6 +7,7 @@ import {
   UseGuards,
 } from '@nestjs/common';
 import { ApiExcludeController } from '@nestjs/swagger';
+import { SkipThrottle } from '@nestjs/throttler';
 import {
   WALLET_PROVISIONING_ERRORS,
   WalletProvisioningError,
@@ -30,6 +31,9 @@ import {
  * retries.
  */
 @ApiExcludeController()
+// Pomelo calls (and retries) from a few addresses the throttler would see as one client; the IP and
+// signature guards already protect these routes.
+@SkipThrottle()
 @UseGuards(PomeloIpGuard, PomeloSignatureGuard)
 @Controller('wallet-provisioning/webhooks/pomelo')
 export class PomeloWebhooksController {

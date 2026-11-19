@@ -51,6 +51,22 @@ describe('pomeloTokenizationScope', () => {
     ).toEqual(['1.2.3.4', '5.6.7.8']);
   });
 
+  it('rejects a POMELO_ALLOWED_IPS entry that is not an IP, such as a semicolon-separated list', () => {
+    expect(() =>
+      validate({ ...required, allowedIps: '1.2.3.4;5.6.7.8' }),
+    ).toThrow(/allowedIps/);
+    expect(() =>
+      validate({ ...required, allowedIps: '1.2.3.4, not-an-ip' }),
+    ).toThrow(/allowedIps/);
+  });
+
+  it('accepts IPv6 entries and ignores empty segments', () => {
+    expect(
+      validate({ ...required, allowedIps: '2001:db8::1, ,1.2.3.4,' })
+        .allowedIps,
+    ).toEqual(['2001:db8::1', '1.2.3.4']);
+  });
+
   it('accepts a Visa Google Pay path once Pomelo confirms it', () => {
     expect(
       validate({

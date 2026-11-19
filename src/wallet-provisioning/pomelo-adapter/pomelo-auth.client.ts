@@ -10,6 +10,9 @@ import {
 import { isSuccess, postJson } from './pomelo-http';
 import { PomeloTokenResponse } from './pomelo.types';
 
+// Used when Pomelo's response carries no usable expires_in: short, so a revoked token is dropped soon.
+const DEFAULT_LIFETIME_MS = 5 * 60_000;
+
 // Renew a little before Pomelo's expiry so a token never dies mid-request.
 const EXPIRY_MARGIN_MS = 60_000;
 
@@ -49,7 +52,11 @@ export class PomeloAuthClient {
         { status },
       );
     }
-    const lifetimeMs = (token.expires_in ?? 0) * 1000;
+    const expiresIn = Number(token.expires_in);
+    const lifetimeMs =
+      Number.isFinite(expiresIn) && expiresIn > 0
+        ? expiresIn * 1000
+        : DEFAULT_LIFETIME_MS;
     this.cached = {
       token: token.access_token,
       expiresAt: Date.now() + lifetimeMs - EXPIRY_MARGIN_MS,

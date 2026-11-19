@@ -21,17 +21,21 @@ export type PomeloTokenizationScopeConfig = {
   visaGooglePayPath?: string;
 };
 
+const ipAddress = Joi.string().ip();
+
+// "1.2.3.4, 5.6.7.8" or an array; every entry must be an IP, so a typo (`;` instead of `,`) fails at
+// boot instead of rejecting every webhook with 403.
 const ipList = Joi.alternatives()
   .try(
-    Joi.array().items(Joi.string().ip()),
-    Joi.string()
-
-      .custom((value: string) =>
-        value
-          .split(',')
-          .map((ip) => ip.trim())
-          .filter(Boolean),
-      ),
+    Joi.array().items(ipAddress),
+    Joi.string().custom((value: string, helpers) => {
+      const ips = value
+        .split(',')
+        .map((ip) => ip.trim())
+        .filter(Boolean);
+      const invalid = ips.find((ip) => ipAddress.validate(ip).error);
+      return invalid === undefined ? ips : helpers.error('any.invalid');
+    }),
   )
   .empty('')
   .default([]);

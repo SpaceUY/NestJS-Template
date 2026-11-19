@@ -85,7 +85,7 @@ export class WalletProvisioningService {
     try {
       return await request(card);
     } catch (error) {
-      await this.markFailed(row);
+      await this.markFailed(row, card.uuid);
       const code =
         error instanceof WalletProvisioningError ? error.code : 'UNEXPECTED';
       this.logger.warn({
@@ -129,13 +129,24 @@ export class WalletProvisioningService {
     );
   }
 
-  // Only while no token has claimed the row: a webhook may already have moved it on.
-  private async markFailed(row: WalletProvisioning | null): Promise<void> {
+  // Only while no token has claimed the row: a webhook may already have moved it on. A database
+  // failure here must not hide why the request failed, so it is logged and swallowed.
+  private async markFailed(
+    row: WalletProvisioning | null,
+    cardUuid: string,
+  ): Promise<void> {
     if (!row) return;
-    await this.repository.compareAndSet(
-      row.id,
-      { status: 'REQUESTED', tokenExternalId: null },
-      { status: 'FAILED' },
-    );
+    try {
+      await this.repository.compareAndSet(
+        row.id,
+        { status: 'REQUESTED', tokenExternalId: null },
+        { status: 'FAILED' },
+      );
+    } catch {
+      this.logger.warn({
+        message: 'Could not mark the wallet provisioning request as failed',
+        data: { cardUuid },
+      });
+    }
   }
 }

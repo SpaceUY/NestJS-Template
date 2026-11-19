@@ -187,6 +187,33 @@ describe('WalletProvisioningService', () => {
     );
   });
 
+  it('still answers 502 when marking the row FAILED fails', async () => {
+    provider.getGooglePayData.mockRejectedValue(
+      new WalletProvisioningError(
+        WALLET_PROVISIONING_ERRORS.PROVIDER_TIMEOUT,
+        'timed out',
+      ),
+    );
+    repository.compareAndSet.mockRejectedValue(new Error('db down'));
+    const status = await statusOf(
+      service.getGooglePayData('user-uuid', { serverSessionId: 'SID' }),
+    );
+    expect(status).toBe(HttpStatus.BAD_GATEWAY);
+    expect(logger.warn).toHaveBeenCalledWith(
+      expect.objectContaining({
+        message: 'Could not mark the wallet provisioning request as failed',
+      }),
+    );
+  });
+
+  it('still rethrows the original unexpected error when marking the row FAILED fails', async () => {
+    provider.getApplePayData.mockRejectedValue(new TypeError('bug'));
+    repository.compareAndSet.mockRejectedValue(new Error('db down'));
+    await expect(
+      service.getApplePayData('user-uuid', appleRequest),
+    ).rejects.toThrow('bug');
+  });
+
   it('marks the row FAILED and rethrows an unexpected error', async () => {
     provider.getApplePayData.mockRejectedValue(new TypeError('bug'));
     await expect(

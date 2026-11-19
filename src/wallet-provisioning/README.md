@@ -25,7 +25,7 @@ under **Modules**. The team guide there also lists what to ask Apple, Google and
 | `WALLET_PROVISIONING_CLAIM_WINDOW_MINUTES` | 30 | How old an attempt a webhook can claim |
 | `POMELO_BASE_URL`, `POMELO_CLIENT_ID`, `POMELO_CLIENT_SECRET`, `POMELO_AUDIENCE` | — | Pomelo API credentials |
 | `POMELO_WEBHOOK_API_SECRET` | — | Base64, the same secret as Pomelo's transaction webhooks |
-| `POMELO_ALLOWED_IPS` | blank | Comma-separated allowlist; blank skips the IP check |
+| `POMELO_ALLOWED_IPS` | blank | Comma-separated IPs (each one validated at boot); blank skips the IP check |
 | `POMELO_REQUEST_TIMEOUT_MS` | 6500 | Must stay below 7000 |
 | `POMELO_*_PATH` | Pomelo's paths | Visa paths are unconfirmed; Visa on Google Pay needs `POMELO_VISA_GOOGLE_PAY_PATH` |
 

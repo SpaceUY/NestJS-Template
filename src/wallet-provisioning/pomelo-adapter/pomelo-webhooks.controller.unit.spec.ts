@@ -1,4 +1,5 @@
 import { HttpException } from '@nestjs/common';
+import { THROTTLER_SKIP } from '@nestjs/throttler/dist/throttler.constants';
 import {
   WALLET_PROVISIONING_ERRORS,
   WalletProvisioningError,
@@ -23,6 +24,12 @@ describe('PomeloWebhooksController', () => {
     controller = new PomeloWebhooksController(
       tokenEvents as unknown as TokenEventsService,
     );
+  });
+
+  it('is exempt from the global rate limiter: Pomelo retries from a few addresses and the guards already protect the routes', () => {
+    expect(
+      Reflect.getMetadata(`${THROTTLER_SKIP}default`, PomeloWebhooksController),
+    ).toBe(true);
   });
 
   it('calls TokenEventsService.apply with the mapped lifecycle event', async () => {
