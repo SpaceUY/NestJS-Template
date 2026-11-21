@@ -25,6 +25,10 @@ describe('PomeloSignatureGuard', () => {
     'x-timestamp': '1700000000',
     'x-endpoint': '/wallet-provisioning/webhooks/pomelo/token-lifecycle',
   };
+  const signedAt = Number(headers['x-timestamp']) * 1000;
+
+  beforeEach(() => jest.useFakeTimers({ now: signedAt + 60_000 }));
+  afterEach(() => jest.useRealTimers());
 
   it('accepts a valid signature', () => {
     const signature = sign(
@@ -71,6 +75,35 @@ describe('PomeloSignatureGuard', () => {
     expect(
       guard.canActivate(
         contextWith({ ...headers, 'x-signature': signature }, null),
+      ),
+    ).toBe(false);
+  });
+
+  it.each([
+    ['older than five minutes', signedAt + 5 * 60_000 + 1_000],
+    ['more than five minutes in the future', signedAt - 5 * 60_000 - 1_000],
+  ])('rejects a validly signed event %s', (_label, now) => {
+    jest.setSystemTime(now);
+    const signature = sign(
+      headers['x-timestamp'],
+      headers['x-endpoint'],
+      rawBody,
+    );
+    expect(
+      guard.canActivate(contextWith({ ...headers, 'x-signature': signature })),
+    ).toBe(false);
+  });
+
+  it('rejects a non-numeric timestamp', () => {
+    const timestamp = 'yesterday';
+    const signature = sign(timestamp, headers['x-endpoint'], rawBody);
+    expect(
+      guard.canActivate(
+        contextWith({
+          ...headers,
+          'x-timestamp': timestamp,
+          'x-signature': signature,
+        }),
       ),
     ).toBe(false);
   });

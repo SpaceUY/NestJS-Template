@@ -34,6 +34,13 @@ describe('nextStatus', () => {
     );
   });
 
+  it.each(['ACTIVATED', 'SUSPENDED', 'INACTIVE'] as const)(
+    'a late %s event does not revive a DISABLED token',
+    (status) => {
+      expect(nextStatus('DISABLED', event({ status }))).toBe('DISABLED');
+    },
+  );
+
   it('LIFECYCLE without a status keeps the current one', () => {
     expect(nextStatus('OTP_SENT', event({}))).toBe('OTP_SENT');
   });

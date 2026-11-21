@@ -25,10 +25,18 @@ export type WalletProvisioningStatus =
  */
 @Entity()
 @Index(['createdAt'])
+// Unique among live rows so two first events for the same token cannot create two rows, while a
+// soft-deleted row never blocks a new one.
+@Index('IDX_wallet_provisioning_token_external_id', ['tokenExternalId'], {
+  unique: true,
+  where: '"deletedAt" IS NULL',
+})
 export class WalletProvisioning extends BaseEntity {
+  @Index('IDX_wallet_provisioning_user_uuid')
   @Column()
   userUuid!: string;
 
+  @Index('IDX_wallet_provisioning_card_uuid')
   @Column()
   cardUuid!: string;
 
@@ -43,8 +51,7 @@ export class WalletProvisioning extends BaseEntity {
   @Column({ type: 'varchar', length: 16 })
   wallet!: WalletProvider;
 
-  // Unique so two first events for the same token cannot create two rows.
-  @Column({ type: 'varchar', unique: true, nullable: true })
+  @Column({ type: 'varchar', nullable: true })
   tokenExternalId!: string | null;
 
   @Index()

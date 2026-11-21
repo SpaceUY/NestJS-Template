@@ -34,7 +34,9 @@ export function nextStatus(
   event: TokenEvent,
 ): WalletProvisioningStatus {
   if (event.kind === 'LIFECYCLE') {
-    if (!event.status) return current;
+    // A deleted token never comes back (MDES/VTS issue a new token id), so a late event cannot
+    // revive it.
+    if (!event.status || current === 'DISABLED') return current;
     const isLateOtp =
       OTP_STATUSES.has(event.status) && PROVISIONED_STATUSES.has(current);
     return isLateOtp ? current : event.status;

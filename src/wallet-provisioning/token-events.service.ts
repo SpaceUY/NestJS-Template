@@ -140,17 +140,20 @@ export class TokenEventsService {
     ) {
       return;
     }
-    try {
-      await this.hooks.onProvisioningAbandoned({
-        userUuid: card.userUuid,
-        cardUuid: card.uuid,
-        wallet: event.wallet,
+    // Detached: the processor is answered without waiting for the app's reminder.
+    void Promise.resolve()
+      .then(() =>
+        this.hooks.onProvisioningAbandoned({
+          userUuid: card.userUuid,
+          cardUuid: card.uuid,
+          wallet: event.wallet,
+        }),
+      )
+      .catch(() => {
+        this.logger.error({
+          message: 'Abandoned provisioning hook failed',
+          data: { cardUuid: card.uuid },
+        });
       });
-    } catch {
-      this.logger.error({
-        message: 'Abandoned provisioning hook failed',
-        data: { cardUuid: card.uuid },
-      });
-    }
   }
 }

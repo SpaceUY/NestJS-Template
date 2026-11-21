@@ -10,6 +10,9 @@ import {
   PomeloTokenizationScopeConfig,
 } from './config/pomelo-tokenization.scope';
 
+// A signed event replayed after this window is rejected, so a captured webhook cannot be resent.
+const MAX_CLOCK_SKEW_MS = 5 * 60_000;
+
 type SignedRequest = {
   headers: Record<string, string | undefined>;
   rawBody?: Buffer;
@@ -18,7 +21,8 @@ type SignedRequest = {
 /**
  * Pomelo signs each webhook: HMAC-SHA256 of timestamp + endpoint + raw body, keyed with the
  * base64-decoded API secret, sent as `x-signature: hmac-sha256 <base64>`. Needs the raw body
- * (`rawBody: true` in NestFactory.create).
+ * (`rawBody: true` in NestFactory.create). `x-timestamp` (unix seconds) must be within five
+ * minutes of now.
  */
 @Injectable()
 export class PomeloSignatureGuard implements CanActivate {
@@ -33,6 +37,7 @@ export class PomeloSignatureGuard implements CanActivate {
     const timestamp = request.headers['x-timestamp'];
     const endpoint = request.headers['x-endpoint'];
     if (!signature || !timestamp || !endpoint || !request.rawBody) return false;
+    if (!isFresh(timestamp)) return false;
 
     const digest = createHmac(
       'sha256',
@@ -48,4 +53,9 @@ export class PomeloSignatureGuard implements CanActivate {
       expected.length === received.length && timingSafeEqual(expected, received)
     );
   }
+}
+
+function isFresh(timestamp: string): boolean {
+  if (!/^\d+$/.test(timestamp)) return false;
+  return Math.abs(Date.now() - Number(timestamp) * 1000) <= MAX_CLOCK_SKEW_MS;
 }

@@ -34,20 +34,28 @@ describe('WalletProvisioning entity', () => {
     expect(new WalletProvisioning()).toBeInstanceOf(BaseEntity);
   });
 
-  it('keeps tokenExternalId unique and nullable', () => {
-    const column = getMetadataArgsStorage().columns.find(
+  // Unique among live rows only, so a soft-deleted row never blocks a new event for that token.
+  it('keeps tokenExternalId unique among rows that are not soft-deleted', () => {
+    const index = getMetadataArgsStorage().indices.find(
       (candidate) =>
         candidate.target === WalletProvisioning &&
-        candidate.propertyName === 'tokenExternalId',
+        Array.isArray(candidate.columns) &&
+        candidate.columns.includes('tokenExternalId'),
     );
-    expect(column?.options).toEqual(
-      expect.objectContaining({ unique: true, nullable: true }),
+    expect(index).toEqual(
+      expect.objectContaining({ unique: true, where: '"deletedAt" IS NULL' }),
     );
   });
 
-  it('indexes the card, the status and the creation date', () => {
+  it('indexes the owner, the card, the status and the creation date', () => {
     expect(indexedColumns()).toEqual(
-      expect.arrayContaining(['cardExternalId', 'status', 'createdAt']),
+      expect.arrayContaining([
+        'userUuid',
+        'cardUuid',
+        'cardExternalId',
+        'status',
+        'createdAt',
+      ]),
     );
   });
 });

@@ -88,6 +88,30 @@ describe('PomeloAuthClient', () => {
     },
   );
 
+  it('shares one token call between concurrent callers', async () => {
+    mockedPost.mockResolvedValue({
+      status: 200,
+      body: { access_token: 'tok', expires_in: 3600 },
+    });
+    const client = new PomeloAuthClient(config as never);
+    await expect(
+      Promise.all([client.getToken(), client.getToken()]),
+    ).resolves.toEqual(['tok', 'tok']);
+    expect(mockedPost).toHaveBeenCalledTimes(1);
+  });
+
+  it('retries the token call after a failed one', async () => {
+    mockedPost
+      .mockResolvedValueOnce({ status: 500, body: null })
+      .mockResolvedValueOnce({
+        status: 200,
+        body: { access_token: 'tok', expires_in: 3600 },
+      });
+    const client = new PomeloAuthClient(config as never);
+    await client.getToken().catch(() => undefined);
+    await expect(client.getToken()).resolves.toBe('tok');
+  });
+
   it('forgets the token when invalidated', async () => {
     mockedPost.mockResolvedValue({
       status: 200,

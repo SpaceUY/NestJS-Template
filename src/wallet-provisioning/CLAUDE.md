@@ -24,22 +24,22 @@ root; `pomelo-adapter/` is the processor adapter and can be deleted.
 
 ## Public surface
 
-| Import | From | Purpose |
-|---|---|---|
-| `WalletProvisioningAbstractModule.forRoot({ adapter, cardResolver, hooks })` | `abstract/wallet-provisioning-abstract.module.ts` | Registered once in `src/app.module.ts`; global |
-| `CardResolver`, `UnconfiguredCardResolver` | `abstract/card-resolver.ts` | Contract a project implements; placeholder that knows no cards |
-| `WalletProvisioningHooks`, `NoopWalletProvisioningHooks` | `abstract/wallet-provisioning-hooks.ts` | Contract for the abandoned-flow reminder; placeholder |
-| `TokenizationProvider` | `abstract/tokenization-provider.ts` | Contract a processor adapter implements |
-| `TokenEventsService.apply(event)` | `token-events.service.ts` | What a processor's webhook controller calls with a `TokenEvent` |
-| `WalletProvisioningService.findPaginated` | `wallet-provisioning.service.ts` | Admin listing for a project's own back office (no route) |
-| `PomeloAdapterModule`, `PomeloWebhooksModule` | `pomelo-adapter/` | The Pomelo processor |
+| Import                                                                       | From                                              | Purpose                                                         |
+| ---------------------------------------------------------------------------- | ------------------------------------------------- | --------------------------------------------------------------- |
+| `WalletProvisioningAbstractModule.forRoot({ adapter, cardResolver, hooks })` | `abstract/wallet-provisioning-abstract.module.ts` | Registered once in `src/app.module.ts`; global                  |
+| `CardResolver`, `UnconfiguredCardResolver`                                   | `abstract/card-resolver.ts`                       | Contract a project implements; placeholder that knows no cards  |
+| `WalletProvisioningHooks`, `NoopWalletProvisioningHooks`                     | `abstract/wallet-provisioning-hooks.ts`           | Contract for the abandoned-flow reminder; placeholder           |
+| `TokenizationProvider`                                                       | `abstract/tokenization-provider.ts`               | Contract a processor adapter implements                         |
+| `TokenEventsService.apply(event)`                                            | `token-events.service.ts`                         | What a processor's webhook controller calls with a `TokenEvent` |
+| `WalletProvisioningService.findPaginated`                                    | `wallet-provisioning.service.ts`                  | Admin listing for a project's own back office (no route)        |
+| `PomeloAdapterModule`, `PomeloWebhooksModule`                                | `pomelo-adapter/`                                 | The Pomelo processor                                            |
 
 Routes (behind `AuthGuard('jwt')`, user by `uuid`):
 
-| Route | Body | Response |
-|---|---|---|
-| `POST /cards/me/wallet/apple-pay` | `{ cardId?, certificates[], nonce, nonceSignature }` (base64) | `{ activationData, encryptedPassData, ephemeralPublicKey }` |
-| `POST /cards/me/wallet/google-pay` | `{ cardId?, serverSessionId }` | `{ opc, googleOpc }` |
+| Route                              | Body                                                          | Response                                                    |
+| ---------------------------------- | ------------------------------------------------------------- | ----------------------------------------------------------- |
+| `POST /cards/me/wallet/apple-pay`  | `{ cardId?, certificates[], nonce, nonceSignature }` (base64) | `{ activationData, encryptedPassData, ephemeralPublicKey }` |
+| `POST /cards/me/wallet/google-pay` | `{ cardId?, serverSessionId }`                                | `{ opc, googleOpc }`                                        |
 
 The template's `ResponseInterceptor` wraps successes as `{ success: true, data: <response> }`; the
 app (and the Wallet extension template) read `data`. Errors arrive as
@@ -64,10 +64,12 @@ processor fails (`WALLET_PROVIDER_UNAVAILABLE`). Pomelo webhooks:
    default 6500, validated `< 7000`): the app gives up at 8 s and Google Wallet at 10 s.
 5. **The state machine is pure and table-tested** (`token-transitions.ts`). Writes are
    compare-and-set on `(id, status, tokenExternalId)` with up to 3 attempts; the unique index
-   on `tokenExternalId` settles two first events racing for a new token.
+   on `tokenExternalId` (live rows only) settles two first events racing for a new token.
+   `DISABLED` is final: a late event never revives a deleted token.
 6. **Webhooks acknowledge what cannot be applied** (unknown status or event, missing ids) with
-   2XX, and answer 5XX when applying fails, so the processor retries. A failing hook never
-   fails the webhook.
+   2XX, and answer 5XX when applying fails, so the processor retries. Hooks run detached: a
+   slow or failing hook never delays or fails the webhook. Signed webhooks older than five
+   minutes are rejected (replay protection).
 7. `findForUser` must return only the user's own cards: a card id of another user answers the
    same 400 as a missing one.
 

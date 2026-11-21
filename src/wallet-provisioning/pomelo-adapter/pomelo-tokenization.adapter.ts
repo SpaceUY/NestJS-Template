@@ -113,7 +113,7 @@ export class PomeloTokenizationAdapter extends TokenizationProvider {
       { Authorization: `Bearer ${token}` },
       remainingMs,
     );
-    if (status === 401) this.auth.invalidate();
+    if (status === 401 || status === 403) this.auth.invalidate();
     const data = (response as { data?: Data } | null)?.data;
     if (!isSuccess(status) || !data) {
       throw new WalletProvisioningError(

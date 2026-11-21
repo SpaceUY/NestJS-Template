@@ -20,6 +20,8 @@ const EXPIRY_MARGIN_MS = 60_000;
 @Injectable()
 export class PomeloAuthClient {
   private cached: { token: string; expiresAt: number } | null = null;
+  // Concurrent callers share one token call instead of each asking Pomelo for a new token.
+  private inFlight: Promise<string> | null = null;
 
   constructor(
     @Inject(pomeloTokenizationScope.KEY)
@@ -33,6 +35,17 @@ export class PomeloAuthClient {
     if (this.cached && Date.now() < this.cached.expiresAt) {
       return this.cached.token;
     }
+    this.inFlight ??= this.fetchToken(timeoutMs).finally(() => {
+      this.inFlight = null;
+    });
+    return this.inFlight;
+  }
+
+  invalidate(): void {
+    this.cached = null;
+  }
+
+  private async fetchToken(timeoutMs: number): Promise<string> {
     const { status, body } = await postJson(
       `${this.config.baseUrl}/oauth/token`,
       {
@@ -62,9 +75,5 @@ export class PomeloAuthClient {
       expiresAt: Date.now() + lifetimeMs - EXPIRY_MARGIN_MS,
     };
     return token.access_token;
-  }
-
-  invalidate(): void {
-    this.cached = null;
   }
 }

@@ -303,6 +303,14 @@ describe('TokenEventsService', () => {
     expect(hooks.onProvisioningAbandoned).not.toHaveBeenCalled();
   });
 
+  it('answers the webhook without waiting for the abandoned hook', async () => {
+    hooks.onProvisioningAbandoned.mockReturnValue(new Promise(() => undefined));
+    repository.add({ tokenExternalId: 'tok-1', status: 'OTP_SENT' });
+    await expect(
+      service.apply(event({ kind: 'ABANDONED', status: undefined })),
+    ).resolves.toEqual({ previousStatus: 'OTP_SENT', status: 'ABANDONED' });
+  });
+
   it('a failing hook does not fail apply and logs only the card uuid', async () => {
     hooks.onProvisioningAbandoned.mockRejectedValue(
       new Error('push failed: token ExponentPushToken[abc]'),
@@ -314,6 +322,9 @@ describe('TokenEventsService', () => {
       previousStatus: 'OTP_SENT',
       status: 'ABANDONED',
     });
+    // The hook runs detached from the webhook answer: let its rejection settle.
+    await Promise.resolve();
+    await Promise.resolve();
     expect(logger.error).toHaveBeenCalledWith({
       message: 'Abandoned provisioning hook failed',
       data: { cardUuid: 'card-uuid' },

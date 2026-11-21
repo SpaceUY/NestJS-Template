@@ -144,12 +144,24 @@ describe('PomeloTokenizationAdapter', () => {
     );
   });
 
-  it('drops the cached token when Pomelo answers 401', async () => {
-    mockedPost.mockResolvedValue({ status: 401, body: null });
+  // A 403 usually means scopes were added after the token was issued: the next call needs a new one.
+  it.each([401, 403])(
+    'drops the cached token when Pomelo answers %i',
+    async (status) => {
+      mockedPost.mockResolvedValue({ status, body: null });
+      await adapter
+        .getGooglePayData(mastercard, { serverSessionId: 'SID' })
+        .catch(() => undefined);
+      expect(auth.invalidate).toHaveBeenCalled();
+    },
+  );
+
+  it('keeps the cached token on other failures', async () => {
+    mockedPost.mockResolvedValue({ status: 500, body: null });
     await adapter
       .getGooglePayData(mastercard, { serverSessionId: 'SID' })
       .catch(() => undefined);
-    expect(auth.invalidate).toHaveBeenCalled();
+    expect(auth.invalidate).not.toHaveBeenCalled();
   });
 
   it('throws PROVIDER_REQUEST_FAILED when a 2xx has no data', async () => {
