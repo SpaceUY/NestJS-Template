@@ -64,6 +64,13 @@ import { RedisCacheAdapterService } from './cache/redis-adapter/redis-adapter.se
 import { SpaceshipModule } from './spaceship/spaceship.module';
 import { spaceshipCacheScope } from './spaceship/config/spaceship-cache.scope';
 import { notificationRecipientsScope } from './spaceship/notification/config/notification-recipients.scope';
+import { WalletProvisioningAbstractModule } from './wallet-provisioning/abstract/wallet-provisioning-abstract.module';
+import { UnconfiguredCardResolver } from './wallet-provisioning/abstract/card-resolver';
+import { NoopWalletProvisioningHooks } from './wallet-provisioning/abstract/wallet-provisioning-hooks';
+import { walletProvisioningScope } from './wallet-provisioning/config/wallet-provisioning.scope';
+import { PomeloAdapterModule } from './wallet-provisioning/pomelo-adapter/pomelo-adapter.module';
+import { PomeloWebhooksModule } from './wallet-provisioning/pomelo-adapter/pomelo-webhooks.module';
+import { pomeloTokenizationScope } from './wallet-provisioning/pomelo-adapter/config/pomelo-tokenization.scope';
 @Module({
   imports: [
     ConfigProviderAbstractModule.forRootAsync({
@@ -90,6 +97,8 @@ import { notificationRecipientsScope } from './spaceship/notification/config/not
         // src/spaceship/README.md's `## Reuse` for the full removal list.
         spaceshipCacheScope,
         notificationRecipientsScope,
+        walletProvisioningScope,
+        pomeloTokenizationScope,
       ],
     }),
     AuthModule,
@@ -253,6 +262,14 @@ import { notificationRecipientsScope } from './spaceship/notification/config/not
     // The reference domain module. A real project deletes it and writes its
     // own in the same shape — src/spaceship/CLAUDE.md says how.
     SpaceshipModule,
+    // Wallet provisioning with the Pomelo adapter. Replace the card resolver and the hooks with
+    // the project's own; see src/wallet-provisioning/README.md.
+    WalletProvisioningAbstractModule.forRoot({
+      adapter: PomeloAdapterModule,
+      cardResolver: UnconfiguredCardResolver,
+      hooks: NoopWalletProvisioningHooks,
+    }),
+    PomeloWebhooksModule,
   ],
   controllers: [AppController],
   providers: [AppService],

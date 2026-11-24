@@ -35,6 +35,7 @@ Before changing anything under `src/<module>/`, read `src/<module>/CLAUDE.md`.
 | `src/templates` | `src/templates/CLAUDE.md` | `src/templates/README.md` |
 | `src/queues` | `src/queues/CLAUDE.md` | `src/queues/README.md` |
 | `src/spaceship` | `src/spaceship/CLAUDE.md` | `src/spaceship/README.md` |
+| `src/wallet-provisioning` | `src/wallet-provisioning/CLAUDE.md` | `src/wallet-provisioning/README.md` |
 
 One shared reference lives outside a module guide:
 `src/common/observability/logger/PRACTICES.md`, which is binding on every log

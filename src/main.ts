@@ -8,7 +8,11 @@ import { appScope, AppScopeConfig } from './app.scope';
 import { setupSwagger } from './swagger.bootstrap';
 
 async function bootstrap(): Promise<void> {
-  const app = await NestFactory.create<NestExpressApplication>(AppModule);
+  // rawBody keeps the request bytes next to the parsed body, for processor webhook signature
+  // checks. Parsing is unchanged.
+  const app = await NestFactory.create<NestExpressApplication>(AppModule, {
+    rawBody: true,
+  });
   const appConf = app.get<AppScopeConfig>(appScope.KEY);
   app.enableShutdownHooks();
 

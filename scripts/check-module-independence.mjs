@@ -35,6 +35,7 @@ const TIERS = {
   auth: 'feature',
   templates: 'feature',
   spaceship: 'feature',
+  'wallet-provisioning': 'feature',
   [APP_ROOT]: 'app',
 };
 
